@@ -98,3 +98,35 @@ export const profileName = (
 ): string =>
   profiles.find((profile) => profile.profile_id === profileId)?.display_name ??
   "wybrane konto";
+
+export interface DisclaimerData {
+  title: string;
+  body: string;
+  linksLabel: string;
+  tosLink: string;
+  geminiLink: string;
+  fairUseLink: string;
+}
+
+export const getDisclaimerText = (): DisclaimerData => {
+  const lang = navigator.language?.toLowerCase().startsWith("pl") ? "pl" : "en";
+  if (lang === "pl") {
+    return {
+      title: "Zastrzeżenie prawne i zrzeczenie się odpowiedzialności",
+      body: "Ta aplikacja służy wyłącznie do celów edukacyjnych i demonstracyjnych. Używanie jej w celach komercyjnych jest surowo zabronione pod żadnym pozorem. Deweloper nie ponosi żadnej odpowiedzialności (cywilnej, karnej ani żadnej innej) za szkody, blokady kont, utratę danych czy inne konsekwencje wynikające bezpośrednio lub pośrednio z użycia tego programu. Użytkownik korzysta z tej aplikacji wyłącznie na własne ryzyko. Użytkownik zobowiązany jest do pełnego przestrzegania Warunków korzystania z usług Google (ToS) oraz zasad Fair Use (Uczciwego Użytkowania). Korzystanie z aplikacji oznacza pełną akceptację tych warunków i zrzeczenie się wszelkich roszczeń wobec dewelopera.",
+      linksLabel: "Wymagane regulaminy:",
+      tosLink: "Warunki korzystania z Google",
+      geminiLink: "Regulamin Google Gemini API",
+      fairUseLink: "Zasady Google Abuse",
+    };
+  }
+  return {
+    title: "Legal Disclaimer & Waiver of Liability",
+    body: "This application is provided strictly for educational and demonstrational purposes. Commercial use of this software is strictly prohibited under any circumstances. The developer hereby disclaims all liability for any actions, omissions, account terminations, data loss, or damages of any kind resulting from the use or misuse of this software. The user accepts sole and exclusive responsibility for all outcomes. The user must strictly comply with all Google Terms of Service (ToS) and Google's Fair Use/Anti-Abuse policies. By using this software, you agree to waive any and all claims against the developer.",
+    linksLabel: "Mandatory Policies:",
+    tosLink: "Google Terms of Service",
+    geminiLink: "Google Gemini API Terms",
+    fairUseLink: "Google Anti-Abuse Policies",
+  };
+};
+

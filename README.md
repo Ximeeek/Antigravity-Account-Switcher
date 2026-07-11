@@ -8,6 +8,18 @@
 
 ---
 
+> [!CAUTION]
+> **LEGAL DISCLAIMER & TERMS OF USE**
+>
+> **1. Educational Use Only:** This application is provided strictly for educational, research, and personal demonstrational purposes.
+> **2. Commercial Use Prohibited:** Commercial use or monetization of this software is strictly prohibited under any circumstances.
+> **3. Disclaimer of Liability:** Under no circumstances shall the developer(s) or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, loss of data, loss of access, account bans, or service disruptions) arising in any way out of the use, abuse, or misuse of this software. The user accepts all risks and sole responsibility for all outcomes of running this software.
+> **4. Compliance with Third-Party Terms:** The user is solely responsible for ensuring compliance with all applicable terms, including the [Google Terms of Service](https://policies.google.com/terms), [Google Gemini API Terms of Service](https://ai.google.dev/gemini-api/terms), and [Google Anti-Abuse Policies](https://policies.google.com/terms). Programmatic switching of accounts to bypass usage limits or quotas violates Google's policies and may result in the termination of your Google accounts.
+>
+> By using this software, you agree to these terms and waive any and all claims against the developer(s).
+
+---
+
 > [!WARNING]
 > This project is in **Early Development (WIP)** and is not yet feature-complete. Make sure to back up your profiles and settings before attempting manual switches on production accounts.
 

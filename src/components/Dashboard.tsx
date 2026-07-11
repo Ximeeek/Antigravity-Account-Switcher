@@ -3,6 +3,7 @@ import {
   formatDateTime,
   getInitials,
   getTokenPresentation,
+  getDisclaimerText,
 } from "../utils";
 import { AccountCard } from "./AccountCard";
 import { Icon } from "./Icons";
@@ -109,7 +110,8 @@ export function Dashboard({
   onAdd,
   onDelete,
 }: DashboardProps) {
-  if (state.profiles.length === 0) return <EmptyState onAdd={onAdd} />;
+  const disclaimer = getDisclaimerText();
+  const isEmpty = state.profiles.length === 0;
 
   const active = state.profiles.find(
     (profile) => profile.profile_id === state.active_profile_id,
@@ -120,56 +122,76 @@ export function Dashboard({
 
   return (
     <div className="dashboard">
-      {active ? (
-        <ActiveAccount profile={active} />
+      {isEmpty ? (
+        <EmptyState onAdd={onAdd} />
       ) : (
-        <section className="inline-notice inline-notice--warning" role="status">
-          <Icon name="alert" size={19} />
-          <div>
-            <strong>Nie wykryto aktywnego konta</strong>
-            <p>Wybierz jeden z zapisanych profili, aby ustawić go jako aktywny.</p>
-          </div>
-        </section>
+        <>
+          {active ? (
+            <ActiveAccount profile={active} />
+          ) : (
+            <section className="inline-notice inline-notice--warning" role="status">
+              <Icon name="alert" size={19} />
+              <div>
+                <strong>Nie wykryto aktywnego konta</strong>
+                <p>Wybierz jeden z zapisanych profili, aby ustawić go jako aktywny.</p>
+              </div>
+            </section>
+          )}
+
+          <section aria-labelledby="saved-accounts-title" className="accounts-section">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Profile lokalne</p>
+                <h2 id="saved-accounts-title">
+                  {otherProfiles.length > 0 ? "Pozostałe konta" : "Zapisane konta"}
+                </h2>
+                <p>
+                  {otherProfiles.length === 0
+                    ? "Brak innych zapisanych profili"
+                    : otherProfiles.length === 1
+                      ? "1 profil gotowy do przełączenia"
+                      : `${otherProfiles.length} profile gotowe do przełączenia`}
+                </p>
+              </div>
+              <button className="button button--secondary" onClick={onAdd} type="button">
+                <Icon name="plus" size={17} />
+                <span>Dodaj konto</span>
+              </button>
+            </div>
+
+            <div className="accounts-grid">
+              {otherProfiles.map((profile) => (
+                <AccountCard
+                  busy={busy}
+                  key={profile.profile_id}
+                  onActivate={onActivate}
+                  onDelete={onDelete}
+                  profile={profile}
+                />
+              ))}
+              <button className="add-account-card" onClick={onAdd} type="button">
+                <span className="add-account-card__icon"><Icon name="plus" size={22} /></span>
+                <strong>Dodaj konto</strong>
+                <span>Importuj bieżący profil Antigravity</span>
+              </button>
+            </div>
+          </section>
+        </>
       )}
 
-      <section aria-labelledby="saved-accounts-title" className="accounts-section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Profile lokalne</p>
-            <h2 id="saved-accounts-title">
-              {otherProfiles.length > 0 ? "Pozostałe konta" : "Zapisane konta"}
-            </h2>
-            <p>
-              {otherProfiles.length === 0
-                ? "Brak innych zapisanych profili"
-                : otherProfiles.length === 1
-                  ? "1 profil gotowy do przełączenia"
-                  : `${otherProfiles.length} profile gotowe do przełączenia`}
-            </p>
-          </div>
-          <button className="button button--secondary" onClick={onAdd} type="button">
-            <Icon name="plus" size={17} />
-            <span>Dodaj konto</span>
-          </button>
+      <footer className="dashboard-footer" style={{ marginTop: "40px", paddingTop: "20px", borderTop: "1px solid var(--border-color, #2d3139)", opacity: 0.7, fontSize: "0.8em" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px" }}>
+          <Icon name="shield" size={16} />
+          <strong style={{ textTransform: "uppercase", letterSpacing: "0.5px" }}>{disclaimer.title}</strong>
         </div>
-
-        <div className="accounts-grid">
-          {otherProfiles.map((profile) => (
-            <AccountCard
-              busy={busy}
-              key={profile.profile_id}
-              onActivate={onActivate}
-              onDelete={onDelete}
-              profile={profile}
-            />
-          ))}
-          <button className="add-account-card" onClick={onAdd} type="button">
-            <span className="add-account-card__icon"><Icon name="plus" size={22} /></span>
-            <strong>Dodaj konto</strong>
-            <span>Importuj bieżący profil Antigravity</span>
-          </button>
-        </div>
-      </section>
+        <p style={{ lineHeight: "1.5", marginBottom: "8px" }}>{disclaimer.body}</p>
+        <p>
+          <strong>{disclaimer.linksLabel}</strong>{" "}
+          <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" style={{ textDecoration: "underline", color: "inherit", marginRight: "12px" }}>{disclaimer.tosLink}</a>
+          <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer" style={{ textDecoration: "underline", color: "inherit", marginRight: "12px" }}>{disclaimer.geminiLink}</a>
+          <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" style={{ textDecoration: "underline", color: "inherit" }}>{disclaimer.fairUseLink}</a>
+        </p>
+      </footer>
     </div>
   );
 }

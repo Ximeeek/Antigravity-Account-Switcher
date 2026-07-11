@@ -2,6 +2,8 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import type { AddProfileInput, ProfileSummary } from "../types";
 import { Icon } from "./Icons";
 import { Modal } from "./Modal";
+import { getDisclaimerText } from "../utils";
+
 
 interface AddProfileModalProps {
   open: boolean;
@@ -20,6 +22,7 @@ export function AddProfileModal({
   const formId = `add-profile-${rawFormId.replaceAll(":", "")}`;
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const disclaimer = getDisclaimerText();
 
   useEffect(() => {
     if (!open) return;
@@ -86,6 +89,22 @@ export function AddProfileModal({
             </span>
           </div>
         )}
+
+        <div className="compact-alert compact-alert--warning" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <Icon name="shield" size={17} />
+            <strong>{disclaimer.title}</strong>
+          </div>
+          <span style={{ fontSize: "0.85em", lineHeight: "1.4" }}>
+            {disclaimer.body}
+          </span>
+          <div style={{ fontSize: "0.8em", marginTop: "4px" }}>
+            <strong>{disclaimer.linksLabel}</strong>{" "}
+            <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" style={{ textDecoration: "underline", color: "inherit", marginRight: "8px" }}>{disclaimer.tosLink}</a>
+            <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer" style={{ textDecoration: "underline", color: "inherit", marginRight: "8px" }}>{disclaimer.geminiLink}</a>
+            <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" style={{ textDecoration: "underline", color: "inherit" }}>{disclaimer.fairUseLink}</a>
+          </div>
+        </div>
 
         <label className="field" htmlFor={`${formId}-name`}>
           <span className="field__label">Nazwa wyświetlana konta</span>
