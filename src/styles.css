@@ -372,11 +372,10 @@ summary {
   background: currentColor;
   animation: pulse-ring 1.65s ease-out infinite;
 }
-
 .app-header {
   position: sticky;
   z-index: 30;
-  top: 0;
+  top: 36px;
   min-height: 65px;
   border-bottom: 1px solid rgba(126, 157, 211, 0.1);
   background: rgba(7, 9, 19, 0.79);
@@ -1735,7 +1734,7 @@ summary {
 
 .recovery-screen {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh - 36px);
   padding: 28px;
   display: grid;
   place-items: center;
@@ -2027,9 +2026,8 @@ summary {
   color: var(--text-primary);
   background: rgba(126, 157, 211, 0.08);
 }
-
 .boot-screen {
-  min-height: 100vh;
+  min-height: calc(100vh - 36px);
   padding: 32px;
   display: flex;
   flex-direction: column;
@@ -2427,4 +2425,66 @@ summary {
   .operation-step__pulse {
     background: CanvasText;
   }
+}
+
+/* Custom Titlebar styling */
+.titlebar {
+  height: 36px;
+  background: var(--bg-top);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+}
+
+.titlebar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.titlebar__icon {
+  display: flex;
+  align-items: center;
+}
+
+.titlebar__right {
+  display: flex;
+  height: 100%;
+}
+
+.titlebar__button {
+  width: 44px;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.titlebar__button:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.titlebar__button--close:hover {
+  background: #e81123 !important;
+  color: #ffffff !important;
+}
+
+.titlebar__button:active {
+  background: var(--surface-2);
 }

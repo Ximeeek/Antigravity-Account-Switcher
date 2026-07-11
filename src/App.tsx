@@ -14,8 +14,10 @@ import {
   setDemoScenario,
   updateSettings,
 } from "./bridge";
+
 import { Dashboard } from "./components/Dashboard";
 import { Header, type AppView } from "./components/Header";
+import { TitleBar } from "./components/TitleBar";
 import { Icon } from "./components/Icons";
 import {
   AddProfileModal,
@@ -292,15 +294,30 @@ export default function App() {
     setDeleteTarget(null);
   };
 
-  if (loading) return <LoadingScreen />;
-  if (loadError && !state) {
-    return <LoadError message={loadError} onRetry={() => void loadState()} />;
+  if (loading) {
+    return (
+      <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+        <TitleBar />
+        <LoadingScreen />
+      </div>
+    );
   }
+
+  if (loadError && !state) {
+    return (
+      <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+        <TitleBar />
+        <LoadError message={loadError} onRetry={() => void loadState()} />
+      </div>
+    );
+  }
+
   if (!state) return null;
 
   if (state.recovery?.required) {
     return (
-      <>
+      <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+        <TitleBar />
         <RecoveryScreen
           onCopyDiagnostics={() => void handleCopyDiagnostics()}
           onResume={() => void handleRecoveryResume()}
@@ -309,14 +326,15 @@ export default function App() {
           workingAction={workingAction}
         />
         {notice ? <Toast notice={notice} onClose={() => setNotice(null)} /> : null}
-      </>
+      </div>
     );
   }
 
   const switchBusy = Boolean(workingAction) || state.engine_status === "busy";
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <TitleBar />
       <Header
         demoMode={isDemoMode}
         demoScenario={demoScenario}

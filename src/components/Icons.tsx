@@ -14,11 +14,13 @@ export type IconName =
   | "key"
   | "loader"
   | "mail"
+  | "minus"
   | "plus"
   | "refresh"
   | "server"
   | "settings"
   | "shield"
+  | "square"
   | "trash"
   | "user";
 
@@ -92,7 +94,9 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m4 7 8 6 8-6" />
     </>
   ),
+  minus: <path d="M5 12h14" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  square: <rect width="18" height="18" x="3" y="3" rx="2" />,
   refresh: (
     <>
       <path d="M20 7v5h-5" />
