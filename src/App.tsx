@@ -1,0 +1,410 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  addCurrentProfile,
+  cancelSwitch,
+  confirmSwitch,
+  copyDiagnostics,
+  deleteProfile,
+  getAppState,
+  installExtension,
+  isDemoMode,
+  recoveryResume,
+  recoveryRollback,
+  requestSwitch,
+  setDemoScenario,
+  updateSettings,
+} from "./bridge";
+import { Dashboard } from "./components/Dashboard";
+import { Header, type AppView } from "./components/Header";
+import { Icon } from "./components/Icons";
+import {
+  AddProfileModal,
+  DeleteProfileModal,
+} from "./components/ProfileModals";
+import { Settings } from "./components/Settings";
+import {
+  RecoveryScreen,
+  SwitchConfirmModal,
+  SwitchProgressModal,
+} from "./components/SwitchFlow";
+import type {
+  AddProfileInput,
+  AppSettings,
+  AppState,
+  DemoScenario,
+  ProfileSummary,
+} from "./types";
+
+interface Notice {
+  tone: "success" | "danger" | "info";
+  message: string;
+}
+
+const errorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string") return error;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return "Wystąpił nieoczekiwany błąd. Spróbuj ponownie.";
+};
+
+function LoadingScreen() {
+  return (
+    <main className="boot-screen" aria-busy="true" aria-label="Ładowanie aplikacji">
+      <div className="boot-screen__mark"><Icon name="loader" size={27} /></div>
+      <h1>Ładowanie profili</h1>
+      <p>Sprawdzamy stan Antigravity i lokalnego magazynu.</p>
+    </main>
+  );
+}
+
+function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <main className="boot-screen boot-screen--error">
+      <div className="boot-screen__mark"><Icon name="error" size={27} /></div>
+      <h1>Nie udało się uruchomić aplikacji</h1>
+      <p>{message}</p>
+      <button className="button button--primary" onClick={onRetry} type="button">
+        <Icon name="refresh" size={16} />
+        <span>Spróbuj ponownie</span>
+      </button>
+    </main>
+  );
+}
+
+export default function App() {
+  const [state, setState] = useState<AppState | null>(null);
+  const [view, setView] = useState<AppView>("dashboard");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [workingAction, setWorkingAction] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [addProfileOpen, setAddProfileOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ProfileSummary | null>(null);
+  const [demoScenario, setDemoScenarioState] = useState<DemoScenario>(() => {
+    if (typeof window === "undefined") return "dashboard";
+    const requested = new URLSearchParams(window.location.search).get("demo");
+    return requested === "empty" ||
+      requested === "recovery" ||
+      requested === "progress" ||
+      requested === "error"
+      ? requested
+      : "dashboard";
+  });
+  const mounted = useRef(true);
+  const previousOperation = useRef<string | null>(null);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const loadState = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const next = await getAppState();
+      if (!mounted.current) return;
+      setState(next);
+      setLoadError(null);
+    } catch (error) {
+      if (!mounted.current) return;
+      if (!silent) setLoadError(errorMessage(error));
+    } finally {
+      if (mounted.current && !silent) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadState();
+  }, [loadState]);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timeout = window.setTimeout(() => setNotice(null), 5200);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  useEffect(() => {
+    const operation = state?.operation;
+    const shouldPoll =
+      operation?.status === "in_progress" || state?.engine_status === "busy";
+    if (!shouldPoll) return undefined;
+    const interval = window.setInterval(() => void loadState(true), 650);
+    return () => window.clearInterval(interval);
+  }, [loadState, state?.engine_status, state?.operation]);
+
+  useEffect(() => {
+    const currentOperation = state?.operation?.operation_id ?? null;
+    if (previousOperation.current && !currentOperation && state?.engine_status === "ready") {
+      setNotice({ tone: "success", message: "Konto zostało bezpiecznie przełączone." });
+    }
+    previousOperation.current = currentOperation;
+  }, [state?.engine_status, state?.operation?.operation_id]);
+
+  const performStateAction = useCallback(
+    async (
+      actionName: string,
+      action: () => Promise<AppState>,
+      successMessage?: string,
+    ): Promise<boolean> => {
+      setWorkingAction(actionName);
+      try {
+        const next = await action();
+        if (!mounted.current) return true;
+        setState(next);
+        setLoadError(null);
+        if (successMessage) setNotice({ tone: "success", message: successMessage });
+        return true;
+      } catch (error) {
+        if (mounted.current) {
+          setNotice({ tone: "danger", message: errorMessage(error) });
+        }
+        return false;
+      } finally {
+        if (mounted.current) setWorkingAction(null);
+      }
+    },
+    [],
+  );
+
+  const handleActivate = async (profile: ProfileSummary) => {
+    setWorkingAction("request-switch");
+    try {
+      const requested = await requestSwitch(profile.profile_id);
+      if (!mounted.current) return;
+      setState(requested);
+      setLoadError(null);
+
+      if (
+        requested.operation?.status === "in_progress" &&
+        requested.operation.editor_was_running === false
+      ) {
+        setWorkingAction("confirm-switch");
+        const completed = await confirmSwitch(requested.operation.operation_id);
+        if (mounted.current) setState(completed);
+      }
+    } catch (error) {
+      if (mounted.current) setNotice({ tone: "danger", message: errorMessage(error) });
+    } finally {
+      if (mounted.current) setWorkingAction(null);
+    }
+  };
+
+  const handleConfirmSwitch = async () => {
+    setState((current) =>
+      current?.operation
+        ? {
+            ...current,
+            engine_status: "busy",
+            operation: {
+              ...current.operation,
+              current_step: Math.max(1, current.operation.current_step),
+              status: "in_progress",
+            },
+          }
+        : current,
+    );
+    await performStateAction("confirm-switch", () =>
+      confirmSwitch(state?.operation?.operation_id),
+    );
+  };
+
+  const handleCancelSwitch = async () => {
+    await performStateAction("cancel-switch", () =>
+      cancelSwitch(state?.operation?.operation_id),
+    );
+  };
+
+  const handleAddProfile = async (profile: AddProfileInput) => {
+    const succeeded = await performStateAction(
+      "add-profile",
+      () => addCurrentProfile(profile),
+      `Konto „${profile.display_name}” zostało zapisane.`,
+    );
+    if (succeeded) setAddProfileOpen(false);
+  };
+
+  const handleDeleteProfile = async (profile: ProfileSummary) => {
+    const succeeded = await performStateAction(
+      "delete-profile",
+      () => deleteProfile(profile.profile_id),
+      `Profil „${profile.display_name}” został usunięty.`,
+    );
+    if (succeeded) setDeleteTarget(null);
+  };
+
+  const handleSaveSettings = async (settings: AppSettings) => {
+    await performStateAction(
+      "settings",
+      () => updateSettings(settings),
+      "Ustawienia zostały zapisane.",
+    );
+  };
+
+  const handleInstallExtension = async () => {
+    await performStateAction(
+      "extension",
+      installExtension,
+      "Wtyczka Antigravity została zainstalowana.",
+    );
+  };
+
+  const handleCopyDiagnostics = async () => {
+    setWorkingAction("diagnostics");
+    try {
+      await copyDiagnostics();
+      if (mounted.current) {
+        setNotice({ tone: "success", message: "Dziennik diagnostyczny skopiowano do schowka." });
+      }
+    } catch (error) {
+      if (mounted.current) setNotice({ tone: "danger", message: errorMessage(error) });
+    } finally {
+      if (mounted.current) setWorkingAction(null);
+    }
+  };
+
+  const handleRecoveryResume = async () => {
+    await performStateAction(
+      "recovery-resume",
+      recoveryResume,
+      "Odzyskiwanie zostało zakończone.",
+    );
+  };
+
+  const handleRecoveryRollback = async () => {
+    await performStateAction(
+      "recovery-rollback",
+      recoveryRollback,
+      "Poprzedni profil został przywrócony.",
+    );
+  };
+
+  const handleDemoScenario = (scenario: DemoScenario) => {
+    setDemoScenarioState(scenario);
+    setState(setDemoScenario(scenario));
+    setView("dashboard");
+    setNotice(null);
+    setAddProfileOpen(false);
+    setDeleteTarget(null);
+  };
+
+  if (loading) return <LoadingScreen />;
+  if (loadError && !state) {
+    return <LoadError message={loadError} onRetry={() => void loadState()} />;
+  }
+  if (!state) return null;
+
+  if (state.recovery?.required) {
+    return (
+      <>
+        <RecoveryScreen
+          onCopyDiagnostics={() => void handleCopyDiagnostics()}
+          onResume={() => void handleRecoveryResume()}
+          onRollback={() => void handleRecoveryRollback()}
+          state={state}
+          workingAction={workingAction}
+        />
+        {notice ? <Toast notice={notice} onClose={() => setNotice(null)} /> : null}
+      </>
+    );
+  }
+
+  const switchBusy = Boolean(workingAction) || state.engine_status === "busy";
+
+  return (
+    <div className="app-shell">
+      <Header
+        demoMode={isDemoMode}
+        demoScenario={demoScenario}
+        engineStatus={state.engine_status}
+        onDemoScenarioChange={handleDemoScenario}
+        onViewChange={setView}
+        view={view}
+      />
+
+      <main className="app-main" id="main-content">
+        {state.last_error ? (
+          <div className="inline-notice inline-notice--danger" role="alert">
+            <Icon name="error" size={19} />
+            <div>
+              <strong>Aplikacja wymaga uwagi</strong>
+              <p>{state.last_error}</p>
+            </div>
+            <button
+              aria-label="Odśwież stan aplikacji"
+              className="button button--ghost button--small"
+              onClick={() => void loadState(true)}
+              type="button"
+            >
+              <Icon name="refresh" size={15} />
+              <span>Odśwież</span>
+            </button>
+          </div>
+        ) : null}
+
+        {view === "dashboard" ? (
+          <Dashboard
+            busy={switchBusy}
+            onActivate={(profile) => void handleActivate(profile)}
+            onAdd={() => setAddProfileOpen(true)}
+            onDelete={setDeleteTarget}
+            state={state}
+          />
+        ) : (
+          <Settings
+            onCopyDiagnostics={handleCopyDiagnostics}
+            onInstallExtension={handleInstallExtension}
+            onSave={handleSaveSettings}
+            state={state}
+            workingAction={workingAction}
+          />
+        )}
+      </main>
+
+      <SwitchConfirmModal
+        onCancel={() => void handleCancelSwitch()}
+        onConfirm={() => void handleConfirmSwitch()}
+        operation={state.operation}
+        state={state}
+        working={workingAction === "confirm-switch" || workingAction === "cancel-switch"}
+      />
+      <SwitchProgressModal operation={state.operation} state={state} />
+      <AddProfileModal
+        onClose={() => setAddProfileOpen(false)}
+        onSubmit={handleAddProfile}
+        open={addProfileOpen}
+        working={workingAction === "add-profile"}
+      />
+      <DeleteProfileModal
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteProfile}
+        profile={deleteTarget}
+        working={workingAction === "delete-profile"}
+      />
+
+      {notice ? <Toast notice={notice} onClose={() => setNotice(null)} /> : null}
+    </div>
+  );
+}
+
+function Toast({ notice, onClose }: { notice: Notice; onClose: () => void }) {
+  return (
+    <div
+      aria-atomic="true"
+      className={`toast toast--${notice.tone}`}
+      role={notice.tone === "danger" ? "alert" : "status"}
+    >
+      <span className="toast__icon">
+        <Icon name={notice.tone === "success" ? "check" : notice.tone === "danger" ? "error" : "info"} size={17} />
+      </span>
+      <span>{notice.message}</span>
+      <button aria-label="Zamknij komunikat" onClick={onClose} type="button">
+        <Icon name="close" size={15} />
+      </button>
+    </div>
+  );
+}

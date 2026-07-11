@@ -1,0 +1,22 @@
+node_modules/
+dist/
+target/
+src-tauri/target/
+extension/out/
+extension/node_modules/
+*.log
+*.vsix
+.DS_Store
+.idea/
+.vscode/
+unpacked_app/
+profiles/
+switcher.lock
+credentials.enc
+*.token-dump
+
+# Agent rules and configurations (Never push to public repo)
+.agents/
+AGENTS.md
+
+
