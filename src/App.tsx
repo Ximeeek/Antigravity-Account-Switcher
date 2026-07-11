@@ -13,6 +13,8 @@ import {
   requestSwitch,
   setDemoScenario,
   updateSettings,
+  startOauthLogin,
+  cancelOauthLogin,
 } from "./bridge";
 
 import { Dashboard } from "./components/Dashboard";
@@ -221,13 +223,25 @@ export default function App() {
     );
   };
 
-  const handleAddProfile = async (profile: AddProfileInput) => {
+  const handleAddProfile = async (displayName: string) => {
     const succeeded = await performStateAction(
       "add-profile",
-      () => addCurrentProfile(profile),
-      `Konto „${profile.display_name}” zostało zapisane.`,
+      () => startOauthLogin(displayName),
+      `Konto „${displayName}” zostało zapisane.`,
     );
     if (succeeded) setAddProfileOpen(false);
+  };
+
+  const handleCloseAddProfile = async () => {
+    if (workingAction === "add-profile") {
+      try {
+        await cancelOauthLogin();
+      } catch (err) {
+        console.error("Failed to cancel OAuth login:", err);
+      }
+      void loadState(true);
+    }
+    setAddProfileOpen(false);
   };
 
   const handleDeleteProfile = async (profile: ProfileSummary) => {
@@ -392,7 +406,7 @@ export default function App() {
       />
       <SwitchProgressModal operation={state.operation} state={state} />
       <AddProfileModal
-        onClose={() => setAddProfileOpen(false)}
+        onClose={handleCloseAddProfile}
         onSubmit={handleAddProfile}
         open={addProfileOpen}
         working={workingAction === "add-profile"}

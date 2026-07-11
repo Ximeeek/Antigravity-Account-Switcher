@@ -122,6 +122,21 @@ fn recovery_rollback(
     service.recovery_rollback().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn start_oauth_login(
+    service: State<'_, Arc<SwitcherService>>,
+    display_name: String,
+) -> Result<ProfileView, String> {
+    service.start_oauth_login(display_name).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cancel_oauth_login(
+    service: State<'_, Arc<SwitcherService>>,
+) -> Result<(), String> {
+    service.cancel_oauth_login().map_err(|e| e.to_string())
+}
+
 fn handle_client(
     mut stream: TcpStream,
     service: Arc<SwitcherService>,
@@ -346,7 +361,9 @@ pub fn run() {
             install_extension,
             copy_diagnostics,
             recovery_resume,
-            recovery_rollback
+            recovery_rollback,
+            start_oauth_login,
+            cancel_oauth_login
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

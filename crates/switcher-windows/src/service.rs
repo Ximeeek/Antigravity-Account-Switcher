@@ -21,6 +21,8 @@ use switcher_core::{
 };
 use uuid::Uuid;
 use walkdir::WalkDir;
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
 #[derive(Debug, Clone)]
 pub struct PendingSwitch {
@@ -47,7 +49,9 @@ pub struct SwitcherService {
     pending: Mutex<HashMap<Uuid, PendingSwitch>>,
     progress: RwLock<Option<OperationProgress>>,
     operation_lock: Mutex<()>,
+    active_oauth_cancellation: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
 }
+
 
 impl SwitcherService {
     pub fn initialize() -> Result<Arc<Self>> {
@@ -74,6 +78,7 @@ impl SwitcherService {
             pending: Mutex::new(HashMap::new()),
             progress: RwLock::new(None),
             operation_lock: Mutex::new(()),
+            active_oauth_cancellation: Mutex::new(None),
             paths,
         });
         service.logger.info(None, "app", "Application initialized");
@@ -784,6 +789,325 @@ impl SwitcherService {
             warning,
         });
     }
+
+    fn get_google_credentials(&self) -> (String, String) {
+        // Try to load a local .env file manually
+        if let Ok(content) = std::fs::read_to_string(".env") {
+            for line in content.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+                if let Some((key, val)) = line.split_once('=') {
+                    let key = key.trim();
+                    let val = val.trim().trim_matches('"').trim_matches('\'');
+                    std::env::set_var(key, val);
+                }
+            }
+        }
+
+        let client_id = std::env::var("GOOGLE_CLIENT_ID")
+            .unwrap_or_else(|_| {
+                option_env!("GOOGLE_CLIENT_ID")
+                    .unwrap_or("1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com")
+                    .to_string()
+            });
+
+        let client_secret = std::env::var("GOOGLE_CLIENT_SECRET")
+            .unwrap_or_else(|_| {
+                option_env!("GOOGLE_CLIENT_SECRET")
+                    .unwrap_or("")
+                    .to_string()
+            });
+
+        (client_id, client_secret)
+    }
+
+    pub async fn start_oauth_login(&self, display_name: String) -> Result<ProfileView> {
+        println!("[OAuth] --- start_oauth_login started ---");
+        println!("[OAuth] Display name: {}", display_name);
+        validate_display_name(&display_name)?;
+        if self.journal().exists() {
+            println!("[OAuth] Error: Journal exists, recovery required.");
+            return Err(SwitcherError::RecoveryRequired);
+        }
+        if self.progress.read().is_some() {
+            println!("[OAuth] Error: Operation in progress.");
+            return Err(SwitcherError::OperationInProgress);
+        }
+
+        self.cancel_oauth_login()?;
+
+        let operation_id = Uuid::new_v4();
+        println!("[OAuth] Operation ID generated: {}", operation_id);
+        self.logger.info(Some(operation_id), "oauth", format!("Rozpoczęto logowanie bezpośrednie dla: {}", display_name));
+
+        let code_verifier = format!("{}{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple(), Uuid::new_v4().simple());
+        let mut hasher = Sha256::new();
+        hasher.update(code_verifier.as_bytes());
+        let hash = hasher.finalize();
+        let code_challenge = base64_url_encode(&hash);
+        println!("[OAuth] Generated PKCE verifier and challenge.");
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .map_err(|e| {
+                let err_msg = format!("Nie udało się uruchomić portu logowania: {}", e);
+                eprintln!("[OAuth] Error: {}", err_msg);
+                SwitcherError::Message(err_msg)
+            })?;
+        let port = listener.local_addr()
+            .map_err(|e| {
+                eprintln!("[OAuth] Error reading local port: {}", e);
+                SwitcherError::Message(e.to_string())
+            })?
+            .port();
+        let redirect_uri = format!("http://localhost:{}/auth/callback", port);
+        println!("[OAuth] Bound local loopback listener on port: {}", port);
+        println!("[OAuth] Redirect URI: {}", redirect_uri);
+        self.logger.info(Some(operation_id), "oauth", format!("Uruchomiono listener OAuth na porcie {}", port));
+
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        *self.active_oauth_cancellation.lock() = Some(tx);
+
+        let (client_id, client_secret) = self.get_google_credentials();
+        if client_secret.is_empty() {
+            let err_msg = "Brak skonfigurowanego klucza GOOGLE_CLIENT_SECRET w pliku .env lub zmiennych środowiskowych.".to_owned();
+            self.logger.error(Some(operation_id), "oauth", &err_msg);
+            return Err(SwitcherError::Message(err_msg));
+        }
+
+        let state = Uuid::new_v4().simple().to_string();
+        let scopes = vec![
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/cclog",
+            "https://www.googleapis.com/auth/experimentsandconfigs",
+            "https://www.googleapis.com/auth/aicode"
+        ];
+
+        let scopes_encoded = url_encode(&scopes.join(" "));
+        let redirect_uri_encoded = url_encode(&redirect_uri);
+        let auth_url = format!(
+            "https://accounts.google.com/o/oauth2/v2/auth?\
+             client_id={}&\
+             response_type=code&\
+             access_type=offline&\
+             prompt=consent&\
+             code_challenge_method=S256&\
+             code_challenge={}&\
+             redirect_uri={}&\
+             state={}&\
+             scope={}",
+            client_id,
+            code_challenge,
+            redirect_uri_encoded,
+            &state,
+            scopes_encoded
+        );
+        println!("[OAuth] Built authorization URL: {}", auth_url);
+        self.logger.debug(Some(operation_id), "oauth", format!("OAuth authorization URL built: {}", auth_url));
+        self.logger.info(Some(operation_id), "oauth", "Otwieranie przeglądarki systemowej...");
+
+        #[cfg(windows)]
+        let spawn_res = {
+            use std::os::windows::process::CommandExt;
+            println!("[OAuth] Spawning browser using cmd.exe raw_arg on Windows...");
+            std::process::Command::new("cmd")
+                .raw_arg(format!("/c start \"\" \"{}\"", auth_url))
+                .spawn()
+        };
+        #[cfg(not(windows))]
+        let spawn_res = {
+            println!("[OAuth] Spawning browser using open...");
+            std::process::Command::new("open")
+                .arg(&auth_url)
+                .spawn()
+        };
+
+        if let Err(e) = spawn_res {
+            let err_msg = format!("Nie można otworzyć przeglądarki: {}", e);
+            eprintln!("[OAuth] Error spawning browser: {}", err_msg);
+            self.logger.error(Some(operation_id), "oauth", format!("Nie udało się otworzyć przeglądarki: {}", e));
+            *self.active_oauth_cancellation.lock() = None;
+            return Err(SwitcherError::Message(err_msg));
+        }
+
+        let expected_state = state.clone();
+        println!("[OAuth] Awaiting HTTP callback on loopback listener... (Timeout: 5 minutes)");
+        let callback_fut = listen_for_callback(&listener, &expected_state);
+
+        let code_res = tokio::select! {
+            res = callback_fut => {
+                res
+            }
+            _ = rx => {
+                println!("[OAuth] Action cancelled by user.");
+                self.logger.warn(Some(operation_id), "oauth", "Logowanie bezpośrednie zostało anulowane przez użytkownika");
+                Err(SwitcherError::Message("Logowanie zostało anulowane przez użytkownika".to_owned()))
+            }
+            _ = tokio::time::sleep(tokio::time::Duration::from_secs(300)) => {
+                eprintln!("[OAuth] Timeout: 5 minutes expired waiting for callback.");
+                self.logger.error(Some(operation_id), "oauth", "Przekroczono limit czasu oczekiwania na logowanie (5 minut)");
+                Err(SwitcherError::Message("Przekroczono limit czasu oczekiwania na logowanie (5 minut)".to_owned()))
+            }
+        };
+
+        *self.active_oauth_cancellation.lock() = None;
+
+        let code = code_res?;
+        println!("[OAuth] Received authorization code from listener callback.");
+
+        println!("[OAuth] Initiating token exchange POST request to accounts.google.com...");
+        let client = reqwest::Client::new();
+        let params = [
+            ("client_id", &client_id),
+            ("client_secret", &client_secret),
+            ("code", &code),
+            ("code_verifier", &code_verifier),
+            ("redirect_uri", &redirect_uri),
+            ("grant_type", "authorization_code"),
+        ];
+
+        let exchange_res = client.post("https://oauth2.googleapis.com/token")
+            .form(&params)
+            .send()
+            .await;
+
+        let response = match exchange_res {
+            Ok(resp) => {
+                println!("[OAuth] Received HTTP response from token exchange endpoint.");
+                resp
+            }
+            Err(e) => {
+                let err_msg = format!("Błąd komunikacji z serwerem Google: {}", e);
+                eprintln!("[OAuth] Exchange request error: {}", err_msg);
+                self.logger.error(Some(operation_id), "oauth", format!("Błąd żądania wymiany tokenu: {}", e));
+                return Err(SwitcherError::Message(err_msg));
+            }
+        };
+
+        let response_status = response.status();
+        println!("[OAuth] Token exchange response HTTP status: {}", response_status);
+
+        if !response_status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            eprintln!("[OAuth] Token exchange failed! HTTP Status: {}", response_status);
+            eprintln!("[OAuth] Error body from Google: {}", body);
+            self.logger.error(Some(operation_id), "oauth", format!("Google odrzucił wymianę tokenu ({})", response_status));
+            return Err(SwitcherError::Message(format!("Błąd autoryzacji Google ({}): {}", response_status, body)));
+        }
+
+        let token_val: serde_json::Value = response.json().await
+            .map_err(|e| {
+                let err_msg = format!("Niepoprawna odpowiedź JSON z tokenami: {}", e);
+                eprintln!("[OAuth] JSON parse error: {}", err_msg);
+                SwitcherError::Message(err_msg)
+            })?;
+
+        println!("[OAuth] Token exchange JSON parsed successfully.");
+        self.logger.info(Some(operation_id), "oauth", "Wymiana tokenów zakończona sukcesem");
+
+        let access_token = token_val.get("access_token")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                eprintln!("[OAuth] Error: Google response is missing 'access_token'.");
+                SwitcherError::Message("Brak access_token w odpowiedzi".to_owned())
+            })?;
+        let refresh_token = token_val.get("refresh_token")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                eprintln!("[OAuth] Error: Google response is missing 'refresh_token'. Google response JSON: {:?}", token_val);
+                SwitcherError::Message("Brak refresh_token w odpowiedzi (upewnij się, że to pierwsze logowanie na tym kliencie lub wyczyść uprawnienia)".to_owned())
+            })?;
+        let id_token = token_val.get("id_token")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                eprintln!("[OAuth] Error: Google response is missing 'id_token'.");
+                SwitcherError::Message("Brak id_token w odpowiedzi".to_owned())
+            })?;
+        let expires_in = token_val.get("expires_in")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(3600);
+
+        let email = extract_email_from_id_token(id_token)
+            .ok_or_else(|| {
+                eprintln!("[OAuth] Error: Failed to extract email address from 'id_token' JWT payload.");
+                SwitcherError::Message("Nie udało się odczytać adresu email z id_token".to_owned())
+            })?;
+        println!("[OAuth] Extracted email from ID token: {}", email);
+
+        let now = Utc::now();
+        let token_expiry = now + chrono::Duration::seconds(expires_in);
+        println!("[OAuth] Token expiry calculated: {}", token_expiry.to_rfc3339());
+
+        let credential_json = serde_json::json!({
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "refresh_token": refresh_token,
+            "expiry": token_expiry.to_rfc3339(),
+            "auth_method": "oauth2"
+        });
+        let credential_bytes = serde_json::to_vec(&credential_json)
+            .map_err(|e| SwitcherError::Message(e.to_string()))?;
+
+        let new_profile_id = Uuid::new_v4();
+        let profile_dir = self.paths.profile_dir(new_profile_id);
+        println!("[OAuth] Creating profile directory: {}", profile_dir.display());
+        fs::create_dir_all(&profile_dir).map_err(|source| SwitcherError::io(&profile_dir, source))?;
+
+        println!("[OAuth] Saving credentials.enc...");
+        let protected = self.credentials.protect(&credential_bytes)?;
+        atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
+
+        println!("[OAuth] Creating placeholder state.vscdb, brain, conversations...");
+        let state_db_path = profile_dir.join("state.vscdb");
+        fs::write(&state_db_path, []).map_err(|source| SwitcherError::io(&state_db_path, source))?;
+
+        let brain_dir = profile_dir.join("brain");
+        fs::create_dir_all(&brain_dir).map_err(|source| SwitcherError::io(&brain_dir, source))?;
+        let conv_dir = profile_dir.join("conversations");
+        fs::create_dir_all(&conv_dir).map_err(|source| SwitcherError::io(&conv_dir, source))?;
+
+        println!("[OAuth] Saving manifest.json...");
+        let manifest = ProfileManifest {
+            credential_digest: CredentialStore::digest(&credential_bytes),
+            state_digest: hash_file(&state_db_path)?,
+            brain_marker: hash_directory(&brain_dir)?,
+            conversations_marker: hash_directory(&conv_dir)?,
+            captured_at: Some(now),
+        };
+        save_json(&profile_dir.join("manifest.json"), &manifest)?;
+
+        println!("[OAuth] Saving metadata.json...");
+        let metadata = ProfileMetadata {
+            profile_id: new_profile_id,
+            display_name: display_name.trim().to_owned(),
+            account_email: Some(email),
+            created_at: now,
+            last_activated_at: now,
+            token_expiry: Some(token_expiry),
+        };
+        save_json(&profile_dir.join("metadata.json"), &metadata)?;
+
+        println!("[OAuth] --- Profile successfully created with ID: {} ---", new_profile_id);
+        self.logger.info(Some(operation_id), "oauth", format!("Utworzono nowy profil z bezpośrednim logowaniem: {}", new_profile_id));
+
+        Ok(ProfileView {
+            token_status: TokenStatus::from_expiry(metadata.token_expiry, now),
+            is_active: false,
+            metadata,
+        })
+    }
+
+    pub fn cancel_oauth_login(&self) -> Result<()> {
+        let mut cancellation = self.active_oauth_cancellation.lock();
+        if let Some(tx) = cancellation.take() {
+            let _ = tx.send(());
+        }
+        Ok(())
+    }
 }
 
 fn validate_display_name(name: &str) -> Result<()> {
@@ -862,6 +1186,181 @@ fn windows_version() -> String {
     std::env::var("OS").unwrap_or_else(|_| "Windows (wersja nieznana)".to_owned())
 }
 
+fn base64_url_encode(input: &[u8]) -> String {
+    URL_SAFE_NO_PAD.encode(input)
+}
+
+fn base64_url_decode(input: &str) -> std::result::Result<Vec<u8>, base64::DecodeError> {
+    URL_SAFE_NO_PAD.decode(input)
+}
+
+fn extract_email_from_id_token(id_token: &str) -> Option<String> {
+    let parts: Vec<&str> = id_token.split('.').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let payload_b64 = parts[1];
+    let decoded = base64_url_decode(payload_b64).ok()?;
+    let value: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
+    value.get("email").and_then(|v| v.as_str()).map(|s| s.to_owned())
+}
+
+fn url_encode(input: &str) -> String {
+    let mut encoded = String::new();
+    for byte in input.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                encoded.push(byte as char);
+            }
+            _ => {
+                encoded.push_str(&format!("%{:02X}", byte));
+            }
+        }
+    }
+    encoded
+}
+
+fn url_decode(input: &str) -> String {
+    let mut decoded = String::new();
+    let mut chars = input.chars();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            let h1 = chars.next();
+            let h2 = chars.next();
+            if let (Some(c1), Some(c2)) = (h1, h2) {
+                if let Ok(byte) = u8::from_str_radix(&format!("{}{}", c1, c2), 16) {
+                    decoded.push(byte as char);
+                    continue;
+                }
+            }
+            decoded.push('%');
+            if let Some(c1) = h1 { decoded.push(c1); }
+            if let Some(c2) = h2 { decoded.push(c2); }
+        } else if c == '+' {
+            decoded.push(' ');
+        } else {
+            decoded.push(c);
+        }
+    }
+    decoded
+}
+
+async fn listen_for_callback(
+    listener: &tokio::net::TcpListener,
+    expected_state: &str,
+) -> Result<String> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    println!("[OAuth Listener] Starting TCP accept loop.");
+    loop {
+        let (mut stream, addr) = match listener.accept().await {
+            Ok(val) => val,
+            Err(e) => {
+                eprintln!("[OAuth Listener] Accept error: {}", e);
+                return Err(SwitcherError::Message(format!("Błąd accept: {}", e)));
+            }
+        };
+        println!("[OAuth Listener] Accepted connection from: {}", addr);
+        let mut buffer = [0; 4096];
+        let n = match stream.read(&mut buffer).await {
+            Ok(n) => n,
+            Err(e) => {
+                eprintln!("[OAuth Listener] Read stream error: {}", e);
+                return Err(SwitcherError::Message(format!("Błąd odczytu streamu: {}", e)));
+            }
+        };
+        if n == 0 {
+            println!("[OAuth Listener] Warning: Read 0 bytes from stream.");
+            continue;
+        }
+        let request = String::from_utf8_lossy(&buffer[..n]);
+        let first_line = match request.lines().next() {
+            Some(line) => line,
+            None => {
+                println!("[OAuth Listener] Warning: Request has no lines.");
+                continue;
+            }
+        };
+        println!("[OAuth Listener] Request Line: {}", first_line);
+        let parts: Vec<&str> = first_line.split_whitespace().collect();
+        if parts.len() < 2 || parts[0] != "GET" {
+            println!("[OAuth Listener] Warning: Ignoring non-GET request.");
+            continue;
+        }
+        let url_path = parts[1];
+        if !url_path.starts_with("/auth/callback") {
+            println!("[OAuth Listener] Ignoring path: {}", url_path);
+            continue;
+        }
+        let query = url_path.split('?').nth(1).unwrap_or("");
+        println!("[OAuth Listener] Parsed Callback Query String: {}", query);
+        let mut code = None;
+        let mut state = None;
+        let mut error = None;
+        for param in query.split('&') {
+            let mut kv = param.split('=');
+            let k = kv.next().unwrap_or("");
+            let v = kv.next().unwrap_or("");
+            if k == "code" {
+                code = Some(v.to_owned());
+            } else if k == "state" {
+                state = Some(v.to_owned());
+            } else if k == "error" {
+                error = Some(v.to_owned());
+            }
+        }
+        if let Some(err) = error {
+            let decoded_err = url_decode(&err);
+            eprintln!("[OAuth Listener] Google returned error in callback: {}", decoded_err);
+            let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
+                            <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
+                            <h1 style=\"color:#ef4444;\">Błąd autoryzacji</h1>\
+                            <p>Google zwrócił błąd: </p><pre></pre>\
+                            </body></html>";
+            let _ = stream.write_all(response.as_bytes()).await;
+            return Err(SwitcherError::Message(format!("Google OAuth error: {}", decoded_err)));
+        }
+        let state_val = url_decode(&state.unwrap_or_default());
+        println!("[OAuth Listener] CSRF State check: Expected: '{}', Received: '{}'", expected_state, state_val);
+        if state_val != expected_state {
+            eprintln!("[OAuth Listener] Error: CSRF state mismatch!");
+            let response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
+                            <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
+                            <h1 style=\"color:#ef4444;\">Błąd CSRF</h1>\
+                            <p>Niepoprawny stan CSRF.</p>\
+                            </body></html>";
+            let _ = stream.write_all(response.as_bytes()).await;
+            return Err(SwitcherError::Message("State mismatch (CSRF protection)".to_owned()));
+        }
+        let code_val = match code {
+            Some(c) => {
+                let decoded_code = url_decode(&c);
+                println!("[OAuth Listener] Successfully URL-decoded authorization code.");
+                decoded_code
+            }
+            None => {
+                eprintln!("[OAuth Listener] Error: Missing 'code' parameter in callback query.");
+                let response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
+                                <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
+                                <h1>Brak kodu</h1>\
+                                <p>Brak kodu autoryzacyjnego.</p>\
+                                </body></html>";
+                let _ = stream.write_all(response.as_bytes()).await;
+                continue;
+            }
+        };
+        let success_html = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
+                            <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
+                            <h1 style=\"color:#4f46e5;\">Autoryzacja udana!</h1>\
+                            <p>Możesz zamknąć to okno i wrócić do aplikacji Switchera.</p>\
+                            </body></html>";
+        let _ = stream.write_all(success_html.as_bytes()).await;
+        let _ = stream.flush().await;
+        println!("[OAuth Listener] Success HTML response sent to browser. Closing listener.");
+        return Ok(code_val);
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -879,6 +1378,24 @@ mod tests {
         let first = hash_directory(temp.path()).unwrap();
         let second = hash_directory(temp.path()).unwrap();
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn base64_url_encode_decode_roundtrip() {
+        let original = b"hello world?$-_";
+        let encoded = base64_url_encode(original);
+        assert!(!encoded.contains('='));
+        assert!(!encoded.contains('+'));
+        assert!(!encoded.contains('/'));
+        let decoded = base64_url_decode(&encoded).unwrap();
+        assert_eq!(original.to_vec(), decoded);
+    }
+
+    #[test]
+    fn test_url_decode() {
+        assert_eq!(url_decode("hello%20world"), "hello world");
+        assert_eq!(url_decode("4%2F0AdkVLPw"), "4/0AdkVLPw");
+        assert_eq!(url_decode("some+space"), "some space");
     }
 }
 

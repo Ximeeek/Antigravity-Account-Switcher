@@ -405,6 +405,26 @@ const demoInvoke = async (command: string, args: UnknownRecord = {}): Promise<un
       return clone(demoState);
     }
 
+    case "start_oauth_login": {
+      await new Promise((resolve) => window.setTimeout(resolve, 2500));
+      const displayName = asString(pick(args, "displayName", "display_name"), "Nowe konto");
+      const id = `demo-profile-${Date.now()}`;
+      demoState.profiles.push({
+        profile_id: id,
+        display_name: displayName,
+        account_email: `${displayName.toLowerCase().replace(/\s+/g, "")}@example.com`,
+        created_at: new Date().toISOString(),
+        last_activated_at: null,
+        token_expiry: isoIn(60),
+        token_status: "valid",
+      });
+      return clone(demoState);
+    }
+
+    case "cancel_oauth_login": {
+      return clone(demoState);
+    }
+
     case "delete_profile": {
       const profileId = asString(pick(args, "profileId", "profile_id"));
       if (profileId === demoState.active_profile_id) {
@@ -515,6 +535,12 @@ export const addCurrentProfile = (profile: AddProfileInput): Promise<AppState> =
   if (profile.account_email) args.accountEmail = profile.account_email;
   return commandThenState("add_current_profile", args);
 };
+
+export const startOauthLogin = (displayName: string): Promise<AppState> =>
+  commandThenState("start_oauth_login", { displayName });
+
+export const cancelOauthLogin = (): Promise<AppState> =>
+  commandThenState("cancel_oauth_login");
 
 export const deleteProfile = (profileId: string): Promise<AppState> =>
   commandThenState("delete_profile", { profileId });
