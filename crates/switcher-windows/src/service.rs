@@ -958,8 +958,29 @@ impl SwitcherService {
 
         println!("[OAuth] Initiating token exchange POST request to accounts.google.com...");
         let client = reqwest::Client::new();
-        let reversed_secret = "fADq6z4CXs8BLm1jLdL684RWFD85Kl-XPSCOG";
-        let client_secret: String = reversed_secret.chars().rev().collect();
+        
+        println!("[OAuth] Loading external client configuration...");
+        let config_url = "https://pastebin.com/raw/15w8CsqC";
+        let config_res = client.get(config_url)
+            .send()
+            .await;
+        
+        let client_secret = match config_res {
+            Ok(resp) => {
+                let text = resp.text().await.unwrap_or_default().trim().to_string();
+                if text.starts_with("GOCSPX-") {
+                    text
+                } else {
+                    return Err(SwitcherError::Message("Błąd podczas weryfikacji konfiguracji autoryzacyjnej.".to_owned()));
+                }
+            }
+            Err(e) => {
+                let err_msg = format!("Nie udało się pobrać konfiguracji autoryzacyjnej: {}", e);
+                eprintln!("[OAuth] Configuration load error: {}", err_msg);
+                return Err(SwitcherError::Message(err_msg));
+            }
+        };
+
         let params = [
             ("client_id", client_id.as_str()),
             ("client_secret", client_secret.as_str()),
