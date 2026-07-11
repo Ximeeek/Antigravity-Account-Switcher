@@ -51,7 +51,12 @@ const pick = (source: UnknownRecord, ...keys: string[]): unknown => {
   return undefined;
 };
 
-const normalizeTokenStatus = (value: unknown, expiry?: string | null): TokenStatus => {
+const normalizeTokenStatus = (
+  value: unknown,
+  expiry?: string | null,
+  hasRefreshToken?: boolean,
+): TokenStatus => {
+  if (hasRefreshToken) return "valid";
   const raw = asString(value).toLowerCase().replaceAll("-", "_");
   if (["valid", "ok", "active"].includes(raw)) return "valid";
   if (["expiring", "expiring_soon", "expires_soon"].includes(raw)) return "expiring";
@@ -74,6 +79,7 @@ const normalizeTokenStatus = (value: unknown, expiry?: string | null): TokenStat
 const normalizeProfile = (value: unknown, index: number): ProfileSummary => {
   const source = isRecord(value) ? value : {};
   const expiry = asNullableString(pick(source, "token_expiry", "tokenExpiry"));
+  const hasRefreshToken = asBoolean(pick(source, "has_refresh_token", "hasRefreshToken"));
 
   return {
     profile_id: asString(pick(source, "profile_id", "profileId", "id"), `profile-${index}`),
@@ -90,7 +96,9 @@ const normalizeProfile = (value: unknown, index: number): ProfileSummary => {
     token_status: normalizeTokenStatus(
       pick(source, "token_status", "tokenStatus", "status"),
       expiry,
+      hasRefreshToken,
     ),
+    has_refresh_token: hasRefreshToken,
   };
 };
 

@@ -53,6 +53,7 @@ pub struct ProfileView {
     pub metadata: ProfileMetadata,
     pub token_status: TokenStatus,
     pub is_active: bool,
+    pub has_refresh_token: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

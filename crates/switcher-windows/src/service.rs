@@ -257,10 +257,17 @@ impl SwitcherService {
             "profile",
             format!("Current session imported as profile {profile_id}"),
         );
+        let has_refresh_token = check_has_refresh_token(&credential);
+        let token_status = if has_refresh_token {
+            TokenStatus::Valid
+        } else {
+            TokenStatus::from_expiry(metadata.token_expiry, Utc::now())
+        };
         Ok(ProfileView {
-            token_status: TokenStatus::from_expiry(metadata.token_expiry, Utc::now()),
+            token_status,
             metadata,
             is_active: true,
+            has_refresh_token,
         })
     }
 
@@ -717,6 +724,8 @@ impl SwitcherService {
 
     fn list_profiles(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
         let mut profiles = Vec::new();
+        let active_credential = self.credentials.read_active().ok();
+
         for entry in fs::read_dir(&self.paths.profiles)
             .map_err(|source| SwitcherError::io(&self.paths.profiles, source))?
             .filter_map(std::result::Result::ok)
@@ -726,11 +735,37 @@ impl SwitcherService {
                 continue;
             }
             match load_json::<ProfileMetadata>(&metadata_path) {
-                Ok(metadata) => profiles.push(ProfileView {
-                    token_status: TokenStatus::from_expiry(metadata.token_expiry, Utc::now()),
-                    is_active: active_profile_id == Some(metadata.profile_id),
-                    metadata,
-                }),
+                Ok(mut metadata) => {
+                    let is_active = active_profile_id == Some(metadata.profile_id);
+                    let credential_bytes = if is_active {
+                        active_credential.clone()
+                    } else {
+                        self.load_profile_credential(metadata.profile_id).ok()
+                    };
+
+                    let has_refresh_token = credential_bytes.as_ref().map_or(false, |bytes| {
+                        check_has_refresh_token(bytes)
+                    });
+
+                    if is_active {
+                        if let Some(ref bytes) = credential_bytes {
+                            metadata.token_expiry = parse_token_expiry(bytes);
+                        }
+                    }
+
+                    let token_status = if has_refresh_token {
+                        TokenStatus::Valid
+                    } else {
+                        TokenStatus::from_expiry(metadata.token_expiry, Utc::now())
+                    };
+
+                    profiles.push(ProfileView {
+                        token_status,
+                        is_active,
+                        metadata,
+                        has_refresh_token,
+                    });
+                }
                 Err(error) => self.logger.warn(None, "profile", format!("Skipping invalid profile metadata: {error}")),
             }
         }
@@ -1059,9 +1094,10 @@ impl SwitcherService {
         self.logger.info(Some(operation_id), "oauth", format!("Utworzono nowy profil z bezpośrednim logowaniem: {}", new_profile_id));
 
         Ok(ProfileView {
-            token_status: TokenStatus::from_expiry(metadata.token_expiry, now),
+            token_status: TokenStatus::Valid,
             is_active: false,
             metadata,
+            has_refresh_token: true,
         })
     }
 
@@ -1131,6 +1167,18 @@ fn parse_token_expiry(bytes: &[u8]) -> Option<DateTime<Utc>> {
         }
     }
     expiry.as_i64().and_then(timestamp_to_datetime)
+}
+
+fn check_has_refresh_token(bytes: &[u8]) -> bool {
+    let value: Value = match serde_json::from_slice(bytes) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    value
+        .get("refresh_token")
+        .and_then(|v| v.as_str())
+        .map(|s| !s.is_empty())
+        .unwrap_or(false)
 }
 
 fn timestamp_to_datetime(value: i64) -> Option<DateTime<Utc>> {

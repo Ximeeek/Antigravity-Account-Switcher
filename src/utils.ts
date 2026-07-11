@@ -44,6 +44,17 @@ const statusLabels: Record<TokenStatus, Omit<TokenPresentation, "detail">> = {
 };
 
 export const getTokenPresentation = (profile: ProfileSummary): TokenPresentation => {
+  if (profile.has_refresh_token) {
+    if (profile.token_status === "refreshing") {
+      return { ...statusLabels.refreshing, detail: "Bezpieczne odświeżanie tokenu" };
+    }
+    return {
+      label: "Autoodświeżanie",
+      detail: "Ważny (odświeżany automatycznie)",
+      tone: "success",
+    };
+  }
+
   const base = statusLabels[profile.token_status];
   const expiryTime = profile.token_expiry ? Date.parse(profile.token_expiry) : Number.NaN;
 

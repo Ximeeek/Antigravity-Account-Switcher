@@ -28,6 +28,7 @@ export interface ProfileSummary {
   last_activated_at?: string | null;
   token_expiry?: string | null;
   token_status: TokenStatus;
+  has_refresh_token?: boolean;
 }
 
 export interface SwitchOperation {
