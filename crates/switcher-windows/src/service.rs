@@ -2,6 +2,8 @@ use crate::{
     AuditLogger, CredentialStore, ExtensionInstaller, ProcessManager, ProtectedCredential,
     SwitcherPaths, detect_installations,
 };
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use chrono::{DateTime, Utc};
 use parking_lot::{Mutex, RwLock};
 use rusqlite::{Connection, params};
@@ -16,15 +18,13 @@ use std::{
     time::Instant,
 };
 use switcher_core::{
-    AppStateView, EngineStatus, HttpStatusView, JournalStore, LockStatus,
-    OperationProgress, PersistentConfig, ProfileManifest, ProfileMetadata, ProfileView,
-    RecoveryView, Result, SettingsView, SwitchLock, SwitchRequestResult, SwitchStep, SwitcherError,
-    TokenStatus, atomic_write, load_json, save_json,
+    AppStateView, EngineStatus, HttpStatusView, JournalStore, LockStatus, OperationProgress,
+    PersistentConfig, ProfileManifest, ProfileMetadata, ProfileView, RecoveryView, Result,
+    SettingsView, SwitchLock, SwitchRequestResult, SwitchStep, SwitcherError, TokenStatus,
+    atomic_write, load_json, save_json,
 };
 use uuid::Uuid;
 use walkdir::WalkDir;
-use base64::Engine;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
 #[derive(Debug, Clone)]
 pub struct PendingSwitch {
@@ -53,7 +53,6 @@ pub struct SwitcherService {
     operation_lock: Mutex<()>,
     active_oauth_cancellation: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
 }
-
 
 impl SwitcherService {
     pub fn initialize() -> Result<Arc<Self>> {
@@ -89,7 +88,10 @@ impl SwitcherService {
             service.logger.warn(
                 Some(lock.operation_id),
                 "recovery",
-                format!("Unfinished switch detected at step={}", lock.current_step as u8),
+                format!(
+                    "Unfinished switch detected at step={}",
+                    lock.current_step as u8
+                ),
             );
         }
         Ok(service)
@@ -113,7 +115,10 @@ impl SwitcherService {
         let active_profile = profiles.iter().find(|profile| profile.is_active).cloned();
         let recovery = self.journal().read()?.as_ref().map(RecoveryView::from);
         let operation = self.progress.read().clone();
-        let running = self.process_manager().map(|manager| manager.is_running()).unwrap_or(false);
+        let running = self
+            .process_manager()
+            .map(|manager| manager.is_running())
+            .unwrap_or(false);
         let engine_status = if recovery.is_some() {
             EngineStatus::Attention
         } else if operation.is_some() {
@@ -164,7 +169,9 @@ impl SwitcherService {
             return Err(SwitcherError::OperationInProgress);
         }
         let config = self.config.read().clone();
-        let active = config.active_profile_id.ok_or(SwitcherError::NoActiveProfile)?;
+        let active = config
+            .active_profile_id
+            .ok_or(SwitcherError::NoActiveProfile)?;
         if active == target_profile_id {
             return Err(SwitcherError::ProfileAlreadyActive);
         }
@@ -210,11 +217,9 @@ impl SwitcherService {
             "profile",
             "Switch confirmation received",
         );
-        let pending = self
-            .pending
-            .lock()
-            .remove(&operation_id)
-            .ok_or_else(|| SwitcherError::Message("Żądanie przełączenia wygasło lub zostało anulowane".to_owned()))?;
+        let pending = self.pending.lock().remove(&operation_id).ok_or_else(|| {
+            SwitcherError::Message("Żądanie przełączenia wygasło lub zostało anulowane".to_owned())
+        })?;
         match self.perform_switch(pending.operation_id, pending.target_profile_id) {
             Ok(outcome) => Ok(outcome),
             Err(error) => {
@@ -228,7 +233,11 @@ impl SwitcherService {
         }
     }
 
-    pub fn add_current_profile(&self, display_name: String, account_email: Option<String>) -> Result<ProfileView> {
+    pub fn add_current_profile(
+        &self,
+        display_name: String,
+        account_email: Option<String>,
+    ) -> Result<ProfileView> {
         let _guard = self.operation_lock.lock();
         if self.journal().exists() {
             return Err(SwitcherError::RecoveryRequired);
@@ -246,12 +255,17 @@ impl SwitcherService {
         self.preflight_active()?;
 
         let operation_id = Uuid::new_v4();
-        self.logger.info(Some(operation_id), "profile", "Current session import started");
+        self.logger.info(
+            Some(operation_id),
+            "profile",
+            "Current session import started",
+        );
         let credential = self.credentials.read_active()?;
         let protected = self.credentials.protect(&credential)?;
         let profile_id = Uuid::new_v4();
         let profile_dir = self.paths.profile_dir(profile_id);
-        fs::create_dir_all(&profile_dir).map_err(|source| SwitcherError::io(&profile_dir, source))?;
+        fs::create_dir_all(&profile_dir)
+            .map_err(|source| SwitcherError::io(&profile_dir, source))?;
         atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
         let now = Utc::now();
         let metadata = ProfileMetadata {
@@ -303,17 +317,31 @@ impl SwitcherService {
             ));
         }
         let profile = self.paths.profile_dir(profile_id);
-        let canonical_root = self.paths.profiles.canonicalize().map_err(|source| SwitcherError::io(&self.paths.profiles, source))?;
-        let canonical_profile = profile.canonicalize().map_err(|_| SwitcherError::ProfileNotFound(profile_id.to_string()))?;
+        let canonical_root = self
+            .paths
+            .profiles
+            .canonicalize()
+            .map_err(|source| SwitcherError::io(&self.paths.profiles, source))?;
+        let canonical_profile = profile
+            .canonicalize()
+            .map_err(|_| SwitcherError::ProfileNotFound(profile_id.to_string()))?;
         if !canonical_profile.starts_with(&canonical_root) {
-            return Err(SwitcherError::InvalidConfiguration("Profil wskazuje poza magazyn".to_owned()));
+            return Err(SwitcherError::InvalidConfiguration(
+                "Profil wskazuje poza magazyn".to_owned(),
+            ));
         }
-        fs::remove_dir_all(&canonical_profile).map_err(|source| SwitcherError::io(&canonical_profile, source))?;
-        self.logger.info(None, "profile", format!("Profile deleted: {profile_id}"));
+        fs::remove_dir_all(&canonical_profile)
+            .map_err(|source| SwitcherError::io(&canonical_profile, source))?;
+        self.logger
+            .info(None, "profile", format!("Profile deleted: {profile_id}"));
         Ok(())
     }
 
-    pub fn update_settings(&self, http_port: u16, installation_path: Option<String>) -> Result<SettingsView> {
+    pub fn update_settings(
+        &self,
+        http_port: u16,
+        installation_path: Option<String>,
+    ) -> Result<SettingsView> {
         if !(1_024..=65_535).contains(&http_port) {
             return Err(SwitcherError::InvalidConfiguration(
                 "Port musi mieścić się w zakresie 1024–65535".to_owned(),
@@ -399,7 +427,11 @@ impl SwitcherService {
         }
         self.journal().remove()?;
         self.progress.write().take();
-        self.logger.info(Some(lock.operation_id), "recovery", "Previous state restored successfully");
+        self.logger.info(
+            Some(lock.operation_id),
+            "recovery",
+            "Previous state restored successfully",
+        );
         Ok(())
     }
 
@@ -439,7 +471,11 @@ impl SwitcherService {
         self.paths.validate_same_volume()?;
         self.preflight_active_artifacts()?;
         self.preflight_target_identity(target_profile_id)?;
-        let from_profile_id = self.config.read().active_profile_id.ok_or(SwitcherError::NoActiveProfile)?;
+        let from_profile_id = self
+            .config
+            .read()
+            .active_profile_id
+            .ok_or(SwitcherError::NoActiveProfile)?;
         let active_credential = self.credentials.read_active()?;
         let protected_active = self.credentials.protect(&active_credential)?;
         let target_credential = self.load_profile_credential(target_profile_id)?;
@@ -448,7 +484,8 @@ impl SwitcherService {
         lock.operation_id = operation_id;
         self.set_progress(&lock, None);
         self.journal().write(&lock)?;
-        self.logger.info(Some(operation_id), "profile", "Lock file written, step=1");
+        self.logger
+            .info(Some(operation_id), "profile", "Lock file written, step=1");
 
         let process = self.process_manager()?;
         lock.current_step = SwitchStep::CloseProcesses;
@@ -458,7 +495,8 @@ impl SwitcherService {
             lock.status = LockStatus::FailedAtStep2;
             self.journal().write(&lock)?;
             self.progress.write().take();
-            self.logger.error(Some(operation_id), "process", error.to_string());
+            self.logger
+                .error(Some(operation_id), "process", error.to_string());
             return Err(error);
         }
 
@@ -469,7 +507,8 @@ impl SwitcherService {
             lock.status = LockStatus::FailedAtStep3;
             self.journal().write(&lock)?;
             self.progress.write().take();
-            self.logger.error(Some(operation_id), "process", error.to_string());
+            self.logger
+                .error(Some(operation_id), "process", error.to_string());
             return Err(error);
         }
 
@@ -481,7 +520,9 @@ impl SwitcherService {
             self.logger.error(
                 Some(operation_id),
                 "profile",
-                format!("Shared editor data preparation failed before credentials were changed: {error}"),
+                format!(
+                    "Shared editor data preparation failed before credentials were changed: {error}"
+                ),
             );
             self.journal().remove()?;
             self.progress.write().take();
@@ -499,7 +540,9 @@ impl SwitcherService {
         lock.current_step = SwitchStep::BackupCurrent;
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
-        if let Err(error) = self.backup_current_profile(&mut lock, &active_credential, &protected_active) {
+        if let Err(error) =
+            self.backup_current_profile(&mut lock, &active_credential, &protected_active)
+        {
             lock.status = LockStatus::FailedAtStep4RolledBack;
             self.fail_with_rollback(&mut lock, &error)?;
             return Err(error);
@@ -537,10 +580,12 @@ impl SwitcherService {
             lock.status = LockStatus::InconsistentStateRequiresManualRecovery;
             self.journal().write(&lock)?;
             self.progress.write().take();
-            self.logger.error(Some(operation_id), "profile", error.to_string());
+            self.logger
+                .error(Some(operation_id), "profile", error.to_string());
             return Err(error);
         }
-        self.logger.info(Some(operation_id), "profile", "Consistency check passed");
+        self.logger
+            .info(Some(operation_id), "profile", "Consistency check passed");
 
         {
             let mut config = self.config.write();
@@ -568,12 +613,17 @@ impl SwitcherService {
             Ok(pid) => (Some(pid), None),
             Err(error) => {
                 let warning = "Profil przełączono poprawnie, ale nie udało się uruchomić Antigravity. Uruchom je ręcznie.".to_owned();
-                self.logger.warn(Some(operation_id), "process", format!("{warning} {error}"));
+                self.logger
+                    .warn(Some(operation_id), "process", format!("{warning} {error}"));
                 (None, Some(warning))
             }
         };
         self.progress.write().take();
-        Ok(SwitchOutcome { operation_id, relaunched_pid, warning })
+        Ok(SwitchOutcome {
+            operation_id,
+            relaunched_pid,
+            warning,
+        })
     }
 
     fn backup_current_profile(
@@ -583,7 +633,8 @@ impl SwitcherService {
         protected: &ProtectedCredential,
     ) -> Result<()> {
         let profile_dir = self.paths.profile_dir(lock.from_profile_id);
-        fs::create_dir_all(&profile_dir).map_err(|source| SwitcherError::io(&profile_dir, source))?;
+        fs::create_dir_all(&profile_dir)
+            .map_err(|source| SwitcherError::io(&profile_dir, source))?;
         atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
         lock.credential_backup_written = true;
         let manifest = self.capture_active_manifest(active_credential)?;
@@ -598,7 +649,8 @@ impl SwitcherService {
     }
 
     fn fail_with_rollback(&self, lock: &mut SwitchLock, error: &SwitcherError) -> Result<()> {
-        self.logger.error(Some(lock.operation_id), "profile", error.to_string());
+        self.logger
+            .error(Some(lock.operation_id), "profile", error.to_string());
         if let Err(rollback_error) = self.rollback_to_source(lock) {
             lock.status = LockStatus::InconsistentStateRequiresManualRecovery;
             self.journal().write(lock)?;
@@ -616,7 +668,8 @@ impl SwitcherService {
         for index in (0..lock.moves.len()).rev() {
             let source = lock.moves[index].source.clone();
             let destination = lock.moves[index].destination.clone();
-            let appears_completed = lock.moves[index].completed || (!source.exists() && destination.exists());
+            let appears_completed =
+                lock.moves[index].completed || (!source.exists() && destination.exists());
             if appears_completed {
                 if source.exists() && destination.exists() {
                     return Err(SwitcherError::Consistency(format!(
@@ -633,7 +686,8 @@ impl SwitcherService {
                     )));
                 }
                 if let Some(parent) = source.parent() {
-                    fs::create_dir_all(parent).map_err(|source_error| SwitcherError::io(parent, source_error))?;
+                    fs::create_dir_all(parent)
+                        .map_err(|source_error| SwitcherError::io(parent, source_error))?;
                 }
                 fs::rename(&destination, &source)
                     .map_err(|source_error| SwitcherError::io(&destination, source_error))?;
@@ -642,7 +696,11 @@ impl SwitcherService {
                 self.logger.info(
                     Some(lock.operation_id),
                     "recovery",
-                    format!("Rolled back {} -> {}", destination.display(), source.display()),
+                    format!(
+                        "Rolled back {} -> {}",
+                        destination.display(),
+                        source.display()
+                    ),
                 );
             }
         }
@@ -659,7 +717,9 @@ impl SwitcherService {
     fn verify_target(&self, credential: &[u8]) -> Result<()> {
         let active = self.credentials.read_active()?;
         if CredentialStore::digest(&active) != CredentialStore::digest(credential) {
-            return Err(SwitcherError::Consistency("Aktywne poświadczenie nie przeszło odczytu zwrotnego".to_owned()));
+            return Err(SwitcherError::Consistency(
+                "Aktywne poświadczenie nie przeszło odczytu zwrotnego".to_owned(),
+            ));
         }
         Ok(())
     }
@@ -704,7 +764,12 @@ impl SwitcherService {
     }
 
     fn preflight_active_artifacts(&self) -> Result<()> {
-        for artifact in self.paths.artifacts().into_iter().filter(|artifact| artifact.required) {
+        for artifact in self
+            .paths
+            .artifacts()
+            .into_iter()
+            .filter(|artifact| artifact.required)
+        {
             if !artifact.active.exists() {
                 if artifact.kind == switcher_core::MoveKind::StateDatabase
                     && self.paths.state_db.with_file_name("storage.json").is_file()
@@ -765,9 +830,15 @@ impl SwitcherService {
         let mut copied_files = 0_u64;
         let shared_directories = [
             ("brain", self.paths.gemini_root.join("brain")),
-            ("conversations", self.paths.gemini_root.join("conversations")),
+            (
+                "conversations",
+                self.paths.gemini_root.join("conversations"),
+            ),
             ("annotations", self.paths.gemini_root.join("annotations")),
-            ("html_artifacts", self.paths.gemini_root.join("html_artifacts")),
+            (
+                "html_artifacts",
+                self.paths.gemini_root.join("html_artifacts"),
+            ),
             ("workspaceStorage", self.paths.workspace_storage.clone()),
         ];
         let active_summaries = self.paths.gemini_root.join("agyhub_summaries_proto.pb");
@@ -853,9 +924,9 @@ impl SwitcherService {
                         self.load_profile_credential(metadata.profile_id).ok()
                     };
 
-                    let has_refresh_token = credential_bytes.as_ref().map_or(false, |bytes| {
-                        check_has_refresh_token(bytes)
-                    });
+                    let has_refresh_token = credential_bytes
+                        .as_ref()
+                        .map_or(false, |bytes| check_has_refresh_token(bytes));
 
                     if is_active {
                         if let Some(ref bytes) = credential_bytes {
@@ -876,14 +947,20 @@ impl SwitcherService {
                         has_refresh_token,
                     });
                 }
-                Err(error) => self.logger.warn(None, "profile", format!("Skipping invalid profile metadata: {error}")),
+                Err(error) => self.logger.warn(
+                    None,
+                    "profile",
+                    format!("Skipping invalid profile metadata: {error}"),
+                ),
             }
         }
         profiles.sort_by(|left, right| {
-            right
-                .is_active
-                .cmp(&left.is_active)
-                .then_with(|| right.metadata.last_activated_at.cmp(&left.metadata.last_activated_at))
+            right.is_active.cmp(&left.is_active).then_with(|| {
+                right
+                    .metadata
+                    .last_activated_at
+                    .cmp(&left.metadata.last_activated_at)
+            })
         });
         Ok(profiles)
     }
@@ -913,7 +990,9 @@ impl SwitcherService {
             .read()
             .installation_path
             .clone()
-            .ok_or_else(|| SwitcherError::InvalidConfiguration("Nie wykryto instalacji Antigravity".to_owned()))?;
+            .ok_or_else(|| {
+                SwitcherError::InvalidConfiguration("Nie wykryto instalacji Antigravity".to_owned())
+            })?;
         Ok(ProcessManager::new(installation, self.logger.clone()))
     }
 
@@ -948,9 +1027,15 @@ impl SwitcherService {
 
         let operation_id = Uuid::new_v4();
         println!("[OAuth] Operation ID generated: {}", operation_id);
-        self.logger.info(Some(operation_id), "oauth", "Direct OAuth login started");
+        self.logger
+            .info(Some(operation_id), "oauth", "Direct OAuth login started");
 
-        let code_verifier = format!("{}{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple(), Uuid::new_v4().simple());
+        let code_verifier = format!(
+            "{}{}{}",
+            Uuid::new_v4().simple(),
+            Uuid::new_v4().simple(),
+            Uuid::new_v4().simple()
+        );
         let mut hasher = Sha256::new();
         hasher.update(code_verifier.as_bytes());
         let hash = hasher.finalize();
@@ -964,7 +1049,8 @@ impl SwitcherService {
                 eprintln!("[OAuth] Error: {}", err_msg);
                 SwitcherError::Message(err_msg)
             })?;
-        let port = listener.local_addr()
+        let port = listener
+            .local_addr()
             .map_err(|e| {
                 eprintln!("[OAuth] Error reading local port: {}", e);
                 SwitcherError::Message(e.to_string())
@@ -973,12 +1059,17 @@ impl SwitcherService {
         let redirect_uri = format!("http://localhost:{}/auth/callback", port);
         println!("[OAuth] Bound local loopback listener on port: {}", port);
         println!("[OAuth] Redirect URI: {}", redirect_uri);
-        self.logger.info(Some(operation_id), "oauth", format!("Uruchomiono listener OAuth na porcie {}", port));
+        self.logger.info(
+            Some(operation_id),
+            "oauth",
+            format!("Uruchomiono listener OAuth na porcie {}", port),
+        );
 
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
         *self.active_oauth_cancellation.lock() = Some(tx);
 
-        let reversed_client_id = "moc.tnetnocresuelgoog.sppa.pe304g4hjolotv532ercl12h2nisshmt-1950606001701";
+        let reversed_client_id =
+            "moc.tnetnocresuelgoog.sppa.pe304g4hjolotv532ercl12h2nisshmt-1950606001701";
         let client_id: String = reversed_client_id.chars().rev().collect();
         let state = Uuid::new_v4().simple().to_string();
         let scopes = vec![
@@ -987,7 +1078,7 @@ impl SwitcherService {
             "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/cclog",
             "https://www.googleapis.com/auth/experimentsandconfigs",
-            "https://www.googleapis.com/auth/aicode"
+            "https://www.googleapis.com/auth/aicode",
         ];
 
         let scopes_encoded = url_encode(&scopes.join(" "));
@@ -1003,15 +1094,19 @@ impl SwitcherService {
              redirect_uri={}&\
              state={}&\
              scope={}",
-            client_id,
-            code_challenge,
-            redirect_uri_encoded,
-            &state,
-            scopes_encoded
+            client_id, code_challenge, redirect_uri_encoded, &state, scopes_encoded
         );
         println!("[OAuth] Authorization URL built (sensitive query parameters omitted).");
-        self.logger.debug(Some(operation_id), "oauth", "OAuth authorization URL built; query parameters omitted");
-        self.logger.info(Some(operation_id), "oauth", "Otwieranie przeglądarki systemowej...");
+        self.logger.debug(
+            Some(operation_id),
+            "oauth",
+            "OAuth authorization URL built; query parameters omitted",
+        );
+        self.logger.info(
+            Some(operation_id),
+            "oauth",
+            "Otwieranie przeglądarki systemowej...",
+        );
 
         #[cfg(windows)]
         let spawn_res = {
@@ -1024,15 +1119,17 @@ impl SwitcherService {
         #[cfg(not(windows))]
         let spawn_res = {
             println!("[OAuth] Spawning browser using open...");
-            std::process::Command::new("open")
-                .arg(&auth_url)
-                .spawn()
+            std::process::Command::new("open").arg(&auth_url).spawn()
         };
 
         if let Err(e) = spawn_res {
             let err_msg = format!("Nie można otworzyć przeglądarki: {}", e);
             eprintln!("[OAuth] Error spawning browser: {}", err_msg);
-            self.logger.error(Some(operation_id), "oauth", format!("Nie udało się otworzyć przeglądarki: {}", e));
+            self.logger.error(
+                Some(operation_id),
+                "oauth",
+                format!("Nie udało się otworzyć przeglądarki: {}", e),
+            );
             *self.active_oauth_cancellation.lock() = None;
             return Err(SwitcherError::Message(err_msg));
         }
@@ -1064,20 +1161,20 @@ impl SwitcherService {
 
         println!("[OAuth] Initiating token exchange POST request to accounts.google.com...");
         let client = reqwest::Client::new();
-        
+
         println!("[OAuth] Loading external client configuration...");
         let config_url = "https://pastebin.com/raw/15w8CsqC";
-        let config_res = client.get(config_url)
-            .send()
-            .await;
-        
+        let config_res = client.get(config_url).send().await;
+
         let client_secret = match config_res {
             Ok(resp) => {
                 let text = resp.text().await.unwrap_or_default().trim().to_string();
                 if text.starts_with("GOCSPX-") {
                     text
                 } else {
-                    return Err(SwitcherError::Message("Błąd podczas weryfikacji konfiguracji autoryzacyjnej.".to_owned()));
+                    return Err(SwitcherError::Message(
+                        "Błąd podczas weryfikacji konfiguracji autoryzacyjnej.".to_owned(),
+                    ));
                 }
             }
             Err(e) => {
@@ -1096,7 +1193,8 @@ impl SwitcherService {
             ("grant_type", "authorization_code"),
         ];
 
-        let exchange_res = client.post("https://oauth2.googleapis.com/token")
+        let exchange_res = client
+            .post("https://oauth2.googleapis.com/token")
             .form(&params)
             .send()
             .await;
@@ -1109,33 +1207,54 @@ impl SwitcherService {
             Err(e) => {
                 let err_msg = format!("Błąd komunikacji z serwerem Google: {}", e);
                 eprintln!("[OAuth] Exchange request error: {}", err_msg);
-                self.logger.error(Some(operation_id), "oauth", format!("Błąd żądania wymiany tokenu: {}", e));
+                self.logger.error(
+                    Some(operation_id),
+                    "oauth",
+                    format!("Błąd żądania wymiany tokenu: {}", e),
+                );
                 return Err(SwitcherError::Message(err_msg));
             }
         };
 
         let response_status = response.status();
-        println!("[OAuth] Token exchange response HTTP status: {}", response_status);
+        println!(
+            "[OAuth] Token exchange response HTTP status: {}",
+            response_status
+        );
 
         if !response_status.is_success() {
             let body = response.text().await.unwrap_or_default();
-            eprintln!("[OAuth] Token exchange failed! HTTP Status: {}", response_status);
+            eprintln!(
+                "[OAuth] Token exchange failed! HTTP Status: {}",
+                response_status
+            );
             eprintln!("[OAuth] Error body from Google: {}", body);
-            self.logger.error(Some(operation_id), "oauth", format!("Google odrzucił wymianę tokenu ({})", response_status));
-            return Err(SwitcherError::Message(format!("Błąd autoryzacji Google ({}): {}", response_status, body)));
+            self.logger.error(
+                Some(operation_id),
+                "oauth",
+                format!("Google odrzucił wymianę tokenu ({})", response_status),
+            );
+            return Err(SwitcherError::Message(format!(
+                "Błąd autoryzacji Google ({}): {}",
+                response_status, body
+            )));
         }
 
-        let token_val: serde_json::Value = response.json().await
-            .map_err(|e| {
-                let err_msg = format!("Niepoprawna odpowiedź JSON z tokenami: {}", e);
-                eprintln!("[OAuth] JSON parse error: {}", err_msg);
-                SwitcherError::Message(err_msg)
-            })?;
+        let token_val: serde_json::Value = response.json().await.map_err(|e| {
+            let err_msg = format!("Niepoprawna odpowiedź JSON z tokenami: {}", e);
+            eprintln!("[OAuth] JSON parse error: {}", err_msg);
+            SwitcherError::Message(err_msg)
+        })?;
 
         println!("[OAuth] Token exchange JSON parsed successfully.");
-        self.logger.info(Some(operation_id), "oauth", "Wymiana tokenów zakończona sukcesem");
+        self.logger.info(
+            Some(operation_id),
+            "oauth",
+            "Wymiana tokenów zakończona sukcesem",
+        );
 
-        let access_token = token_val.get("access_token")
+        let access_token = token_val
+            .get("access_token")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
                 eprintln!("[OAuth] Error: Google response is missing 'access_token'.");
@@ -1147,26 +1266,32 @@ impl SwitcherService {
                 eprintln!("[OAuth] Error: Google response is missing 'refresh_token' (response body omitted).");
                 SwitcherError::Message("Brak refresh_token w odpowiedzi (upewnij się, że to pierwsze logowanie na tym kliencie lub wyczyść uprawnienia)".to_owned())
             })?;
-        let id_token = token_val.get("id_token")
+        let id_token = token_val
+            .get("id_token")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
                 eprintln!("[OAuth] Error: Google response is missing 'id_token'.");
                 SwitcherError::Message("Brak id_token w odpowiedzi".to_owned())
             })?;
-        let expires_in = token_val.get("expires_in")
+        let expires_in = token_val
+            .get("expires_in")
             .and_then(|v| v.as_i64())
             .unwrap_or(3600);
 
-        let email = extract_email_from_id_token(id_token)
-            .ok_or_else(|| {
-                eprintln!("[OAuth] Error: Failed to extract email address from 'id_token' JWT payload.");
-                SwitcherError::Message("Nie udało się odczytać adresu email z id_token".to_owned())
-            })?;
+        let email = extract_email_from_id_token(id_token).ok_or_else(|| {
+            eprintln!(
+                "[OAuth] Error: Failed to extract email address from 'id_token' JWT payload."
+            );
+            SwitcherError::Message("Nie udało się odczytać adresu email z id_token".to_owned())
+        })?;
         println!("[OAuth] Account identity extracted from ID token (email omitted).");
 
         let now = Utc::now();
         let token_expiry = now + chrono::Duration::seconds(expires_in);
-        println!("[OAuth] Token expiry calculated: {}", token_expiry.to_rfc3339());
+        println!(
+            "[OAuth] Token expiry calculated: {}",
+            token_expiry.to_rfc3339()
+        );
 
         let credential_json = serde_json::json!({
             "access_token": access_token,
@@ -1180,8 +1305,12 @@ impl SwitcherService {
 
         let new_profile_id = Uuid::new_v4();
         let profile_dir = self.paths.profile_dir(new_profile_id);
-        println!("[OAuth] Creating profile directory: {}", profile_dir.display());
-        fs::create_dir_all(&profile_dir).map_err(|source| SwitcherError::io(&profile_dir, source))?;
+        println!(
+            "[OAuth] Creating profile directory: {}",
+            profile_dir.display()
+        );
+        fs::create_dir_all(&profile_dir)
+            .map_err(|source| SwitcherError::io(&profile_dir, source))?;
 
         println!("[OAuth] Saving credentials.enc...");
         let protected = self.credentials.protect(&credential_bytes)?;
@@ -1199,8 +1328,18 @@ impl SwitcherService {
         };
         save_json(&profile_dir.join("metadata.json"), &metadata)?;
 
-        println!("[OAuth] --- Profile successfully created with ID: {} ---", new_profile_id);
-        self.logger.info(Some(operation_id), "oauth", format!("Utworzono nowy profil z bezpośrednim logowaniem: {}", new_profile_id));
+        println!(
+            "[OAuth] --- Profile successfully created with ID: {} ---",
+            new_profile_id
+        );
+        self.logger.info(
+            Some(operation_id),
+            "oauth",
+            format!(
+                "Utworzono nowy profil z bezpośrednim logowaniem: {}",
+                new_profile_id
+            ),
+        );
 
         Ok(ProfileView {
             token_status: TokenStatus::Valid,
@@ -1221,8 +1360,8 @@ impl SwitcherService {
 
 fn rebuild_state_database_from_json(source: &Path, destination: &Path) -> Result<usize> {
     let bytes = fs::read(source).map_err(|error| SwitcherError::io(source, error))?;
-    let values: serde_json::Map<String, Value> = serde_json::from_slice(&bytes)
-        .map_err(|error| SwitcherError::Json {
+    let values: serde_json::Map<String, Value> =
+        serde_json::from_slice(&bytes).map_err(|error| SwitcherError::Json {
             path: source.to_path_buf(),
             source: error,
         })?;
@@ -1243,14 +1382,20 @@ fn rebuild_state_database_from_json(source: &Path, destination: &Path) -> Result
                  value BLOB
              );",
         )
-        .map_err(|error| SwitcherError::Consistency(format!("Nie udało się utworzyć schematu SQLite: {error}")))?;
-    let transaction = connection
-        .transaction()
-        .map_err(|error| SwitcherError::Consistency(format!("Nie udało się rozpocząć migracji SQLite: {error}")))?;
+        .map_err(|error| {
+            SwitcherError::Consistency(format!("Nie udało się utworzyć schematu SQLite: {error}"))
+        })?;
+    let transaction = connection.transaction().map_err(|error| {
+        SwitcherError::Consistency(format!("Nie udało się rozpocząć migracji SQLite: {error}"))
+    })?;
     {
         let mut insert = transaction
             .prepare("INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?1, ?2)")
-            .map_err(|error| SwitcherError::Consistency(format!("Nie udało się przygotować migracji SQLite: {error}")))?;
+            .map_err(|error| {
+                SwitcherError::Consistency(format!(
+                    "Nie udało się przygotować migracji SQLite: {error}"
+                ))
+            })?;
         for (key, value) in &values {
             let stored_value = match value {
                 Value::String(value) => value.clone(),
@@ -1261,12 +1406,18 @@ fn rebuild_state_database_from_json(source: &Path, destination: &Path) -> Result
             };
             insert
                 .execute(params![key, stored_value])
-                .map_err(|error| SwitcherError::Consistency(format!("Nie udało się zapisać elementu SQLite: {error}")))?;
+                .map_err(|error| {
+                    SwitcherError::Consistency(format!(
+                        "Nie udało się zapisać elementu SQLite: {error}"
+                    ))
+                })?;
         }
     }
-    transaction
-        .commit()
-        .map_err(|error| SwitcherError::Consistency(format!("Nie udało się zatwierdzić migracji SQLite: {error}")))?;
+    transaction.commit().map_err(|error| {
+        SwitcherError::Consistency(format!(
+            "Nie udało się zatwierdzić migracji SQLite: {error}"
+        ))
+    })?;
     drop(connection);
     Ok(values.len())
 }
@@ -1307,9 +1458,7 @@ fn merge_missing_files(source: &Path, destination: &Path) -> Result<u64> {
             )
         })?;
         let relative = entry.path().strip_prefix(source).map_err(|error| {
-            SwitcherError::InvalidConfiguration(format!(
-                "Nie można scalić danych profilu: {error}"
-            ))
+            SwitcherError::InvalidConfiguration(format!("Nie można scalić danych profilu: {error}"))
         })?;
         if relative.as_os_str().is_empty() {
             continue;
@@ -1395,7 +1544,10 @@ fn hash_directory(path: &Path) -> Result<String> {
         let relative = entry.path().strip_prefix(path).unwrap_or(entry.path());
         let kind = if entry.file_type().is_dir() { "d" } else { "f" };
         let length = entry.metadata().map(|metadata| metadata.len()).unwrap_or(0);
-        records.push(format!("{kind}:{}:{length}", relative.to_string_lossy().replace('\\', "/")));
+        records.push(format!(
+            "{kind}:{}:{length}",
+            relative.to_string_lossy().replace('\\', "/")
+        ));
     }
     records.sort();
     Ok(hex_digest(records.join("\n").as_bytes()))
@@ -1410,7 +1562,12 @@ fn hex_digest(bytes: &[u8]) -> String {
 
 fn parse_token_expiry(bytes: &[u8]) -> Option<DateTime<Utc>> {
     let value: Value = serde_json::from_slice(bytes).ok()?;
-    let expiry = value.get("expiry").or_else(|| value.get("expires_at"))?;
+    let target = if let Some(inner) = value.get("token").filter(|t| t.is_object()) {
+        inner
+    } else {
+        &value
+    };
+    let expiry = target.get("expiry").or_else(|| target.get("expires_at"))?;
     if let Some(text) = expiry.as_str() {
         if let Ok(value) = DateTime::parse_from_rfc3339(text) {
             return Some(value.with_timezone(&Utc));
@@ -1427,7 +1584,12 @@ fn check_has_refresh_token(bytes: &[u8]) -> bool {
         Ok(v) => v,
         Err(_) => return false,
     };
-    value
+    let target = if let Some(inner) = value.get("token").filter(|t| t.is_object()) {
+        inner
+    } else {
+        &value
+    };
+    target
         .get("refresh_token")
         .and_then(|v| v.as_str())
         .map(|s| !s.is_empty())
@@ -1435,7 +1597,11 @@ fn check_has_refresh_token(bytes: &[u8]) -> bool {
 }
 
 fn timestamp_to_datetime(value: i64) -> Option<DateTime<Utc>> {
-    let seconds = if value > 10_000_000_000 { value / 1_000 } else { value };
+    let seconds = if value > 10_000_000_000 {
+        value / 1_000
+    } else {
+        value
+    };
     DateTime::<Utc>::from_timestamp(seconds, 0)
 }
 
@@ -1467,7 +1633,10 @@ fn extract_email_from_id_token(id_token: &str) -> Option<String> {
     let payload_b64 = parts[1];
     let decoded = base64_url_decode(payload_b64).ok()?;
     let value: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
-    value.get("email").and_then(|v| v.as_str()).map(|s| s.to_owned())
+    value
+        .get("email")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_owned())
 }
 
 fn url_encode(input: &str) -> String {
@@ -1499,8 +1668,12 @@ fn url_decode(input: &str) -> String {
                 }
             }
             decoded.push('%');
-            if let Some(c1) = h1 { decoded.push(c1); }
-            if let Some(c2) = h2 { decoded.push(c2); }
+            if let Some(c1) = h1 {
+                decoded.push(c1);
+            }
+            if let Some(c2) = h2 {
+                decoded.push(c2);
+            }
         } else if c == '+' {
             decoded.push(' ');
         } else {
@@ -1530,7 +1703,10 @@ async fn listen_for_callback(
             Ok(n) => n,
             Err(e) => {
                 eprintln!("[OAuth Listener] Read stream error: {}", e);
-                return Err(SwitcherError::Message(format!("Błąd odczytu streamu: {}", e)));
+                return Err(SwitcherError::Message(format!(
+                    "Błąd odczytu streamu: {}",
+                    e
+                )));
             }
         };
         if n == 0 {
@@ -1575,14 +1751,20 @@ async fn listen_for_callback(
         }
         if let Some(err) = error {
             let decoded_err = url_decode(&err);
-            eprintln!("[OAuth Listener] Google returned error in callback: {}", decoded_err);
+            eprintln!(
+                "[OAuth Listener] Google returned error in callback: {}",
+                decoded_err
+            );
             let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
                             <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
                             <h1 style=\"color:#ef4444;\">Błąd autoryzacji</h1>\
                             <p>Google zwrócił błąd: </p><pre></pre>\
                             </body></html>";
             let _ = stream.write_all(response.as_bytes()).await;
-            return Err(SwitcherError::Message(format!("Google OAuth error: {}", decoded_err)));
+            return Err(SwitcherError::Message(format!(
+                "Google OAuth error: {}",
+                decoded_err
+            )));
         }
         let state_val = url_decode(&state.unwrap_or_default());
         println!("[OAuth Listener] Validating CSRF state (values omitted).");
@@ -1594,7 +1776,9 @@ async fn listen_for_callback(
                             <p>Niepoprawny stan CSRF.</p>\
                             </body></html>";
             let _ = stream.write_all(response.as_bytes()).await;
-            return Err(SwitcherError::Message("State mismatch (CSRF protection)".to_owned()));
+            return Err(SwitcherError::Message(
+                "State mismatch (CSRF protection)".to_owned(),
+            ));
         }
         let code_val = match code {
             Some(c) => {
@@ -1625,7 +1809,6 @@ async fn listen_for_callback(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1634,6 +1817,19 @@ mod tests {
     fn parses_iso_and_millisecond_expiry() {
         assert!(parse_token_expiry(br#"{"expiry":"2030-01-01T00:00:00Z"}"#).is_some());
         assert!(parse_token_expiry(br#"{"expiry":1893456000000}"#).is_some());
+        assert!(parse_token_expiry(br#"{"token":{"expiry":"2030-01-01T00:00:00Z"}}"#).is_some());
+    }
+
+    #[test]
+    fn test_check_has_refresh_token() {
+        assert!(check_has_refresh_token(br#"{"refresh_token":"abc"}"#));
+        assert!(check_has_refresh_token(
+            br#"{"token":{"refresh_token":"abc"}}"#
+        ));
+        assert!(!check_has_refresh_token(br#"{"refresh_token":""}"#));
+        assert!(!check_has_refresh_token(
+            br#"{"token":{"refresh_token":""}}"#
+        ));
     }
 
     #[test]
@@ -1696,7 +1892,10 @@ mod tests {
         let copied = merge_missing_files(&stored, &shared).unwrap();
 
         assert_eq!(copied, 1);
-        assert_eq!(std::fs::read(shared.join("old.db")).unwrap(), b"stored conversation");
+        assert_eq!(
+            std::fs::read(shared.join("old.db")).unwrap(),
+            b"stored conversation"
+        );
         assert_eq!(
             std::fs::read(shared.join("current.db")).unwrap(),
             b"current conversation",
@@ -1723,9 +1922,12 @@ mod tests {
 
     #[test]
     fn test_client_id_domain() {
-        let reversed_client_id = "moc.tnetnocresuelgoog.sppa.pe304g4hjolotv532ercl12h2nisshmt-1950606001701";
+        let reversed_client_id =
+            "moc.tnetnocresuelgoog.sppa.pe304g4hjolotv532ercl12h2nisshmt-1950606001701";
         let client_id: String = reversed_client_id.chars().rev().collect();
-        assert_eq!(client_id, "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com");
+        assert_eq!(
+            client_id,
+            "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+        );
     }
 }
-

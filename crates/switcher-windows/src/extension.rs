@@ -1,6 +1,9 @@
 use crate::AuditLogger;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use switcher_core::{ExtensionStatus, Result, SwitcherError};
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -46,7 +49,12 @@ impl ExtensionInstaller {
         }
     }
 
-    pub fn install(&self, source: &Path, api_secret: &str, port: u16) -> Result<ExtensionInstallResult> {
+    pub fn install(
+        &self,
+        source: &Path,
+        api_secret: &str,
+        port: u16,
+    ) -> Result<ExtensionInstallResult> {
         let operation_id = Uuid::new_v4();
         self.logger.info(
             Some(operation_id),
@@ -58,7 +66,8 @@ impl ExtensionInstaller {
                 "Brak zbudowanej wtyczki w {}",
                 source.display()
             ));
-            self.logger.error(Some(operation_id), "extension", error.to_string());
+            self.logger
+                .error(Some(operation_id), "extension", error.to_string());
             return Err(error);
         }
         let roots = self.extension_roots();
@@ -67,7 +76,11 @@ impl ExtensionInstaller {
             .find(|root| root.exists())
             .cloned()
             .or_else(|| roots.first().cloned())
-            .ok_or_else(|| SwitcherError::InvalidConfiguration("Nie znaleziono katalogu użytkownika".to_owned()))?;
+            .ok_or_else(|| {
+                SwitcherError::InvalidConfiguration(
+                    "Nie znaleziono katalogu użytkownika".to_owned(),
+                )
+            })?;
         fs::create_dir_all(&destination_root)
             .map_err(|source_error| SwitcherError::io(&destination_root, source_error))?;
         let destination = destination_root.join(EXTENSION_FOLDER);
@@ -75,7 +88,10 @@ impl ExtensionInstaller {
             .map_err(|source_error| SwitcherError::io(&destination, source_error))?;
 
         let mut written = 0_usize;
-        for entry in WalkDir::new(source).into_iter().filter_map(std::result::Result::ok) {
+        for entry in WalkDir::new(source)
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+        {
             let relative = entry.path().strip_prefix(source).map_err(|_| {
                 SwitcherError::InvalidConfiguration("Nieprawidłowa ścieżka wtyczki".to_owned())
             })?;
@@ -87,12 +103,15 @@ impl ExtensionInstaller {
             }
             let output = destination.join(relative);
             if entry.file_type().is_dir() {
-                fs::create_dir_all(&output).map_err(|source_error| SwitcherError::io(&output, source_error))?;
+                fs::create_dir_all(&output)
+                    .map_err(|source_error| SwitcherError::io(&output, source_error))?;
             } else {
                 if let Some(parent) = output.parent() {
-                    fs::create_dir_all(parent).map_err(|source_error| SwitcherError::io(parent, source_error))?;
+                    fs::create_dir_all(parent)
+                        .map_err(|source_error| SwitcherError::io(parent, source_error))?;
                 }
-                fs::copy(entry.path(), &output).map_err(|source_error| SwitcherError::io(&output, source_error))?;
+                fs::copy(entry.path(), &output)
+                    .map_err(|source_error| SwitcherError::io(&output, source_error))?;
                 written += 1;
             }
         }
@@ -114,4 +133,3 @@ impl ExtensionInstaller {
         })
     }
 }
-

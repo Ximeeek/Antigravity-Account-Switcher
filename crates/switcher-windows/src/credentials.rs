@@ -75,13 +75,18 @@ impl CredentialStore {
 #[cfg(windows)]
 fn wide(value: &str) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-    std::ffi::OsStr::new(value).encode_wide().chain(std::iter::once(0)).collect()
+    std::ffi::OsStr::new(value)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
 }
 
 #[cfg(windows)]
 fn read_target(target: &str) -> Result<Vec<u8>> {
     use std::{ptr, slice};
-    use windows_sys::Win32::Security::Credentials::{CRED_TYPE_GENERIC, CREDENTIALW, CredFree, CredReadW};
+    use windows_sys::Win32::Security::Credentials::{
+        CRED_TYPE_GENERIC, CREDENTIALW, CredFree, CredReadW,
+    };
     let target = wide(target);
     let mut credential: *mut CREDENTIALW = ptr::null_mut();
     let ok = unsafe { CredReadW(target.as_ptr(), CRED_TYPE_GENERIC, 0, &mut credential) };
@@ -137,7 +142,10 @@ fn protect_dpapi(bytes: &[u8]) -> Result<Vec<u8>> {
         cbData: bytes.len() as u32,
         pbData: bytes.as_ptr() as *mut u8,
     };
-    let mut output = CRYPT_INTEGER_BLOB { cbData: 0, pbData: ptr::null_mut() };
+    let mut output = CRYPT_INTEGER_BLOB {
+        cbData: 0,
+        pbData: ptr::null_mut(),
+    };
     let description = wide(DPAPI_DESCRIPTION);
     let ok = unsafe {
         CryptProtectData(
@@ -156,7 +164,8 @@ fn protect_dpapi(bytes: &[u8]) -> Result<Vec<u8>> {
             std::io::Error::last_os_error()
         )));
     }
-    let protected = unsafe { slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec() };
+    let protected =
+        unsafe { slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec() };
     unsafe { LocalFree(output.pbData as _) };
     Ok(protected)
 }
@@ -166,13 +175,18 @@ fn unprotect_dpapi(bytes: &[u8]) -> Result<Vec<u8>> {
     use std::{ptr, slice};
     use windows_sys::Win32::{
         Foundation::LocalFree,
-        Security::Cryptography::{CRYPT_INTEGER_BLOB, CRYPTPROTECT_UI_FORBIDDEN, CryptUnprotectData},
+        Security::Cryptography::{
+            CRYPT_INTEGER_BLOB, CRYPTPROTECT_UI_FORBIDDEN, CryptUnprotectData,
+        },
     };
     let mut input = CRYPT_INTEGER_BLOB {
         cbData: bytes.len() as u32,
         pbData: bytes.as_ptr() as *mut u8,
     };
-    let mut output = CRYPT_INTEGER_BLOB { cbData: 0, pbData: ptr::null_mut() };
+    let mut output = CRYPT_INTEGER_BLOB {
+        cbData: 0,
+        pbData: ptr::null_mut(),
+    };
     let mut description = ptr::null_mut();
     let ok = unsafe {
         CryptUnprotectData(
@@ -200,4 +214,3 @@ fn unprotect_dpapi(bytes: &[u8]) -> Result<Vec<u8>> {
     }
     Ok(value)
 }
-

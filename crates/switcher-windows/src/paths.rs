@@ -1,4 +1,7 @@
-use std::{env, path::{Path, PathBuf}};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 use switcher_core::{MoveKind, Result, SwitcherError};
 
 #[derive(Debug, Clone)]
@@ -37,9 +40,16 @@ impl SwitcherPaths {
             log_archive: root.join("logs").join("archive"),
             config: root.join("config.json"),
             lock: root.join("switcher.lock"),
-            state_db: roaming.join("Antigravity").join("User").join("globalStorage").join("state.vscdb"),
+            state_db: roaming
+                .join("Antigravity")
+                .join("User")
+                .join("globalStorage")
+                .join("state.vscdb"),
             gemini_root: home.join(".gemini").join("antigravity"),
-            workspace_storage: roaming.join("Antigravity").join("User").join("workspaceStorage"),
+            workspace_storage: roaming
+                .join("Antigravity")
+                .join("User")
+                .join("workspaceStorage"),
             root,
         })
     }
@@ -172,7 +182,9 @@ fn same_volume(left: &Path, right: &Path) -> bool {
         fn prefix(path: &Path) -> Option<String> {
             use std::path::Component;
             path.components().find_map(|component| match component {
-                Component::Prefix(value) => Some(value.as_os_str().to_string_lossy().to_ascii_lowercase()),
+                Component::Prefix(value) => {
+                    Some(value.as_os_str().to_string_lossy().to_ascii_lowercase())
+                }
                 _ => None,
             })
         }

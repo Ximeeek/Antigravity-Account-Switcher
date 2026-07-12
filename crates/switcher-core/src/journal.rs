@@ -60,4 +60,3 @@ mod tests {
         assert!(!store.exists());
     }
 }
-

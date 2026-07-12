@@ -11,4 +11,3 @@ pub use logging::AuditLogger;
 pub use paths::{ArtifactPath, SwitcherPaths, detect_installations};
 pub use process::{AntigravityProcess, ProcessManager};
 pub use service::{PendingSwitch, SwitchOutcome, SwitcherService};
-

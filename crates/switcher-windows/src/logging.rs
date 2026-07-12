@@ -68,7 +68,9 @@ impl AuditLogger {
     fn write(&self, level: &str, op: Option<Uuid>, component: &str, message: &str) {
         let _guard = self.write_lock.lock();
         let safe_message = redact_diagnostic_line(message).replace(['\r', '\n'], " ");
-        let operation = op.map(|value| value.to_string()).unwrap_or_else(|| "-".to_owned());
+        let operation = op
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "-".to_owned());
         let line = format!(
             "[{}] [{}] [op:{}] [{}] {}\n",
             Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
@@ -78,7 +80,11 @@ impl AuditLogger {
             safe_message
         );
         eprint!("{line}");
-        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&self.path) {
+        if let Ok(mut file) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.path)
+        {
             let _ = file.write_all(line.as_bytes());
             let _ = file.flush();
         }
@@ -93,14 +99,17 @@ impl AuditLogger {
         }
         let name = format!("switcher-{}.log", Utc::now().format("%Y%m%d-%H%M%S"));
         let destination = self.archive.join(name);
-        fs::rename(&self.path, &destination).map_err(|source| SwitcherError::io(&destination, source))
+        fs::rename(&self.path, &destination)
+            .map_err(|source| SwitcherError::io(&destination, source))
     }
 
     fn cleanup_archives(&self) -> Result<()> {
         let mut entries: Vec<_> = fs::read_dir(&self.archive)
             .map_err(|source| SwitcherError::io(&self.archive, source))?
             .filter_map(std::result::Result::ok)
-            .filter(|entry| entry.path().extension().and_then(|value| value.to_str()) == Some("log"))
+            .filter(|entry| {
+                entry.path().extension().and_then(|value| value.to_str()) == Some("log")
+            })
             .collect();
         entries.sort_by_key(|entry| entry.metadata().and_then(|meta| meta.modified()).ok());
         while entries.len() > 20 {

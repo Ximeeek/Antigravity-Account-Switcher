@@ -287,4 +287,3 @@ mod tests {
         assert!(metadata.snapshot_initialized);
     }
 }
-

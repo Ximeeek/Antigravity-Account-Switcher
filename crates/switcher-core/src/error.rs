@@ -60,4 +60,3 @@ impl SwitcherError {
         }
     }
 }
-

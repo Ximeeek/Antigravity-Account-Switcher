@@ -2,19 +2,19 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager, State};
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
-use switcher_core::{
-    AppStateView, ProfileView, SettingsView, SwitchRequestResult,
-};
+use switcher_core::{AppStateView, ProfileView, SettingsView, SwitchRequestResult};
 use switcher_windows::{ExtensionInstallResult, SwitchOutcome, SwitcherService};
 
 #[tauri::command]
 fn get_app_state(service: State<'_, Arc<SwitcherService>>) -> Result<AppStateView, String> {
-    service.app_state(env!("CARGO_PKG_VERSION")).map_err(|e| e.to_string())
+    service
+        .app_state(env!("CARGO_PKG_VERSION"))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -23,7 +23,9 @@ fn request_switch(
     target_profile_id: String,
 ) -> Result<SwitchRequestResult, String> {
     let target_uuid = Uuid::parse_str(&target_profile_id).map_err(|e| e.to_string())?;
-    service.request_switch(target_uuid).map_err(|e| e.to_string())
+    service
+        .request_switch(target_uuid)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -53,7 +55,9 @@ fn add_current_profile(
     display_name: String,
     account_email: Option<String>,
 ) -> Result<ProfileView, String> {
-    service.add_current_profile(display_name, account_email).map_err(|e| e.to_string())
+    service
+        .add_current_profile(display_name, account_email)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -81,7 +85,9 @@ fn update_settings(
     } else {
         Some(settings.antigravity_path)
     };
-    service.update_settings(settings.http_port, path).map_err(|e| e.to_string())
+    service
+        .update_settings(settings.http_port, path)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -98,27 +104,25 @@ fn install_extension(
             .map_err(|e| e.to_string())?
             .join("extension")
     };
-    service.install_extension(&source_path).map_err(|e| e.to_string())
+    service
+        .install_extension(&source_path)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn copy_diagnostics(
-    service: State<'_, Arc<SwitcherService>>,
-) -> Result<String, String> {
-    service.diagnostic_report(env!("CARGO_PKG_VERSION")).map_err(|e| e.to_string())
+fn copy_diagnostics(service: State<'_, Arc<SwitcherService>>) -> Result<String, String> {
+    service
+        .diagnostic_report(env!("CARGO_PKG_VERSION"))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn recovery_resume(
-    service: State<'_, Arc<SwitcherService>>,
-) -> Result<SwitchOutcome, String> {
+fn recovery_resume(service: State<'_, Arc<SwitcherService>>) -> Result<SwitchOutcome, String> {
     service.recovery_resume().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn recovery_rollback(
-    service: State<'_, Arc<SwitcherService>>,
-) -> Result<(), String> {
+fn recovery_rollback(service: State<'_, Arc<SwitcherService>>) -> Result<(), String> {
     service.recovery_rollback().map_err(|e| e.to_string())
 }
 
@@ -127,13 +131,14 @@ async fn start_oauth_login(
     service: State<'_, Arc<SwitcherService>>,
     display_name: String,
 ) -> Result<ProfileView, String> {
-    service.start_oauth_login(display_name).await.map_err(|e| e.to_string())
+    service
+        .start_oauth_login(display_name)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn cancel_oauth_login(
-    service: State<'_, Arc<SwitcherService>>,
-) -> Result<(), String> {
+fn cancel_oauth_login(service: State<'_, Arc<SwitcherService>>) -> Result<(), String> {
     service.cancel_oauth_login().map_err(|e| e.to_string())
 }
 
@@ -171,7 +176,12 @@ fn handle_client(
 
     let expected_auth = format!("Bearer {}", api_secret);
     if auth_header != Some(expected_auth.as_str()) {
-        send_response(&mut stream, 401, "Unauthorized", r#"{"error":"Unauthorized"}"#)?;
+        send_response(
+            &mut stream,
+            401,
+            "Unauthorized",
+            r#"{"error":"Unauthorized"}"#,
+        )?;
         return Ok(());
     }
 
@@ -192,40 +202,56 @@ fn handle_client(
             let _ = window.set_focus();
         }
         send_response(&mut stream, 200, "OK", r#"{"success":true}"#)?;
-    } else if method == "POST" && path.starts_with("/api/v1/profiles/") && path.ends_with("/activate") {
+    } else if method == "POST"
+        && path.starts_with("/api/v1/profiles/")
+        && path.ends_with("/activate")
+    {
         let prefix = "/api/v1/profiles/";
         let suffix = "/activate";
         if path.len() > prefix.len() + suffix.len() {
             let profile_id_str = &path[prefix.len()..path.len() - suffix.len()];
             match Uuid::parse_str(profile_id_str) {
-                Ok(target_profile_id) => {
-                    match service.request_switch(target_profile_id) {
-                        Ok(res) => {
-                            let service_clone = service.clone();
-                            let operation_id = res.operation_id;
-                            std::thread::spawn(move || {
-                                if let Err(e) = service_clone.confirm_switch(operation_id) {
-                                    service_clone.logger().error(Some(operation_id), "http", format!("Switch failed: {}", e));
-                                }
-                            });
-                            let resp = format!(
-                                r#"{{"accepted":true,"operationId":"{}","message":"Rozpoczęto przełączanie profilu"}}"#,
-                                operation_id.to_string()
-                            );
-                            send_response(&mut stream, 200, "OK", &resp)?;
-                        }
-                        Err(e) => {
-                            let err_msg = format!(r#"{{"accepted":false,"message":{:?}}}"#, e.to_string());
-                            send_response(&mut stream, 400, "Bad Request", &err_msg)?;
-                        }
+                Ok(target_profile_id) => match service.request_switch(target_profile_id) {
+                    Ok(res) => {
+                        let service_clone = service.clone();
+                        let operation_id = res.operation_id;
+                        std::thread::spawn(move || {
+                            if let Err(e) = service_clone.confirm_switch(operation_id) {
+                                service_clone.logger().error(
+                                    Some(operation_id),
+                                    "http",
+                                    format!("Switch failed: {}", e),
+                                );
+                            }
+                        });
+                        let resp = format!(
+                            r#"{{"accepted":true,"operationId":"{}","message":"Rozpoczęto przełączanie profilu"}}"#,
+                            operation_id.to_string()
+                        );
+                        send_response(&mut stream, 200, "OK", &resp)?;
                     }
-                }
+                    Err(e) => {
+                        let err_msg =
+                            format!(r#"{{"accepted":false,"message":{:?}}}"#, e.to_string());
+                        send_response(&mut stream, 400, "Bad Request", &err_msg)?;
+                    }
+                },
                 Err(_) => {
-                    send_response(&mut stream, 400, "Bad Request", r#"{"error":"Invalid profile ID"}"#)?;
+                    send_response(
+                        &mut stream,
+                        400,
+                        "Bad Request",
+                        r#"{"error":"Invalid profile ID"}"#,
+                    )?;
                 }
             }
         } else {
-            send_response(&mut stream, 400, "Bad Request", r#"{"error":"Invalid path"}"#)?;
+            send_response(
+                &mut stream,
+                400,
+                "Bad Request",
+                r#"{"error":"Invalid path"}"#,
+            )?;
         }
     } else {
         send_response(&mut stream, 404, "Not Found", r#"{"error":"Not Found"}"#)?;
@@ -233,7 +259,12 @@ fn handle_client(
     Ok(())
 }
 
-fn send_response(stream: &mut TcpStream, status_code: u16, status_text: &str, body: &str) -> anyhow::Result<()> {
+fn send_response(
+    stream: &mut TcpStream,
+    status_code: u16,
+    status_text: &str,
+    body: &str,
+) -> anyhow::Result<()> {
     let response = format!(
         "HTTP/1.1 {} {}\r\n\
          Content-Type: application/json; charset=utf-8\r\n\
@@ -241,7 +272,10 @@ fn send_response(stream: &mut TcpStream, status_code: u16, status_text: &str, bo
          Connection: close\r\n\
          \r\n\
          {}",
-        status_code, status_text, body.len(), body
+        status_code,
+        status_text,
+        body.len(),
+        body
     );
     stream.write_all(response.as_bytes())?;
     stream.flush()?;
@@ -255,11 +289,19 @@ pub fn start_http_server(service: Arc<SwitcherService>, app_handle: AppHandle) {
         let listener = match TcpListener::bind(format!("127.0.0.1:{}", port)) {
             Ok(l) => l,
             Err(e) => {
-                service.logger().error(None, "http", format!("Failed to bind to port {}: {}", port, e));
+                service.logger().error(
+                    None,
+                    "http",
+                    format!("Failed to bind to port {}: {}", port, e),
+                );
                 return;
             }
         };
-        service.logger().info(None, "http", format!("Lokalny serwer HTTP uruchomiony na porcie {}", port));
+        service.logger().info(
+            None,
+            "http",
+            format!("Lokalny serwer HTTP uruchomiony na porcie {}", port),
+        );
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
@@ -273,7 +315,11 @@ pub fn start_http_server(service: Arc<SwitcherService>, app_handle: AppHandle) {
                     });
                 }
                 Err(e) => {
-                    service.logger().error(None, "http", format!("Failed to accept connection: {}", e));
+                    service.logger().error(
+                        None,
+                        "http",
+                        format!("Failed to accept connection: {}", e),
+                    );
                 }
             }
         }
@@ -312,19 +358,17 @@ pub fn run() {
             let _tray = TrayIconBuilder::new()
                 .icon(icon)
                 .menu(&menu)
-                .on_menu_event(|app, event| {
-                    match event.id.as_ref() {
-                        "quit" => {
-                            app.exit(0);
-                        }
-                        "show" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                        _ => {}
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => {
+                        app.exit(0);
                     }
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click {

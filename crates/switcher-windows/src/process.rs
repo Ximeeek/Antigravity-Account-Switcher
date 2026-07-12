@@ -25,7 +25,10 @@ pub struct ProcessManager {
 
 impl ProcessManager {
     pub fn new(installation_path: PathBuf, logger: AuditLogger) -> Self {
-        Self { installation_path, logger }
+        Self {
+            installation_path,
+            logger,
+        }
     }
 
     pub fn installation_path(&self) -> &Path {
@@ -44,13 +47,19 @@ impl ProcessManager {
     }
 
     pub fn is_running(&self) -> bool {
-        self.enumerate().map(|items| !items.is_empty()).unwrap_or(false)
+        self.enumerate()
+            .map(|items| !items.is_empty())
+            .unwrap_or(false)
     }
 
     pub fn close_all(&self, operation_id: Uuid) -> Result<()> {
         let processes = self.enumerate()?;
         if processes.is_empty() {
-            self.logger.info(Some(operation_id), "process", "Brak uruchomionych procesów Antigravity");
+            self.logger.info(
+                Some(operation_id),
+                "process",
+                "Brak uruchomionych procesów Antigravity",
+            );
             return Ok(());
         }
         for process in &processes {
@@ -121,7 +130,11 @@ impl ProcessManager {
                 self.logger.debug(
                     Some(operation_id),
                     "process",
-                    format!("File lock check attempt {}/5 for {}", index + 1, path.display()),
+                    format!(
+                        "File lock check attempt {}/5 for {}",
+                        index + 1,
+                        path.display()
+                    ),
                 );
                 if !can_open_exclusive(path) {
                     blocked = Some(path.clone());
@@ -215,7 +228,11 @@ fn enumerate_windows_processes(installation_path: &Path) -> Result<Vec<Antigravi
             let by_path = process
                 .executable_path
                 .as_ref()
-                .map(|path| path.to_string_lossy().to_ascii_lowercase().starts_with(&install))
+                .map(|path| {
+                    path.to_string_lossy()
+                        .to_ascii_lowercase()
+                        .starts_with(&install)
+                })
                 .unwrap_or(false);
             by_name || by_path
         })
@@ -243,7 +260,9 @@ fn enumerate_windows_processes(installation_path: &Path) -> Result<Vec<Antigravi
 fn query_process_path(pid: u32) -> Option<PathBuf> {
     use windows_sys::Win32::{
         Foundation::CloseHandle,
-        System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW},
+        System::Threading::{
+            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
+        },
     };
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
     if handle.is_null() {
@@ -256,13 +275,18 @@ fn query_process_path(pid: u32) -> Option<PathBuf> {
     if ok == 0 {
         None
     } else {
-        Some(PathBuf::from(String::from_utf16_lossy(&buffer[..size as usize])))
+        Some(PathBuf::from(String::from_utf16_lossy(
+            &buffer[..size as usize],
+        )))
     }
 }
 
 #[cfg(windows)]
 fn utf16z(value: &[u16]) -> String {
-    let length = value.iter().position(|item| *item == 0).unwrap_or(value.len());
+    let length = value
+        .iter()
+        .position(|item| *item == 0)
+        .unwrap_or(value.len());
     String::from_utf16_lossy(&value[..length])
 }
 
@@ -320,10 +344,8 @@ fn can_open_exclusive(path: &Path) -> bool {
     {
         use std::os::windows::ffi::OsStrExt;
         use windows_sys::Win32::{
-            Foundation::{CloseHandle, INVALID_HANDLE_VALUE, GENERIC_READ, GENERIC_WRITE},
-            Storage::FileSystem::{
-                CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, OPEN_EXISTING,
-            },
+            Foundation::{CloseHandle, GENERIC_READ, GENERIC_WRITE, INVALID_HANDLE_VALUE},
+            Storage::FileSystem::{CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, OPEN_EXISTING},
         };
         let mut wide: Vec<u16> = path.as_os_str().encode_wide().collect();
         wide.push(0);
@@ -334,7 +356,11 @@ fn can_open_exclusive(path: &Path) -> bool {
                 0,
                 std::ptr::null(),
                 OPEN_EXISTING,
-                if path.is_dir() { FILE_FLAG_BACKUP_SEMANTICS } else { 0 },
+                if path.is_dir() {
+                    FILE_FLAG_BACKUP_SEMANTICS
+                } else {
+                    0
+                },
                 std::ptr::null_mut(),
             )
         };

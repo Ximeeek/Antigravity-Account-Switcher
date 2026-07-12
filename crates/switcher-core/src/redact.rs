@@ -53,7 +53,9 @@ fn redact_assignment(input: &str, key: &str) -> String {
 }
 
 fn looks_like_email(value: &str) -> bool {
-    let value = value.trim_matches(|c: char| !c.is_ascii_alphanumeric() && !matches!(c, '@' | '.' | '_' | '-' | '+'));
+    let value = value.trim_matches(|c: char| {
+        !c.is_ascii_alphanumeric() && !matches!(c, '@' | '.' | '_' | '-' | '+')
+    });
     let Some((local, domain)) = value.split_once('@') else {
         return false;
     };

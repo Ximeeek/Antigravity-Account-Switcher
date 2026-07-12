@@ -69,14 +69,18 @@ fn replace_file(source: &Path, destination: &Path) -> Result<()> {
         )
     };
     if ok == 0 {
-        return Err(SwitcherError::io(destination, std::io::Error::last_os_error()));
+        return Err(SwitcherError::io(
+            destination,
+            std::io::Error::last_os_error(),
+        ));
     }
     Ok(())
 }
 
 #[cfg(not(windows))]
 fn replace_file(source: &Path, destination: &Path) -> Result<()> {
-    fs::rename(source, destination).map_err(|source_error| SwitcherError::io(destination, source_error))
+    fs::rename(source, destination)
+        .map_err(|source_error| SwitcherError::io(destination, source_error))
 }
 
 #[cfg(test)]
@@ -92,4 +96,3 @@ mod tests {
         assert_eq!(std::fs::read(path).unwrap(), b"second");
     }
 }
-
