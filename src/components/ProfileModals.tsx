@@ -205,7 +205,7 @@ export function GeekSpecsModal({ open, state, onClose }: GeekSpecsModalProps) {
       tauriVersion: "v2.0",
       rustEdition: "2024",
       httpPort: state?.settings?.http_port,
-      antigravityPath: state?.settings?.installation_path || "Unknown",
+      antigravityPath: state?.settings?.antigravity_path || "Unknown",
       sqliteDbPath: "%USERPROFILE%\\.antigravity-agent\\cloud_accounts.db",
       dataDir: "%APPDATA%\\Antigravity Manager",
       logsFile: "%APPDATA%\\Antigravity Manager\\logs\\switcher.log",
@@ -274,7 +274,7 @@ export function GeekSpecsModal({ open, state, onClose }: GeekSpecsModalProps) {
         <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
           <strong>{t("dev_antigravity_path")}:</strong>
           <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
-            {state?.settings?.installation_path || "Nie wykryto / Not detected"}
+            {state?.settings?.antigravity_path || "Nie wykryto / Not detected"}
           </code>
         </div>
         <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
