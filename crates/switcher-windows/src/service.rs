@@ -183,8 +183,12 @@ impl SwitcherService {
         let config = self.config.read().clone();
         let profiles = self.list_profiles(config.active_profile_id)?;
         let active_profile = profiles.iter().find(|profile| profile.is_active).cloned();
-        let recovery = self.journal().read()?.as_ref().map(RecoveryView::from);
         let operation = self.progress.read().clone();
+        let recovery = if operation.is_some() {
+            None
+        } else {
+            self.journal().read()?.as_ref().map(RecoveryView::from)
+        };
         let running = self
             .process_manager()
             .map(|manager| manager.is_running())
@@ -225,8 +229,12 @@ impl SwitcherService {
         let config = self.config.read().clone();
         let profiles = self.list_profiles_live(config.active_profile_id).await?;
         let active_profile = profiles.iter().find(|profile| profile.is_active).cloned();
-        let recovery = self.journal().read()?.as_ref().map(RecoveryView::from);
         let operation = self.progress.read().clone();
+        let recovery = if operation.is_some() {
+            None
+        } else {
+            self.journal().read()?.as_ref().map(RecoveryView::from)
+        };
         let running = self
             .process_manager()
             .map(|manager| manager.is_running())
