@@ -11,6 +11,33 @@ interface AccountCardProps {
   onDelete: (profile: ProfileSummary) => void;
 }
 
+function MiniQuotaBadge({ quota }: { quota?: ProfileSummary["quota"] }) {
+  if (!quota || !quota.quota_groups || quota.quota_groups.length === 0) return null;
+  
+  let weeklyBucket = null;
+  for (const group of quota.quota_groups) {
+    const weekly = group.buckets.find(b => b.bucket_id === "gemini-weekly");
+    if (weekly) {
+      weeklyBucket = weekly;
+      break;
+    }
+  }
+  
+  if (!weeklyBucket) return null;
+  
+  const pct = Math.round(weeklyBucket.remaining_fraction * 100);
+  const isLow = pct < 20;
+  const isMedium = pct >= 20 && pct < 50;
+  const tone = isLow ? "danger" : isMedium ? "warning" : "success";
+  
+  return (
+    <div className={`mini-quota-badge mini-quota-badge--${tone}`} title={weeklyBucket.description || ""}>
+      <Icon name="shield" size={13} />
+      <span>W: {pct}%</span>
+    </div>
+  );
+}
+
 export function AccountCard({
   profile,
   busy = false,
@@ -52,6 +79,7 @@ export function AccountCard({
       <div className="account-card__status">
         <StatusPill tone={token.tone}>{token.label}</StatusPill>
         <span className="token-detail">{token.detail}</span>
+        <MiniQuotaBadge quota={profile.quota} />
       </div>
 
       <div className="account-card__meta">

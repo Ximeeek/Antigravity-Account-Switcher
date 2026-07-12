@@ -10,9 +10,10 @@ use switcher_core::{AppStateView, ProfileView, SettingsView, SwitchRequestResult
 use switcher_windows::{SwitchOutcome, SwitcherService};
 
 #[tauri::command]
-fn get_app_state(service: State<'_, Arc<SwitcherService>>) -> Result<AppStateView, String> {
+async fn get_app_state(service: State<'_, Arc<SwitcherService>>) -> Result<AppStateView, String> {
     service
-        .app_state(env!("CARGO_PKG_VERSION"))
+        .app_state_live(env!("CARGO_PKG_VERSION"))
+        .await
         .map_err(|e| e.to_string())
 }
 

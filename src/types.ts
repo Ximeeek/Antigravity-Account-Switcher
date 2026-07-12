@@ -16,6 +16,26 @@ export type OperationStatus =
   | "failed"
   | "cancelled";
 
+export interface QuotaBucketSummary {
+  bucket_id: string;
+  window: string;
+  remaining_fraction: number;
+  reset_time?: string | null;
+  display_name: string;
+  description?: string | null;
+}
+
+export interface QuotaGroupSummary {
+  display_name: string;
+  description: string;
+  buckets: QuotaBucketSummary[];
+}
+
+export interface ProfileQuotaSummary {
+  subscription_tier: string;
+  quota_groups: QuotaGroupSummary[];
+}
+
 export interface ProfileSummary {
   profile_id: string;
   display_name: string;
@@ -25,6 +45,7 @@ export interface ProfileSummary {
   token_expiry?: string | null;
   token_status: TokenStatus;
   has_refresh_token?: boolean;
+  quota?: ProfileQuotaSummary | null;
 }
 
 export interface SwitchOperation {

@@ -136,6 +136,17 @@ export default function App() {
   }, [loadState]);
 
   useEffect(() => {
+    // Poll the app state every 5 seconds when idle to keep quotas and status fresh
+    const interval = window.setInterval(() => {
+      // Only poll if the document is visible to save resources and API rate limits!
+      if (document.visibilityState === "visible") {
+        void loadState(true);
+      }
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [loadState]);
+
+  useEffect(() => {
     if (!notice) return undefined;
     const timeout = window.setTimeout(() => setNotice(null), 5200);
     return () => window.clearTimeout(timeout);

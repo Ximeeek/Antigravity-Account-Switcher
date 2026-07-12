@@ -78,6 +78,7 @@ const normalizeProfile = (value: unknown, index: number): ProfileSummary => {
   const source = isRecord(value) ? value : {};
   const expiry = asNullableString(pick(source, "token_expiry", "tokenExpiry"));
   const hasRefreshToken = asBoolean(pick(source, "has_refresh_token", "hasRefreshToken"));
+  const quota = pick(source, "quota");
 
   return {
     profile_id: asString(pick(source, "profile_id", "profileId", "id"), `profile-${index}`),
@@ -97,6 +98,7 @@ const normalizeProfile = (value: unknown, index: number): ProfileSummary => {
       hasRefreshToken,
     ),
     has_refresh_token: hasRefreshToken,
+    quota: isRecord(quota) ? (quota as any) : null,
   };
 };
 

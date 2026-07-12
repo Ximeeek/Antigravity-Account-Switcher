@@ -52,6 +52,44 @@ impl TokenStatus {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct QuotaBucketView {
+    pub bucket_id: String,
+    pub window: String,
+    pub remaining_fraction: f64,
+    pub reset_time: Option<String>,
+    pub display_name: String,
+    pub description: Option<String>,
+}
+
+// Since f64 is not Eq, let's implement Eq manually or just derive PartialEq.
+// Serde needs PartialEq/Eq for models. Let's make sure it compiles.
+// Note: Rust doesn't allow Eq on structs with f64. So we derive PartialEq for all Quota models,
+// but since ProfileView has PartialEq + Eq, we might need Eq for ProfileView.
+// Let's implement Eq manually for QuotaBucketView and others by comparing bits/floats, or by deriving Eq and using a wrapper for f64, OR we can implement Eq for ProfileView manually so it doesn't need Eq on Quota!
+// Actually, let's look at why ProfileView derives Eq: it is because it is part of AppStateView which has Eq.
+// Let's implement Eq manually for QuotaBucketView, QuotaGroupView, ProfileQuotaView by matching float as u64 or just partial_cmp.
+// Better: implement Eq for QuotaBucketView, QuotaGroupView, ProfileQuotaView by mapping f64 to a wrapper or comparing as total_cmp or custom Eq.
+// Let's do custom Eq/PartialEq for QuotaBucketView:
+
+impl Eq for QuotaBucketView {}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct QuotaGroupView {
+    pub display_name: String,
+    pub description: String,
+    pub buckets: Vec<QuotaBucketView>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct ProfileQuotaView {
+    pub subscription_tier: String,
+    pub quota_groups: Vec<QuotaGroupView>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ProfileView {
@@ -60,7 +98,10 @@ pub struct ProfileView {
     pub token_status: TokenStatus,
     pub is_active: bool,
     pub has_refresh_token: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quota: Option<ProfileQuotaView>,
 }
+
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]

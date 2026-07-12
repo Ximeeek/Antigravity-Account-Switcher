@@ -1,6 +1,6 @@
 use crate::{
     AuditLogger, CredentialStore, ProcessManager, ProtectedCredential,
-    SwitcherPaths, detect_installations,
+    QuotaDecryptor, SwitcherPaths, detect_installations,
 };
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -19,7 +19,7 @@ use std::{
 };
 use switcher_core::{
     AppStateView, EngineStatus, HttpStatusView, JournalStore, LockStatus, OperationProgress,
-    PersistentConfig, ProfileManifest, ProfileMetadata, ProfileView, RecoveryView, Result,
+    PersistentConfig, ProfileManifest, ProfileMetadata, ProfileView, ProfileQuotaView, RecoveryView, Result,
     SettingsView, SwitchLock, SwitchRequestResult, SwitchStep, SwitcherError, TokenStatus,
     atomic_write, load_json, save_json,
 };
@@ -51,6 +51,7 @@ pub struct SwitcherService {
     progress: RwLock<Option<OperationProgress>>,
     operation_lock: Mutex<()>,
     active_oauth_cancellation: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    quota_cache: Mutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>>,
 }
 
 impl SwitcherService {
@@ -78,6 +79,7 @@ impl SwitcherService {
             progress: RwLock::new(None),
             operation_lock: Mutex::new(()),
             active_oauth_cancellation: Mutex::new(None),
+            quota_cache: Mutex::new(HashMap::new()),
             paths,
         });
         service.logger.info(None, "app", "Application initialized");
@@ -110,6 +112,47 @@ impl SwitcherService {
     pub fn app_state(&self, version: &str) -> Result<AppStateView> {
         let config = self.config.read().clone();
         let profiles = self.list_profiles(config.active_profile_id)?;
+        let active_profile = profiles.iter().find(|profile| profile.is_active).cloned();
+        let recovery = self.journal().read()?.as_ref().map(RecoveryView::from);
+        let operation = self.progress.read().clone();
+        let running = self
+            .process_manager()
+            .map(|manager| manager.is_running())
+            .unwrap_or(false);
+        let engine_status = if recovery.is_some() {
+            EngineStatus::Attention
+        } else if operation.is_some() {
+            EngineStatus::Working
+        } else {
+            EngineStatus::Ready
+        };
+        let detected_installations = detect_installations()
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect();
+        Ok(AppStateView {
+            engine_status,
+            active_profile,
+            profiles,
+            antigravity_running: running,
+            operation,
+            recovery,
+            settings: SettingsView {
+                http_port: config.http_port,
+                installation_path: config
+                    .installation_path
+                    .as_ref()
+                    .map(|path| path.to_string_lossy().into_owned()),
+                detected_installations,
+                token_refresh_enabled: false,
+            },
+            app_version: version.to_owned(),
+        })
+    }
+
+    pub async fn app_state_live(&self, version: &str) -> Result<AppStateView> {
+        let config = self.config.read().clone();
+        let profiles = self.list_profiles_live(config.active_profile_id).await?;
         let active_profile = profiles.iter().find(|profile| profile.is_active).cloned();
         let recovery = self.journal().read()?.as_ref().map(RecoveryView::from);
         let operation = self.progress.read().clone();
@@ -295,11 +338,17 @@ impl SwitcherService {
         } else {
             TokenStatus::from_expiry(metadata.token_expiry, Utc::now())
         };
+        let quota = if let Some(ref email) = metadata.account_email {
+            QuotaDecryptor::decrypt_all_quotas().ok().and_then(|mut m| m.remove(email))
+        } else {
+            None
+        };
         Ok(ProfileView {
             token_status,
             metadata,
             is_active: true,
             has_refresh_token,
+            quota,
         })
     }
 
@@ -899,6 +948,10 @@ impl SwitcherService {
     fn list_profiles(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
         let mut profiles = Vec::new();
         let active_credential = self.credentials.read_active().ok();
+        let mut quotas = QuotaDecryptor::decrypt_all_quotas().unwrap_or_else(|e| {
+            self.logger.warn(None, "quota", format!("Nie udało się odszyfrować limitów: {e}"));
+            HashMap::new()
+        });
 
         for entry in fs::read_dir(&self.paths.profiles)
             .map_err(|source| SwitcherError::io(&self.paths.profiles, source))?
@@ -933,11 +986,134 @@ impl SwitcherService {
                         TokenStatus::from_expiry(metadata.token_expiry, Utc::now())
                     };
 
+                    let quota = metadata.account_email.as_ref().and_then(|email| quotas.remove(email));
+
                     profiles.push(ProfileView {
                         token_status,
                         is_active,
                         metadata,
                         has_refresh_token,
+                        quota,
+                    });
+                }
+                Err(error) => self.logger.warn(
+                    None,
+                    "profile",
+                    format!("Skipping invalid profile metadata: {error}"),
+                ),
+            }
+        }
+        profiles.sort_by(|left, right| {
+            right.is_active.cmp(&left.is_active).then_with(|| {
+                right
+                    .metadata
+                    .last_activated_at
+                    .cmp(&left.metadata.last_activated_at)
+            })
+        });
+        Ok(profiles)
+    }
+
+    pub async fn list_profiles_live(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
+        let mut profiles = Vec::new();
+        let active_credential = self.credentials.read_active().ok();
+        let mut cached_quotas = QuotaDecryptor::decrypt_all_quotas().unwrap_or_else(|e| {
+            self.logger.warn(None, "quota", format!("Nie udało się odszyfrować limitów z bazy: {e}"));
+            HashMap::new()
+        });
+
+        for entry in fs::read_dir(&self.paths.profiles)
+            .map_err(|source| SwitcherError::io(&self.paths.profiles, source))?
+            .filter_map(std::result::Result::ok)
+        {
+            let metadata_path = entry.path().join("metadata.json");
+            if !metadata_path.is_file() {
+                continue;
+            }
+            match load_json::<ProfileMetadata>(&metadata_path) {
+                Ok(mut metadata) => {
+                    let is_active = active_profile_id == Some(metadata.profile_id);
+                    let credential_bytes = if is_active {
+                        active_credential.clone()
+                    } else {
+                        self.load_profile_credential(metadata.profile_id).ok()
+                    };
+
+                    let has_refresh_token = credential_bytes
+                        .as_ref()
+                        .map_or(false, |bytes| check_has_refresh_token(bytes));
+
+                    if is_active {
+                        if let Some(ref bytes) = credential_bytes {
+                            metadata.token_expiry = parse_token_expiry(bytes);
+                        }
+                    }
+
+                    let token_status = if has_refresh_token {
+                        TokenStatus::Valid
+                    } else {
+                        TokenStatus::from_expiry(metadata.token_expiry, Utc::now())
+                    };
+
+                    let mut quota = metadata.account_email.as_ref().and_then(|email| cached_quotas.remove(email));
+
+                    // Try to fetch the live quota in real time!
+                    if let Some(ref bytes) = credential_bytes {
+                        if let Some(ref refresh_token) = parse_refresh_token(bytes) {
+                            if let Some(ref email) = metadata.account_email {
+                                let use_cached = {
+                                    let cache = self.quota_cache.lock();
+                                    let now = std::time::Instant::now();
+                                    
+                                    let cache_duration = if is_active {
+                                        std::time::Duration::from_secs(5)
+                                    } else {
+                                        std::time::Duration::from_secs(60)
+                                    };
+                                    
+                                    if let Some((cached_quota, cached_time)) = cache.get(email) {
+                                        if now.duration_since(*cached_time) < cache_duration {
+                                            quota = Some(cached_quota.clone());
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    } else {
+                                        false
+                                    }
+                                };
+                                
+                                if !use_cached {
+                                    match QuotaDecryptor::fetch_live_quota(refresh_token).await {
+                                        Ok(live_quota) => {
+                                            let mut cache = self.quota_cache.lock();
+                                            cache.insert(email.clone(), (live_quota.clone(), std::time::Instant::now()));
+                                            quota = Some(live_quota);
+                                        }
+                                        Err(err) => {
+                                            self.logger.warn(
+                                                None,
+                                                "quota",
+                                                format!("Failed to fetch live quota for {}: {}", metadata.display_name, err),
+                                            );
+                                            // Fallback to in-memory cached quota even if expired
+                                            let cache = self.quota_cache.lock();
+                                            if let Some((cached_quota, _)) = cache.get(email) {
+                                                quota = Some(cached_quota.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    profiles.push(ProfileView {
+                        token_status,
+                        is_active,
+                        metadata,
+                        has_refresh_token,
+                        quota,
                     });
                 }
                 Err(error) => self.logger.warn(
@@ -1334,11 +1510,22 @@ impl SwitcherService {
             ),
         );
 
+        let mut quota = if let Some(ref email) = metadata.account_email {
+            QuotaDecryptor::decrypt_all_quotas().ok().and_then(|mut m| m.remove(email))
+        } else {
+            None
+        };
+
+        if let Ok(live_quota) = QuotaDecryptor::fetch_live_quota(refresh_token).await {
+            quota = Some(live_quota);
+        }
+
         Ok(ProfileView {
             token_status: TokenStatus::Valid,
             is_active: false,
             metadata,
             has_refresh_token: true,
+            quota,
         })
     }
 
@@ -1587,6 +1774,16 @@ fn check_has_refresh_token(bytes: &[u8]) -> bool {
         .and_then(|v| v.as_str())
         .map(|s| !s.is_empty())
         .unwrap_or(false)
+}
+
+fn parse_refresh_token(bytes: &[u8]) -> Option<String> {
+    let value: Value = serde_json::from_slice(bytes).ok()?;
+    let target = if let Some(inner) = value.get("token").filter(|t| t.is_object()) {
+        inner
+    } else {
+        &value
+    };
+    target.get("refresh_token").and_then(|v| v.as_str()).map(|s| s.to_owned())
 }
 
 fn timestamp_to_datetime(value: i64) -> Option<DateTime<Utc>> {
