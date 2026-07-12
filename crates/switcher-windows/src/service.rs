@@ -179,6 +179,7 @@ impl SwitcherService {
     }
 
     pub fn app_state(&self, version: &str) -> Result<AppStateView> {
+        let _ = self.ensure_installation_path_resolved();
         let config = self.config.read().clone();
         let profiles = self.list_profiles(config.active_profile_id)?;
         let active_profile = profiles.iter().find(|profile| profile.is_active).cloned();
@@ -220,6 +221,7 @@ impl SwitcherService {
     }
 
     pub async fn app_state_live(&self, version: &str) -> Result<AppStateView> {
+        let _ = self.ensure_installation_path_resolved();
         let config = self.config.read().clone();
         let profiles = self.list_profiles_live(config.active_profile_id).await?;
         let active_profile = profiles.iter().find(|profile| profile.is_active).cloned();
@@ -259,6 +261,7 @@ impl SwitcherService {
             app_version: version.to_owned(),
         })
     }
+
 
     pub fn http_status(&self) -> Result<HttpStatusView> {
         let state = self.app_state(env!("CARGO_PKG_VERSION"))?;
@@ -1222,17 +1225,36 @@ impl SwitcherService {
         save_json(&path, &metadata)
     }
 
+    fn ensure_installation_path_resolved(&self) -> Option<PathBuf> {
+        let current = self.config.read().installation_path.clone();
+        if current.is_some() {
+            return current;
+        }
+
+        if let Some(detected) = detect_installations().into_iter().next() {
+            self.logger.info(
+                None,
+                "settings",
+                format!("Smart detected Antigravity path dynamically: {}", detected.display()),
+            );
+            let mut config = self.config.write();
+            config.installation_path = Some(detected.clone());
+            let _ = save_json(&self.paths.config, &*config);
+            Some(detected)
+        } else {
+            None
+        }
+    }
+
     fn process_manager(&self) -> Result<ProcessManager> {
         let installation = self
-            .config
-            .read()
-            .installation_path
-            .clone()
+            .ensure_installation_path_resolved()
             .ok_or_else(|| {
                 SwitcherError::InvalidConfiguration("Nie wykryto instalacji Antigravity".to_owned())
             })?;
         Ok(ProcessManager::new(installation, self.logger.clone()))
     }
+
 
     fn journal(&self) -> JournalStore {
         JournalStore::new(self.paths.lock.clone())
