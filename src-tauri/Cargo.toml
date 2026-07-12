@@ -27,3 +27,4 @@ switcher-core = { path = "../crates/switcher-core" }
 switcher-windows = { path = "../crates/switcher-windows" }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 anyhow = { workspace = true }
+tokio = { workspace = true }

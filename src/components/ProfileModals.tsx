@@ -190,3 +190,121 @@ export function DeleteProfileModal({
     </Modal>
   );
 }
+
+interface GeekSpecsModalProps {
+  open: boolean;
+  state: any;
+  onClose: () => void;
+}
+
+export function GeekSpecsModal({ open, state, onClose }: GeekSpecsModalProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopySpecs = () => {
+    const specsText = JSON.stringify({
+      tauriVersion: "v2.0",
+      rustEdition: "2024",
+      httpPort: state?.settings?.http_port,
+      antigravityPath: state?.settings?.installation_path || "Unknown",
+      sqliteDbPath: "%USERPROFILE%\\.antigravity-agent\\cloud_accounts.db",
+      dataDir: "%APPDATA%\\Antigravity Manager",
+      logsFile: "%APPDATA%\\Antigravity Manager\\logs\\switcher.log",
+      userAgent: navigator.userAgent
+    }, null, 2);
+    
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(specsText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <Modal
+      dismissible={true}
+      eyebrow={t("dev_specs_title")}
+      footer={
+        <>
+          <button
+            className="button button--ghost"
+            onClick={handleCopySpecs}
+            type="button"
+          >
+            <Icon name={copied ? "check" : "copy"} size={16} />
+            <span>{copied ? t("dev_specs_copied") : t("dev_copy_specs")}</span>
+          </button>
+          <button
+            className="button button--primary"
+            data-autofocus
+            onClick={onClose}
+            type="button"
+          >
+            <span>{t("close_message")}</span>
+          </button>
+        </>
+      }
+      icon={<Icon name="settings" size={21} />}
+      onClose={onClose}
+      open={open}
+      title={t("dev_specs_title")}
+      description={t("dev_specs_desc")}
+    >
+      <div className="geek-specs-grid" style={{
+        display: "grid",
+        gridTemplateColumns: "1fr",
+        gap: "12px",
+        fontSize: "0.85rem",
+        color: "var(--text-secondary)",
+        maxHeight: "360px",
+        overflowY: "auto",
+        paddingRight: "4px"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
+          <strong>{t("dev_tauri_version")}:</strong>
+          <span>v2.0 (Tauri SDK)</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
+          <strong>{t("dev_rust_edition")}:</strong>
+          <span>2024</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
+          <strong>{t("dev_http_port")}:</strong>
+          <span>{state?.settings?.http_port ?? "48731"}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
+          <strong>{t("dev_antigravity_path")}:</strong>
+          <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
+            {state?.settings?.installation_path || "Nie wykryto / Not detected"}
+          </code>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
+          <strong>{t("dev_sqlite_db")}:</strong>
+          <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
+            %USERPROFILE%\.antigravity-agent\cloud_accounts.db
+          </code>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
+          <strong>{t("dev_data_dir")}:</strong>
+          <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
+            %APPDATA%\Antigravity Manager
+          </code>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
+          <strong>{t("dev_logs_file")}:</strong>
+          <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
+            %APPDATA%\Antigravity Manager\logs\switcher.log
+          </code>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
+          <strong>{t("dev_os_arch")}:</strong>
+          <span>Windows (x64 / amd64)</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <strong>{t("dev_tech_stack")}:</strong>
+          <span>React 18, TS, Rust, rusqlite</span>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+

@@ -97,6 +97,75 @@ impl SwitcherService {
         Ok(service)
     }
 
+    pub async fn fetch_all_quotas_on_startup(&self) -> Result<()> {
+        self.logger.info(None, "quota", "Wstępne pobieranie limitów w tle rozpoczęte...");
+        let active_profile_id = self.config.read().active_profile_id;
+        let active_credential = self.credentials.read_active().ok();
+
+        let mut join_handles = Vec::new();
+
+        if let Ok(dir_entries) = fs::read_dir(&self.paths.profiles) {
+            for entry in dir_entries.filter_map(std::result::Result::ok) {
+                let metadata_path = entry.path().join("metadata.json");
+                if !metadata_path.is_file() {
+                    continue;
+                }
+                if let Ok(metadata) = load_json::<ProfileMetadata>(&metadata_path) {
+                    let is_active = active_profile_id == Some(metadata.profile_id);
+                    let credential_bytes = if is_active {
+                        active_credential.clone()
+                    } else {
+                        self.load_profile_credential(metadata.profile_id).ok()
+                    };
+
+                    if let Some(bytes) = credential_bytes {
+                        if let Some(refresh_token) = parse_refresh_token(&bytes) {
+                            if let Some(email) = metadata.account_email {
+                                let display_name = metadata.display_name.clone();
+                                let logger_clone = self.logger.clone();
+                                let handle = tokio::spawn(async move {
+                                    match QuotaDecryptor::fetch_live_quota(&refresh_token).await {
+                                        Ok(live_quota) => Some((email, live_quota)),
+                                        Err(err) => {
+                                            logger_clone.warn(
+                                                None,
+                                                "quota",
+                                                format!(
+                                                    "Błąd pobierania limitu w tle dla {}: {}",
+                                                    display_name, err
+                                                ),
+                                            );
+                                            None
+                                        }
+                                    }
+                                });
+                                join_handles.push(handle);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut fetched_quotas = Vec::new();
+        for handle in join_handles {
+            if let Ok(Some((email, quota))) = handle.await {
+                fetched_quotas.push((email, quota));
+            }
+        }
+
+        if !fetched_quotas.is_empty() {
+            let mut cache = self.quota_cache.lock();
+            let now = std::time::Instant::now();
+            for (email, quota) in fetched_quotas {
+                cache.insert(email, (quota, now));
+            }
+        }
+
+        self.logger.info(None, "quota", "Wstępne pobieranie limitów zakończone.");
+        Ok(())
+    }
+
     pub fn logger(&self) -> &AuditLogger {
         &self.logger
     }
@@ -1177,9 +1246,13 @@ impl SwitcherService {
             target_profile_id: lock.to_profile_id,
             warning,
         });
+        std::thread::sleep(std::time::Duration::from_millis(400));
     }
 
-    pub async fn start_oauth_login(&self, display_name: String) -> Result<ProfileView> {
+    pub async fn start_oauth_login<F>(&self, display_name: String, lang: String, on_callback: F) -> Result<ProfileView>
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
         println!("[OAuth] --- start_oauth_login started ---");
         println!("[OAuth] Display name validated locally (not logged).");
         validate_display_name(&display_name)?;
@@ -1305,7 +1378,7 @@ impl SwitcherService {
 
         let expected_state = state.clone();
         println!("[OAuth] Awaiting HTTP callback on loopback listener... (Timeout: 5 minutes)");
-        let callback_fut = listen_for_callback(&listener, &expected_state);
+        let callback_fut = listen_for_callback(&listener, &expected_state, &lang, on_callback);
 
         let code_res = tokio::select! {
             res = callback_fut => {
@@ -1873,10 +1946,119 @@ fn url_decode(input: &str) -> String {
     decoded
 }
 
-async fn listen_for_callback(
+fn get_oauth_response_html(lang: &str, status: &str, detail: Option<&str>) -> String {
+    let is_pl = lang == "pl";
+    let (icon_class, icon_svg, heading, description) = match status {
+        "success" => (
+            "icon--success",
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>"#,
+            if is_pl { "Autoryzacja udana!" } else { "Authorization Successful!" },
+            if is_pl { "Możesz bezpiecznie zamknąć tę kartę i wrócić do aplikacji." } else { "You can safely close this tab and return to the app." }
+        ),
+        "csrf" => (
+            "icon--error",
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m10 10 4 4"/><path d="m14 10-4 4"/></svg>"#,
+            if is_pl { "Błąd bezpieczeństwa" } else { "Security Error" },
+            if is_pl { "Niepoprawny stan CSRF (zabezpieczenie przed atakami)." } else { "Invalid CSRF state (cross-site request protection)." }
+        ),
+        "missing_code" => (
+            "icon--error",
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>"#,
+            if is_pl { "Brak kodu" } else { "Missing Code" },
+            if is_pl { "Nie otrzymano kodu autoryzacji z serwera Google." } else { "No authorization code was received from Google." }
+        ),
+        _ => (
+            "icon--error",
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>"#,
+            if is_pl { "Błąd autoryzacji" } else { "Authorization Error" },
+            detail.unwrap_or(if is_pl { "Wystąpił nieznany błąd." } else { "An unknown error occurred." })
+        )
+    };
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="{}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{}</title>
+    <style>
+        body {{
+            background-color: #070812;
+            color: #f5f7ff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }}
+        .container {{
+            max-width: 420px;
+            width: 100%;
+            background-color: #0d111e;
+            border: 1px solid rgba(126, 157, 211, 0.15);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }}
+        .icon {{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+        }}
+        .icon--success {{
+            color: #35d39a;
+            background-color: rgba(53, 211, 154, 0.1);
+        }}
+        .icon--error {{
+            color: #ff6b7a;
+            background-color: rgba(255, 107, 122, 0.1);
+        }}
+        h1 {{
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+            letter-spacing: -0.3px;
+        }}
+        p {{
+            font-size: 0.9rem;
+            color: #aab3c5;
+            line-height: 1.5;
+            margin: 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon {}">
+            {}
+        </div>
+        <h1>{}</h1>
+        <p>{}</p>
+    </div>
+</body>
+</html>"#,
+        lang, heading, icon_class, icon_svg, heading, description
+    )
+}
+
+async fn listen_for_callback<F>(
     listener: &tokio::net::TcpListener,
     expected_state: &str,
-) -> Result<String> {
+    lang: &str,
+    on_callback: F,
+) -> Result<String>
+where
+    F: Fn(),
+{
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     println!("[OAuth Listener] Starting TCP accept loop.");
     loop {
@@ -1939,17 +2121,22 @@ async fn listen_for_callback(
                 error = Some(v.to_owned());
             }
         }
+
+        // Restore window before writing response
+        on_callback();
+
         if let Some(err) = error {
             let decoded_err = url_decode(&err);
             eprintln!(
                 "[OAuth Listener] Google returned error in callback: {}",
                 decoded_err
             );
-            let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
-                            <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
-                            <h1 style=\"color:#ef4444;\">Błąd autoryzacji</h1>\
-                            <p>Google zwrócił błąd: </p><pre></pre>\
-                            </body></html>";
+            let html_body = get_oauth_response_html(lang, "error", Some(&decoded_err));
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                html_body.len(),
+                html_body
+            );
             let _ = stream.write_all(response.as_bytes()).await;
             return Err(SwitcherError::Message(format!(
                 "Google OAuth error: {}",
@@ -1960,11 +2147,12 @@ async fn listen_for_callback(
         println!("[OAuth Listener] Validating CSRF state (values omitted).");
         if state_val != expected_state {
             eprintln!("[OAuth Listener] Error: CSRF state mismatch!");
-            let response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
-                            <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
-                            <h1 style=\"color:#ef4444;\">Błąd CSRF</h1>\
-                            <p>Niepoprawny stan CSRF.</p>\
-                            </body></html>";
+            let html_body = get_oauth_response_html(lang, "csrf", None);
+            let response = format!(
+                "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                html_body.len(),
+                html_body
+            );
             let _ = stream.write_all(response.as_bytes()).await;
             return Err(SwitcherError::Message(
                 "State mismatch (CSRF protection)".to_owned(),
@@ -1978,20 +2166,22 @@ async fn listen_for_callback(
             }
             None => {
                 eprintln!("[OAuth Listener] Error: Missing 'code' parameter in callback query.");
-                let response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
-                                <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
-                                <h1>Brak kodu</h1>\
-                                <p>Brak kodu autoryzacyjnego.</p>\
-                                </body></html>";
+                let html_body = get_oauth_response_html(lang, "missing_code", None);
+                let response = format!(
+                    "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    html_body.len(),
+                    html_body
+                );
                 let _ = stream.write_all(response.as_bytes()).await;
                 continue;
             }
         };
-        let success_html = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
-                            <html><body style=\"font-family:sans-serif; text-align:center; padding-top:50px; background-color:#0b0d19; color:#fff;\">\
-                            <h1 style=\"color:#4f46e5;\">Autoryzacja udana!</h1>\
-                            <p>Możesz zamknąć to okno i wrócić do aplikacji Switchera.</p>\
-                            </body></html>";
+        let html_body = get_oauth_response_html(lang, "success", None);
+        let success_html = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            html_body.len(),
+            html_body
+        );
         let _ = stream.write_all(success_html.as_bytes()).await;
         let _ = stream.flush().await;
         println!("[OAuth Listener] Success HTML response sent to browser. Closing listener.");

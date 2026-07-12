@@ -29,12 +29,17 @@ fn request_switch(
 }
 
 #[tauri::command]
-fn confirm_switch(
+async fn confirm_switch(
     service: State<'_, Arc<SwitcherService>>,
     operation_id: String,
 ) -> Result<SwitchOutcome, String> {
     let op_uuid = Uuid::parse_str(&operation_id).map_err(|e| e.to_string())?;
-    service.confirm_switch(op_uuid).map_err(|e| e.to_string())
+    let service = service.inner().clone();
+    tokio::task::spawn_blocking(move || {
+        service.confirm_switch(op_uuid).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -100,8 +105,13 @@ fn copy_diagnostics(service: State<'_, Arc<SwitcherService>>) -> Result<String, 
 }
 
 #[tauri::command]
-fn recovery_resume(service: State<'_, Arc<SwitcherService>>) -> Result<SwitchOutcome, String> {
-    service.recovery_resume().map_err(|e| e.to_string())
+async fn recovery_resume(service: State<'_, Arc<SwitcherService>>) -> Result<SwitchOutcome, String> {
+    let service = service.inner().clone();
+    tokio::task::spawn_blocking(move || {
+        service.recovery_resume().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -112,10 +122,20 @@ fn recovery_rollback(service: State<'_, Arc<SwitcherService>>) -> Result<(), Str
 #[tauri::command]
 async fn start_oauth_login(
     service: State<'_, Arc<SwitcherService>>,
+    app_handle: tauri::AppHandle,
     display_name: String,
+    lang: String,
 ) -> Result<ProfileView, String> {
+    let handle_clone = app_handle.clone();
+    let on_callback = move || {
+        if let Some(window) = handle_clone.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    };
     service
-        .start_oauth_login(display_name)
+        .start_oauth_login(display_name, lang, on_callback)
         .await
         .map_err(|e| e.to_string())
 }
@@ -325,6 +345,12 @@ pub fn run() {
                 eprintln!("Nie udało się zainicjować usługi SwitcherService: {:?}", e);
                 e
             })?;
+
+            // Wstępne pobieranie limitów w tle na starcie
+            let service_clone = service.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = service_clone.fetch_all_quotas_on_startup().await;
+            });
 
             app.manage(service.clone());
 

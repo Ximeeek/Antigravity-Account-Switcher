@@ -518,8 +518,8 @@ export const addCurrentProfile = (profile: AddProfileInput): Promise<AppState> =
   return commandThenState("add_current_profile", args);
 };
 
-export const startOauthLogin = (displayName: string): Promise<AppState> =>
-  commandThenState("start_oauth_login", { displayName });
+export const startOauthLogin = (displayName: string, lang: string): Promise<AppState> =>
+  commandThenState("start_oauth_login", { displayName, lang });
 
 export const cancelOauthLogin = (): Promise<AppState> =>
   commandThenState("cancel_oauth_login");
@@ -535,7 +535,7 @@ export const updateSettings = (settings: AppSettings): Promise<AppState> =>
 export const copyDiagnostics = async (): Promise<string> => {
   const result = await call<unknown>("copy_diagnostics");
   const text = typeof result === "string" ? result : "";
-  if (isDemoMode && text && navigator.clipboard?.writeText) {
+  if (text && navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
   }
   return text;

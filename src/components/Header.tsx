@@ -9,6 +9,7 @@ interface HeaderProps {
   view: AppView;
   engineStatus: EngineStatus;
   onViewChange: (view: AppView) => void;
+  onBrandClick?: () => void;
   demoMode?: boolean;
   demoScenario?: DemoScenario;
   onDemoScenarioChange?: (scenario: DemoScenario) => void;
@@ -28,6 +29,7 @@ export function Header({
   view,
   engineStatus,
   onViewChange,
+  onBrandClick,
   demoMode = false,
   demoScenario = "dashboard",
   onDemoScenarioChange,
@@ -45,7 +47,7 @@ export function Header({
       <div className="app-header__inner">
         <button
           className="brand brand-button"
-          onClick={() => onViewChange("dashboard")}
+          onClick={onBrandClick ?? (() => onViewChange("dashboard"))}
           aria-label={t("brand_title_attr")}
           title={t("brand_title_attr")}
         >
@@ -96,9 +98,6 @@ export function Header({
               </select>
             </label>
           ) : null}
-          <StatusPill tone={engine.tone} pulse={engine.pulse} className="engine-pill">
-            {engineLabels[engineStatus]}
-          </StatusPill>
         </div>
       </div>
     </header>

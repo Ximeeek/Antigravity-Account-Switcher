@@ -24,6 +24,7 @@ import { Icon } from "./components/Icons";
 import {
   AddProfileModal,
   DeleteProfileModal,
+  GeekSpecsModal,
 } from "./components/ProfileModals";
 import { Settings } from "./components/Settings";
 import { t, getLanguage, setLanguage, type Language } from "./i18n";
@@ -88,6 +89,7 @@ export default function App() {
   const [workingAction, setWorkingAction] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [addProfileOpen, setAddProfileOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProfileSummary | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<SwitchOperation | null>(null);
   const [lang, setLang] = useState<Language>(getLanguage);
@@ -157,7 +159,7 @@ export default function App() {
     const shouldPoll =
       operation?.status === "in_progress" || state?.engine_status === "busy";
     if (!shouldPoll) return undefined;
-    const interval = window.setInterval(() => void loadState(true), 650);
+    const interval = window.setInterval(() => void loadState(true), 200);
     return () => window.clearInterval(interval);
   }, [loadState, state?.engine_status, state?.operation]);
 
@@ -285,7 +287,7 @@ export default function App() {
   const handleAddProfile = async (displayName: string) => {
     const succeeded = await performStateAction(
       "add-profile",
-      () => startOauthLogin(displayName),
+      () => startOauthLogin(displayName, lang),
       `Konto „${displayName}” zostało zapisane.`,
     );
     if (succeeded) setAddProfileOpen(false);
@@ -408,6 +410,7 @@ export default function App() {
         engineStatus={state.engine_status}
         onDemoScenarioChange={handleDemoScenario}
         onViewChange={setView}
+        onBrandClick={() => setAboutOpen(true)}
         view={view}
       />
 
@@ -469,6 +472,11 @@ export default function App() {
         onConfirm={handleDeleteProfile}
         profile={deleteTarget}
         working={workingAction === "delete-profile"}
+      />
+      <GeekSpecsModal
+        open={aboutOpen}
+        state={state}
+        onClose={() => setAboutOpen(false)}
       />
 
       {notice ? <Toast notice={notice} onClose={() => setNotice(null)} /> : null}
