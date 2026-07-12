@@ -5,8 +5,6 @@ import type {
   AppState,
   DemoScenario,
   EngineStatus,
-  ExtensionInfo,
-  ExtensionStatus,
   OperationStatus,
   ProfileSummary,
   RecoveryState,
@@ -173,26 +171,7 @@ const normalizeRecovery = (value: unknown): RecoveryState | null => {
   };
 };
 
-const normalizeExtensionStatus = (value: unknown): ExtensionStatus => {
-  const status = asString(value).toLowerCase().replaceAll("-", "_");
-  if (["installed", "ok", "ready"].includes(status)) return "installed";
-  if (["update_available", "outdated", "needs_update"].includes(status)) {
-    return "update_available";
-  }
-  if (["error", "failed"].includes(status)) return "error";
-  return "not_installed";
-};
 
-const normalizeExtension = (value: unknown, root: UnknownRecord): ExtensionInfo => {
-  const source = isRecord(value) ? value : {};
-  const rawStatus = pick(source, "status", "extension_status", "extensionStatus") ??
-    pick(root, "extension_status", "extensionStatus");
-  return {
-    status: normalizeExtensionStatus(rawStatus),
-    version: asNullableString(pick(source, "version", "extension_version", "extensionVersion")),
-    message: asNullableString(pick(source, "message", "error")),
-  };
-};
 
 export const normalizeAppState = (value: unknown): AppState => {
   const source = isRecord(value) ? value : {};
@@ -244,12 +223,7 @@ export const normalizeAppState = (value: unknown): AppState => {
           pick(source, "antigravity_path", "antigravityPath"),
       ),
     },
-    extension: normalizeExtension(
-      pick(source, "extension", "extension_info", "extensionInfo") ?? {
-        status: pick(settingsSource, "extension_status", "extensionStatus"),
-      },
-      source,
-    ),
+
     app_version: asNullableString(pick(source, "app_version", "appVersion", "version")),
     antigravity_version: asNullableString(
       pick(source, "antigravity_version", "antigravityVersion"),
@@ -310,10 +284,7 @@ const makeDemoState = (): AppState => ({
     http_port: 43127,
     antigravity_path: "C:\\Program Files\\Antigravity\\Antigravity.exe",
   },
-  extension: {
-    status: "installed",
-    version: "1.0.0-demo",
-  },
+
   app_version: "1.0.0-demo",
   antigravity_version: "1.4.2-demo",
   last_error: null,
@@ -456,9 +427,7 @@ const demoInvoke = async (command: string, args: UnknownRecord = {}): Promise<un
       return clone(demoState);
     }
 
-    case "install_extension":
-      demoState.extension = { status: "installed", version: "1.0.0-demo" };
-      return clone(demoState);
+
 
     case "copy_diagnostics":
       return [
@@ -559,8 +528,7 @@ export const deleteProfile = (profileId: string): Promise<AppState> =>
 export const updateSettings = (settings: AppSettings): Promise<AppState> =>
   commandThenState("update_settings", { settings });
 
-export const installExtension = (): Promise<AppState> =>
-  commandThenState("install_extension");
+
 
 export const copyDiagnostics = async (): Promise<string> => {
   const result = await call<unknown>("copy_diagnostics");
@@ -616,10 +584,6 @@ export const setDemoScenario = (scenario: DemoScenario): AppState => {
     case "error":
       demoState.engine_status = "error";
       demoState.last_error = "Nie udało się połączyć z lokalnym serwerem wtyczki.";
-      demoState.extension = {
-        status: "error",
-        message: "Wtyczka nie odpowiada.",
-      };
       break;
     case "dashboard":
     default:

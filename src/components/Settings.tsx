@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import type { AppSettings, AppState, ExtensionStatus } from "../types";
+import type { AppSettings, AppState } from "../types";
 import { Icon } from "./Icons";
 import { StatusPill, type StatusTone } from "./StatusPill";
 import { t, getLanguage, type Language } from "../i18n";
@@ -8,7 +8,6 @@ interface SettingsProps {
   state: AppState;
   workingAction?: string | null;
   onSave: (settings: AppSettings) => Promise<void>;
-  onInstallExtension: () => Promise<void>;
   onCopyDiagnostics: () => Promise<void>;
   onLanguageChange: (lang: Language) => void;
 }
@@ -17,19 +16,9 @@ export function Settings({
   state,
   workingAction,
   onSave,
-  onInstallExtension,
   onCopyDiagnostics,
   onLanguageChange,
 }: SettingsProps) {
-  const extensionPresentation: Record<
-    ExtensionStatus,
-    { label: string; tone: StatusTone; action: string }
-  > = {
-    installed: { label: t("extension_installed_pill"), tone: "success", action: t("extension_action_reinstall") },
-    not_installed: { label: t("extension_not_installed_pill"), tone: "neutral", action: t("extension_action_install") },
-    update_available: { label: t("extension_update_pill"), tone: "warning", action: t("extension_action_update") },
-    error: { label: t("extension_error_pill"), tone: "danger", action: t("extension_action_repair") },
-  };
   const [draft, setDraft] = useState<AppSettings>(state.settings);
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -42,9 +31,7 @@ export function Settings({
     [draft, state.settings],
   );
 
-  const extension = extensionPresentation[state.extension.status];
   const saving = workingAction === "settings";
-  const installing = workingAction === "extension";
   const copying = workingAction === "diagnostics";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -156,42 +143,6 @@ export function Settings({
           </form>
         </section>
 
-        <section className="settings-card" aria-labelledby="extension-heading">
-          <div className="settings-card__header settings-card__header--stackable">
-            <div className="settings-card__icon settings-card__icon--violet">
-              <Icon name="extension" />
-            </div>
-            <div>
-              <h2 id="extension-heading">{t("extension_title")}</h2>
-              <p>{t("extension_desc")}</p>
-            </div>
-          </div>
-          <div className="settings-card__body">
-            <div className="extension-state">
-              <div>
-                <StatusPill tone={extension.tone}>{extension.label}</StatusPill>
-                <span className="extension-version">
-                  {state.extension.version ? t("extension_version", { version: state.extension.version }) : t("extension_no_version")}
-                </span>
-              </div>
-              <button
-                className="button button--secondary"
-                disabled={installing}
-                onClick={onInstallExtension}
-                type="button"
-              >
-                <Icon name={installing ? "loader" : "refresh"} size={16} />
-                <span>{installing ? t("extension_installing") : extension.action}</span>
-              </button>
-            </div>
-            {state.extension.message ? (
-              <div className="compact-alert compact-alert--danger" role="status">
-                <Icon name="alert" size={16} />
-                <span>{state.extension.message}</span>
-              </div>
-            ) : null}
-          </div>
-        </section>
 
         <section className="settings-card" aria-labelledby="diagnostics-heading">
           <div className="settings-card__header settings-card__header--stackable">

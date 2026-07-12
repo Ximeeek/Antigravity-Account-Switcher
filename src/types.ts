@@ -7,11 +7,7 @@ export type TokenStatus =
   | "refreshing"
   | "unknown";
 
-export type ExtensionStatus =
-  | "installed"
-  | "not_installed"
-  | "update_available"
-  | "error";
+
 
 export type OperationStatus =
   | "awaiting_confirmation"
@@ -58,11 +54,7 @@ export interface AppSettings {
   antigravity_path: string;
 }
 
-export interface ExtensionInfo {
-  status: ExtensionStatus;
-  version?: string | null;
-  message?: string | null;
-}
+
 
 export interface AppState {
   profiles: ProfileSummary[];
@@ -72,7 +64,7 @@ export interface AppState {
   operation: SwitchOperation | null;
   recovery: RecoveryState | null;
   settings: AppSettings;
-  extension: ExtensionInfo;
+
   app_version?: string | null;
   antigravity_version?: string | null;
   last_error?: string | null;

@@ -1,5 +1,5 @@
 use crate::{
-    AuditLogger, CredentialStore, ExtensionInstaller, ProcessManager, ProtectedCredential,
+    AuditLogger, CredentialStore, ProcessManager, ProtectedCredential,
     SwitcherPaths, detect_installations,
 };
 use base64::Engine;
@@ -46,7 +46,6 @@ pub struct SwitcherService {
     pub paths: SwitcherPaths,
     logger: AuditLogger,
     credentials: CredentialStore,
-    extension_installer: ExtensionInstaller,
     config: RwLock<PersistentConfig>,
     pending: Mutex<HashMap<Uuid, PendingSwitch>>,
     progress: RwLock<Option<OperationProgress>>,
@@ -72,7 +71,6 @@ impl SwitcherService {
         }
         save_json(&paths.config, &config)?;
         let service = Arc::new(Self {
-            extension_installer: ExtensionInstaller::new(logger.clone()),
             logger,
             credentials: CredentialStore,
             config: RwLock::new(config),
@@ -144,7 +142,6 @@ impl SwitcherService {
                     .as_ref()
                     .map(|path| path.to_string_lossy().into_owned()),
                 detected_installations,
-                extension_status: self.extension_installer.status(),
                 token_refresh_enabled: false,
             },
             app_version: version.to_owned(),
@@ -368,11 +365,7 @@ impl SwitcherService {
         Ok(self.app_state(env!("CARGO_PKG_VERSION"))?.settings)
     }
 
-    pub fn install_extension(&self, source: &Path) -> Result<crate::ExtensionInstallResult> {
-        let config = self.config.read().clone();
-        self.extension_installer
-            .install(source, &config.api_secret, config.http_port)
-    }
+
 
     pub fn diagnostic_report(&self, app_version: &str) -> Result<String> {
         let config = self.config.read().clone();

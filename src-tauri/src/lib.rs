@@ -1,6 +1,5 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -8,7 +7,7 @@ use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
 use switcher_core::{AppStateView, ProfileView, SettingsView, SwitchRequestResult};
-use switcher_windows::{ExtensionInstallResult, SwitchOutcome, SwitcherService};
+use switcher_windows::{SwitchOutcome, SwitcherService};
 
 #[tauri::command]
 fn get_app_state(service: State<'_, Arc<SwitcherService>>) -> Result<AppStateView, String> {
@@ -90,24 +89,7 @@ fn update_settings(
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-fn install_extension(
-    app: AppHandle,
-    service: State<'_, Arc<SwitcherService>>,
-) -> Result<ExtensionInstallResult, String> {
-    let dev_path = PathBuf::from("../extension");
-    let source_path = if dev_path.join("package.json").is_file() {
-        dev_path
-    } else {
-        app.path()
-            .resource_dir()
-            .map_err(|e| e.to_string())?
-            .join("extension")
-    };
-    service
-        .install_extension(&source_path)
-        .map_err(|e| e.to_string())
-}
+
 
 #[tauri::command]
 fn copy_diagnostics(service: State<'_, Arc<SwitcherService>>) -> Result<String, String> {
@@ -402,7 +384,6 @@ pub fn run() {
             add_current_profile,
             delete_profile,
             update_settings,
-            install_extension,
             copy_diagnostics,
             recovery_resume,
             recovery_rollback,

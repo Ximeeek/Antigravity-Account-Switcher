@@ -6,7 +6,7 @@ import {
   copyDiagnostics,
   deleteProfile,
   getAppState,
-  installExtension,
+
   isDemoMode,
   recoveryResume,
   recoveryRollback,
@@ -309,13 +309,7 @@ export default function App() {
     );
   };
 
-  const handleInstallExtension = async () => {
-    await performStateAction(
-      "extension",
-      installExtension,
-      t("extension_installed"),
-    );
-  };
+
 
   const handleCopyDiagnostics = async () => {
     setWorkingAction("diagnostics");
@@ -437,7 +431,6 @@ export default function App() {
         ) : (
           <Settings
             onCopyDiagnostics={handleCopyDiagnostics}
-            onInstallExtension={handleInstallExtension}
             onSave={handleSaveSettings}
             onLanguageChange={handleLanguageChange}
             state={state}

@@ -70,22 +70,12 @@ pub enum EngineStatus {
     Attention,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum ExtensionStatus {
-    Installed,
-    Missing,
-    UpdateAvailable,
-    Unknown,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsView {
     pub http_port: u16,
     pub installation_path: Option<String>,
     pub detected_installations: Vec<String>,
-    pub extension_status: ExtensionStatus,
     pub token_refresh_enabled: bool,
 }
 

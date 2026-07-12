@@ -268,6 +268,18 @@ summary {
   filter: brightness(1.07);
 }
 
+.button--danger-outline {
+  color: #ff6b7a;
+  border-color: rgba(255, 107, 122, 0.25);
+  background: rgba(178, 39, 60, 0.05);
+}
+
+.button--danger-outline:not(:disabled):hover {
+  border-color: rgba(255, 107, 122, 0.5);
+  background: rgba(178, 39, 60, 0.12);
+  color: #ff8593;
+}
+
 .button--full {
   width: 100%;
 }
