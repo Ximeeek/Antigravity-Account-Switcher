@@ -162,6 +162,14 @@ fn hide_mini_window(app_handle: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn resize_mini_window(app_handle: tauri::AppHandle, height: f64) -> Result<(), String> {
+    if let Some(window) = app_handle.get_webview_window("mini") {
+        let _ = window.set_size(tauri::LogicalSize::new(320.0, height));
+    }
+    Ok(())
+}
+
 
 fn handle_client(
     mut stream: TcpStream,
@@ -435,7 +443,8 @@ pub fn run() {
             start_oauth_login,
             cancel_oauth_login,
             show_mini_window,
-            hide_mini_window
+            hide_mini_window,
+            resize_mini_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

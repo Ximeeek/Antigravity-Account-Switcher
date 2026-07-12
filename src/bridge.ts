@@ -454,6 +454,10 @@ const demoInvoke = async (command: string, args: UnknownRecord = {}): Promise<un
       console.log("Demo: Close mini window");
       return;
 
+    case "resize_mini_window":
+      console.log("Demo: Resize mini window to", args.height);
+      return;
+
     default:
       throw new Error(`Nieznana komenda demonstracyjna: ${command}`);
   }
@@ -537,6 +541,9 @@ export const showMiniWindow = (): Promise<void> =>
 
 export const hideMiniWindow = (): Promise<void> =>
   call<void>("hide_mini_window");
+
+export const resizeMiniWindow = (height: number): Promise<void> =>
+  call<void>("resize_mini_window", { height });
 
 
 export const deleteProfile = (profileId: string): Promise<AppState> =>

@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   getAppState,
   requestSwitch,
   confirmSwitch,
   cancelSwitch,
   hideMiniWindow,
+  resizeMiniWindow,
 } from "../bridge";
 import { Icon, AppMark } from "./Icons";
 import { t } from "../i18n";
@@ -32,11 +33,10 @@ function CustomSelect({
   useEffect(() => {
     const resizeWindow = async () => {
       try {
-        const appWindow = getCurrentWindow();
         if (isOpen) {
-          await appWindow.setSize(new LogicalSize(320, 220));
+          await resizeMiniWindow(220);
         } else {
-          await appWindow.setSize(new LogicalSize(320, 72));
+          await resizeMiniWindow(72);
         }
       } catch (e) {
         console.error("Failed to resize window", e);
