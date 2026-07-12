@@ -11,29 +11,46 @@ interface AccountCardProps {
   onDelete: (profile: ProfileSummary) => void;
 }
 
-function MiniQuotaBadge({ quota }: { quota?: ProfileSummary["quota"] }) {
+function MiniQuotaBadges({ quota }: { quota?: ProfileSummary["quota"] }) {
   if (!quota || !quota.quota_groups || quota.quota_groups.length === 0) return null;
   
   let weeklyBucket = null;
+  let fiveHourBucket = null;
   for (const group of quota.quota_groups) {
     const weekly = group.buckets.find(b => b.bucket_id === "gemini-weekly");
     if (weekly) {
       weeklyBucket = weekly;
-      break;
+    }
+    const fiveHour = group.buckets.find(b => b.bucket_id === "gemini-5h");
+    if (fiveHour) {
+      fiveHourBucket = fiveHour;
     }
   }
   
-  if (!weeklyBucket) return null;
+  if (!weeklyBucket && !fiveHourBucket) return null;
   
-  const pct = Math.round(weeklyBucket.remaining_fraction * 100);
-  const isLow = pct < 20;
-  const isMedium = pct >= 20 && pct < 50;
-  const tone = isLow ? "danger" : isMedium ? "warning" : "success";
+  const renderBadge = (bucket: any, labelKey: "quota_weekly_label" | "quota_5h_label") => {
+    const pct = Math.round(bucket.remaining_fraction * 100);
+    const isLow = pct < 20;
+    const isMedium = pct >= 20 && pct < 50;
+    const tone = isLow ? "danger" : isMedium ? "warning" : "success";
+    
+    return (
+      <div 
+        key={bucket.bucket_id}
+        className={`mini-quota-badge mini-quota-badge--${tone}`} 
+        title={`${bucket.display_name}: ${pct}% (${bucket.description || ""})`}
+      >
+        <span className="mini-quota-badge__label">{t(labelKey)}</span>
+        <span>{pct}%</span>
+      </div>
+    );
+  };
   
   return (
-    <div className={`mini-quota-badge mini-quota-badge--${tone}`} title={weeklyBucket.description || ""}>
-      <Icon name="shield" size={13} />
-      <span>W: {pct}%</span>
+    <div className="account-card__quota-badges">
+      {fiveHourBucket && renderBadge(fiveHourBucket, "quota_5h_label")}
+      {weeklyBucket && renderBadge(weeklyBucket, "quota_weekly_label")}
     </div>
   );
 }
@@ -79,7 +96,7 @@ export function AccountCard({
       <div className="account-card__status">
         <StatusPill tone={token.tone}>{token.label}</StatusPill>
         <span className="token-detail">{token.detail}</span>
-        <MiniQuotaBadge quota={profile.quota} />
+        <MiniQuotaBadges quota={profile.quota} />
       </div>
 
       <div className="account-card__meta">

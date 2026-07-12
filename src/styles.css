@@ -2676,3 +2676,17 @@ button.brand:focus-visible {
   background: rgba(245, 83, 83, 0.05);
 }
 
+.account-card__quota-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-quota-badge__label {
+  opacity: 0.7;
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+
