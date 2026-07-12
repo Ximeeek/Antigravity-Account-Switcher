@@ -1,6 +1,6 @@
 # Antigravity Account Switcher
 
-> A Windows desktop application and VS Code/Antigravity editor extension designed to manually switch between Google Accounts (Gemini PRO) without losing local settings or agent context.
+> A Windows desktop application designed to manually switch between Google Accounts (Gemini PRO) without losing local settings or agent context.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#development)
