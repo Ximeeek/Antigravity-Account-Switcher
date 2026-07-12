@@ -2783,7 +2783,10 @@ button.brand:focus-visible {
 
 /* Mini Switcher Window Styles */
 html.mini-window-html,
-html.mini-window-html body {
+html.mini-window-html body,
+html.mini-window-html #root {
+  height: 100% !important;
+  min-height: 100% !important;
   background: transparent !important;
 }
 
