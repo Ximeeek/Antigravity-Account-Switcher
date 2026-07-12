@@ -73,6 +73,7 @@ export interface RecoveryState {
 export interface AppSettings {
   http_port: number;
   antigravity_path: string;
+  smart_switch_enabled: boolean;
 }
 
 

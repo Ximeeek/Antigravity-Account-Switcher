@@ -224,6 +224,11 @@ export const normalizeAppState = (value: unknown): AppState => {
         pick(settingsSource, "antigravity_path", "antigravityPath", "installation_path", "installationPath") ??
           pick(source, "antigravity_path", "antigravityPath"),
       ),
+      smart_switch_enabled: asBoolean(
+        pick(settingsSource, "smart_switch_enabled", "smartSwitchEnabled") ??
+          pick(source, "smart_switch_enabled", "smartSwitchEnabled"),
+        false,
+      ),
     },
 
     app_version: asNullableString(pick(source, "app_version", "appVersion", "version")),
@@ -285,6 +290,7 @@ const makeDemoState = (): AppState => ({
   settings: {
     http_port: 43127,
     antigravity_path: "C:\\Program Files\\Antigravity\\Antigravity.exe",
+    smart_switch_enabled: false,
   },
 
   app_version: "1.0.0-demo",
@@ -424,6 +430,10 @@ const demoInvoke = async (command: string, args: UnknownRecord = {}): Promise<un
         antigravity_path: asString(
           pick(settings, "antigravity_path", "antigravityPath"),
           demoState.settings.antigravity_path,
+        ),
+        smart_switch_enabled: asBoolean(
+          pick(settings, "smart_switch_enabled", "smartSwitchEnabled"),
+          demoState.settings.smart_switch_enabled,
         ),
       };
       return clone(demoState);

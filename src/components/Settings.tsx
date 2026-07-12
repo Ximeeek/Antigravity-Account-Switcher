@@ -27,7 +27,8 @@ export function Settings({
   const dirty = useMemo(
     () =>
       draft.http_port !== state.settings.http_port ||
-      draft.antigravity_path.trim() !== state.settings.antigravity_path.trim(),
+      draft.antigravity_path.trim() !== state.settings.antigravity_path.trim() ||
+      draft.smart_switch_enabled !== state.settings.smart_switch_enabled,
     [draft, state.settings],
   );
 
@@ -119,6 +120,36 @@ export function Settings({
                 />
               </span>
             </label>
+
+            <div className="field-row field-row--checkbox" style={{ marginTop: "20px", marginBottom: "12px" }}>
+              <label className="checkbox-field" style={{ display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={draft.smart_switch_enabled}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      smart_switch_enabled: event.target.checked,
+                    }))
+                  }
+                  style={{ 
+                    marginTop: "3px",
+                    width: "16px",
+                    height: "16px",
+                    accentColor: "var(--accent-color, #5865f2)",
+                    cursor: "pointer"
+                  }}
+                />
+                <div>
+                  <span className="field__label" style={{ fontWeight: 600, display: "block", fontSize: "14px", color: "var(--text-primary, #fff)" }}>
+                    {t("smart_switch_label")}
+                  </span>
+                  <p className="field-hint" style={{ margin: "4px 0 0 0", fontSize: "12px", color: "var(--text-secondary, #8e9297)", lineHeight: "1.4" }}>
+                    {t("smart_switch_hint")}
+                  </p>
+                </div>
+              </label>
+            </div>
 
             {validationError ? (
               <p className="field-error" id="settings-validation" role="alert">

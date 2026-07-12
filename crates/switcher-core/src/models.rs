@@ -118,6 +118,7 @@ pub struct SettingsView {
     pub installation_path: Option<String>,
     pub detected_installations: Vec<String>,
     pub token_refresh_enabled: bool,
+    pub smart_switch_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -128,6 +129,8 @@ pub struct PersistentConfig {
     pub api_secret: String,
     pub installation_path: Option<PathBuf>,
     pub active_profile_id: Option<Uuid>,
+    #[serde(default)]
+    pub smart_switch_enabled: bool,
 }
 
 impl Default for PersistentConfig {
@@ -138,6 +141,7 @@ impl Default for PersistentConfig {
             api_secret: Uuid::new_v4().simple().to_string() + &Uuid::new_v4().simple().to_string(),
             installation_path: None,
             active_profile_id: None,
+            smart_switch_enabled: false,
         }
     }
 }

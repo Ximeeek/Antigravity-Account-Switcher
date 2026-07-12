@@ -78,6 +78,7 @@ fn delete_profile(
 struct AppSettingsInput {
     http_port: u16,
     antigravity_path: String,
+    smart_switch_enabled: bool,
 }
 
 #[tauri::command]
@@ -91,7 +92,7 @@ fn update_settings(
         Some(settings.antigravity_path)
     };
     service
-        .update_settings(settings.http_port, path)
+        .update_settings(settings.http_port, path, settings.smart_switch_enabled)
         .map_err(|e| e.to_string())
 }
 
@@ -376,6 +377,20 @@ pub fn run() {
             let service_clone = service.clone();
             tauri::async_runtime::spawn(async move {
                 let _ = service_clone.fetch_all_quotas_on_startup().await;
+            });
+
+            // Wątek sprawdzający automatyczne przełączanie (Smart Switch) w tle
+            let service_smart = service.clone();
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
+                // Pomiń pierwszy natychmiastowy tick
+                interval.tick().await;
+                loop {
+                    interval.tick().await;
+                    if let Err(e) = service_smart.check_and_perform_smart_switch().await {
+                        service_smart.logger().error(None, "smart_switch", format!("Błąd Smart Switch: {}", e));
+                    }
+                }
             });
 
             app.manage(service.clone());

@@ -174,6 +174,10 @@ export const translations = {
     privacy_desc: "Dane kont pozostają na tym komputerze.",
     privacy_note: "Profile są identyfikowane losowym UUID. Dane uwierzytelniające nie trafiają do logów.",
     language_label: "Język aplikacji",
+    smart_switch_title: "Inteligentne przełączanie (Smart Switch)",
+    smart_switch_desc: "Automatycznie przełącza na inny profil z najwyższym limitem, gdy skończą się limity.",
+    smart_switch_label: "Włącz Smart Switch",
+    smart_switch_hint: "Automatycznie przełączy konto, gdy limit 5h spadnie poniżej 10% lub limit tygodniowy spadnie poniżej 5%. Przełączanie jest blokowane, gdy agent w Antigravity aktywnie pracuje.",
 
     // Modals
     add_modal_eyebrow: "Dodawanie profilu",
@@ -389,6 +393,10 @@ export const translations = {
     privacy_desc: "Account data remains on this computer.",
     privacy_note: "Profiles are identified by a random UUID. Credentials do not enter the logs.",
     language_label: "App language",
+    smart_switch_title: "Smart Switch",
+    smart_switch_desc: "Automatically switches to another profile with the highest limits when current limits are low.",
+    smart_switch_label: "Enable Smart Switch",
+    smart_switch_hint: "Automatically switches accounts when the 5h limit falls below 10% or the weekly limit falls below 5%. Switching is blocked if the Antigravity agent is actively working.",
 
     // Modals
     add_modal_eyebrow: "Add profile",

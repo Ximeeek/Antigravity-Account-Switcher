@@ -219,6 +219,7 @@ impl SwitcherService {
                     .map(|path| path.to_string_lossy().into_owned()),
                 detected_installations,
                 token_refresh_enabled: false,
+                smart_switch_enabled: config.smart_switch_enabled,
             },
             app_version: version.to_owned(),
         })
@@ -265,6 +266,7 @@ impl SwitcherService {
                     .map(|path| path.to_string_lossy().into_owned()),
                 detected_installations,
                 token_refresh_enabled: false,
+                smart_switch_enabled: config.smart_switch_enabled,
             },
             app_version: version.to_owned(),
         })
@@ -467,6 +469,7 @@ impl SwitcherService {
         &self,
         http_port: u16,
         installation_path: Option<String>,
+        smart_switch_enabled: bool,
     ) -> Result<SettingsView> {
         if !(1_024..=65_535).contains(&http_port) {
             return Err(SwitcherError::InvalidConfiguration(
@@ -488,10 +491,188 @@ impl SwitcherService {
             let mut config = self.config.write();
             config.http_port = http_port;
             config.installation_path = installation_path;
+            config.smart_switch_enabled = smart_switch_enabled;
             save_json(&self.paths.config, &*config)?;
         }
         self.logger.info(None, "settings", "Settings updated");
         Ok(self.app_state(env!("CARGO_PKG_VERSION"))?.settings)
+    }
+
+fn get_bucket_remaining_fraction(quota: &ProfileQuotaView, bucket_id: &str) -> Option<f64> {
+    for group in &quota.quota_groups {
+        for bucket in &group.buckets {
+            if bucket.bucket_id == bucket_id {
+                return Some(bucket.remaining_fraction);
+            }
+        }
+    }
+    None
+}
+
+    pub fn is_agent_working(&self) -> bool {
+        let brain_dir = self.paths.gemini_root.join("brain");
+        if !brain_dir.is_dir() {
+            return false;
+        }
+        
+        let mut max_modified = None;
+        if let Ok(entries) = fs::read_dir(&brain_dir) {
+            for entry in entries.filter_map(std::result::Result::ok) {
+                if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                    let transcript_path = entry.path().join(".system_generated").join("logs").join("transcript_full.jsonl");
+                    if transcript_path.is_file() {
+                        if let Ok(metadata) = fs::metadata(&transcript_path) {
+                            if let Ok(modified) = metadata.modified() {
+                                if max_modified.map_or(true, |max| modified > max) {
+                                    max_modified = Some(modified);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if let Some(modified) = max_modified {
+            if let Ok(elapsed) = std::time::SystemTime::now().duration_since(modified) {
+                // If modified in the last 25 seconds, we assume the agent is working!
+                return elapsed.as_secs() < 25;
+            }
+        }
+        
+        false
+    }
+
+    pub async fn check_and_perform_smart_switch(&self) -> Result<()> {
+        // 1. Check if smart switch is enabled.
+        let config = self.config.read().clone();
+        if !config.smart_switch_enabled {
+            return Ok(());
+        }
+
+        // 2. Check if a switch is already in progress.
+        if self.progress.read().is_some() || self.journal().exists() {
+            return Ok(());
+        }
+
+        // 3. Find the active profile.
+        let active_profile_id = match config.active_profile_id {
+            Some(id) => id,
+            None => return Ok(()),
+        };
+
+        // 4. Fetch the latest live quotas.
+        let profiles = match self.list_profiles_live(Some(active_profile_id)).await {
+            Ok(p) => p,
+            Err(e) => {
+                self.logger.warn(None, "smart_switch", format!("Failed to list profiles for smart switch: {}", e));
+                return Ok(());
+            }
+        };
+
+        let active_profile = match profiles.iter().find(|p| p.is_active) {
+            Some(p) => p,
+            None => return Ok(()),
+        };
+
+        let active_quota = match &active_profile.quota {
+            Some(q) => q,
+            None => return Ok(()), // Active profile has no quota fetched yet
+        };
+
+        let active_5h = Self::get_bucket_remaining_fraction(active_quota, "gemini-5h");
+        let active_weekly = Self::get_bucket_remaining_fraction(active_quota, "gemini-weekly");
+
+        let (active_5h_val, active_weekly_val) = match (active_5h, active_weekly) {
+            (Some(f5h), Some(w)) => (f5h, w),
+            _ => return Ok(()),
+        };
+
+        // Check if triggers are met:
+        // 5h limit < 10% (0.10) OR weekly limit < 5% (0.05)
+        let trigger_5h = active_5h_val < 0.10;
+        let trigger_weekly = active_weekly_val < 0.05;
+
+        if !trigger_5h && !trigger_weekly {
+            return Ok(());
+        }
+
+        // 5. Check if the agent is working.
+        if self.is_agent_working() {
+            self.logger.info(None, "smart_switch", "Smart switch triggered, but agent is currently working. Skipping.");
+            return Ok(());
+        }
+
+        // 6. Find a candidate profile to switch to.
+        let mut best_candidate: Option<(&ProfileView, f64, f64)> = None;
+
+        for p in &profiles {
+            if p.is_active {
+                continue;
+            }
+            
+            // Check if the candidate has token/credentials
+            if !p.has_refresh_token && p.token_status != TokenStatus::Valid && p.token_status != TokenStatus::ExpiringSoon {
+                continue;
+            }
+
+            let (target_5h, target_weekly) = match &p.quota {
+                Some(q) => {
+                    let f5h = Self::get_bucket_remaining_fraction(q, "gemini-5h").unwrap_or(1.0);
+                    let w = Self::get_bucket_remaining_fraction(q, "gemini-weekly").unwrap_or(1.0);
+                    (f5h, w)
+                }
+                None => (1.0, 1.0),
+            };
+
+            // Check triggers condition:
+            if trigger_5h && !(target_5h > active_5h_val) {
+                continue;
+            }
+            if trigger_weekly && !(target_weekly > active_weekly_val) {
+                continue;
+            }
+
+            let score = target_5h + target_weekly;
+
+            if let Some((_, best_score, _)) = best_candidate {
+                if score > best_score {
+                    best_candidate = Some((p, score, target_5h));
+                }
+            } else {
+                best_candidate = Some((p, score, target_5h));
+            }
+        }
+
+        if let Some((target_profile, _, target_5h_val)) = best_candidate {
+            let target_id = target_profile.metadata.profile_id;
+            let target_name = &target_profile.metadata.display_name;
+            self.logger.info(
+                None,
+                "smart_switch",
+                format!(
+                    "Smart Switch triggered! Active profile limits are low (5h: {:.1}%, weekly: {:.1}%). Switching to {} (5h: {:.1}%).",
+                    active_5h_val * 100.0,
+                    active_weekly_val * 100.0,
+                    target_name,
+                    target_5h_val * 100.0
+                ),
+            );
+
+            // Execute the switch!
+            match self.request_switch(target_id) {
+                Ok(req) => {
+                    if let Err(e) = self.confirm_switch(req.operation_id) {
+                        self.logger.error(None, "smart_switch", format!("Smart switch confirm failed: {}", e));
+                    }
+                }
+                Err(e) => {
+                    self.logger.error(None, "smart_switch", format!("Smart switch request failed: {}", e));
+                }
+            }
+        }
+
+        Ok(())
     }
 
 
@@ -2339,5 +2520,42 @@ mod tests {
             client_id,
             "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
         );
+    }
+
+    #[test]
+    fn test_get_bucket_remaining_fraction() {
+        use switcher_core::{QuotaGroupView, QuotaBucketView};
+        
+        let quota = ProfileQuotaView {
+            subscription_tier: "tier".to_owned(),
+            quota_groups: vec![
+                QuotaGroupView {
+                    display_name: "group1".to_owned(),
+                    description: "desc".to_owned(),
+                    buckets: vec![
+                        QuotaBucketView {
+                            bucket_id: "gemini-5h".to_owned(),
+                            window: "5h".to_owned(),
+                            remaining_fraction: 0.75,
+                            reset_time: None,
+                            display_name: "5h limit".to_owned(),
+                            description: None,
+                        },
+                        QuotaBucketView {
+                            bucket_id: "gemini-weekly".to_owned(),
+                            window: "168h".to_owned(),
+                            remaining_fraction: 0.12,
+                            reset_time: None,
+                            display_name: "weekly limit".to_owned(),
+                            description: None,
+                        },
+                    ],
+                }
+            ],
+        };
+        
+        assert_eq!(super::SwitcherService::get_bucket_remaining_fraction(&quota, "gemini-5h"), Some(0.75));
+        assert_eq!(super::SwitcherService::get_bucket_remaining_fraction(&quota, "gemini-weekly"), Some(0.12));
+        assert_eq!(super::SwitcherService::get_bucket_remaining_fraction(&quota, "gemini-nonexistent"), None);
     }
 }
