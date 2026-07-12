@@ -170,10 +170,35 @@ impl ProcessManager {
                 switcher_core::sanitize_path(&self.installation_path),
             ),
         );
-        let child = Command::new(&executable)
-            .current_dir(&self.installation_path)
-            .spawn()
-            .map_err(|source| SwitcherError::io(&executable, source))?;
+        let mut cmd = Command::new(&executable);
+        cmd.current_dir(&self.installation_path);
+
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // 0x01000000 -> CREATE_BREAKAWAY_FROM_JOB
+            cmd.creation_flags(0x01000000);
+        }
+
+        let child = match cmd.spawn() {
+            Ok(c) => Ok(c),
+            Err(e) => {
+                #[cfg(windows)]
+                {
+                    if e.raw_os_error() == Some(5) {
+                        let mut fallback_cmd = Command::new(&executable);
+                        fallback_cmd.current_dir(&self.installation_path);
+                        fallback_cmd.spawn()
+                    } else {
+                        Err(e)
+                    }
+                }
+                #[cfg(not(windows))]
+                {
+                    Err(e)
+                }
+            }
+        }.map_err(|source| SwitcherError::io(&executable, source))?;
         let pid = child.id();
         self.logger.info(
             operation_id,
