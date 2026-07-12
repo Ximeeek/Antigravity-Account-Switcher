@@ -446,6 +446,14 @@ const demoInvoke = async (command: string, args: UnknownRecord = {}): Promise<un
       demoState.last_error = null;
       return clone(demoState);
 
+    case "show_mini_window":
+      console.log("Demo: Open mini window");
+      return;
+
+    case "hide_mini_window":
+      console.log("Demo: Close mini window");
+      return;
+
     default:
       throw new Error(`Nieznana komenda demonstracyjna: ${command}`);
   }
@@ -523,6 +531,13 @@ export const startOauthLogin = (displayName: string, lang: string): Promise<AppS
 
 export const cancelOauthLogin = (): Promise<AppState> =>
   commandThenState("cancel_oauth_login");
+
+export const showMiniWindow = (): Promise<void> =>
+  call<void>("show_mini_window");
+
+export const hideMiniWindow = (): Promise<void> =>
+  call<void>("hide_mini_window");
+
 
 export const deleteProfile = (profileId: string): Promise<AppState> =>
   commandThenState("delete_profile", { profileId });

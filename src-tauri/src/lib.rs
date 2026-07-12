@@ -145,6 +145,24 @@ fn cancel_oauth_login(service: State<'_, Arc<SwitcherService>>) -> Result<(), St
     service.cancel_oauth_login().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn show_mini_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app_handle.get_webview_window("mini") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_mini_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app_handle.get_webview_window("mini") {
+        let _ = window.hide();
+    }
+    Ok(())
+}
+
+
 fn handle_client(
     mut stream: TcpStream,
     service: Arc<SwitcherService>,
@@ -415,7 +433,9 @@ pub fn run() {
             recovery_resume,
             recovery_rollback,
             start_oauth_login,
-            cancel_oauth_login
+            cancel_oauth_login,
+            show_mini_window,
+            hide_mini_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

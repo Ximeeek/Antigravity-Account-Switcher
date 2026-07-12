@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   addCurrentProfile,
   cancelSwitch,
@@ -15,7 +16,10 @@ import {
   updateSettings,
   startOauthLogin,
   cancelOauthLogin,
+  showMiniWindow,
 } from "./bridge";
+
+import MiniApp from "./components/MiniApp";
 
 import { Dashboard } from "./components/Dashboard";
 import { Header, type AppView } from "./components/Header";
@@ -82,6 +86,16 @@ function LoadError({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 export default function App() {
+  const [windowLabel, setWindowLabel] = useState<string>("main");
+
+  useEffect(() => {
+    try {
+      setWindowLabel(getCurrentWindow().label);
+    } catch (e) {
+      console.warn("Failed to get window label", e);
+    }
+  }, []);
+
   const [state, setState] = useState<AppState | null>(null);
   const [view, setView] = useState<AppView>("dashboard");
   const [loading, setLoading] = useState(true);
@@ -363,6 +377,10 @@ export default function App() {
     setDeleteTarget(null);
   };
 
+  if (windowLabel === "mini") {
+    return <MiniApp />;
+  }
+
   if (loading) {
     return (
       <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -411,6 +429,9 @@ export default function App() {
         onDemoScenarioChange={handleDemoScenario}
         onViewChange={setView}
         onBrandClick={() => setAboutOpen(true)}
+        onOpenMini={() => {
+          showMiniWindow().catch((err) => console.error("Failed to open mini window", err));
+        }}
         view={view}
       />
 

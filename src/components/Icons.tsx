@@ -16,6 +16,7 @@ export type IconName =
   | "loader"
   | "mail"
   | "minus"
+  | "mini"
   | "plus"
   | "refresh"
   | "server"
@@ -96,6 +97,12 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   minus: <path d="M5 12h14" />,
+  mini: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <rect x="11" y="11" width="8" height="6" rx="1" fill="currentColor" opacity="0.4" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   square: <rect width="18" height="18" x="3" y="3" rx="2" />,
   refresh: (

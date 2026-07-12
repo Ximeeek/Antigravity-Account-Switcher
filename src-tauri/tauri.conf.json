@@ -12,12 +12,25 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Antigravity Account Switcher",
         "width": 800,
         "height": 600,
         "resizable": true,
         "fullscreen": false,
         "decorations": false
+      },
+      {
+        "label": "mini",
+        "title": "Antigravity Mini",
+        "width": 320,
+        "height": 72,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "transparent": true
       }
     ],
     "security": {

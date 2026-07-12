@@ -39,6 +39,13 @@ export const translations = {
     close_message: "Zamknij komunikat",
     no_data: "Brak danych",
     selected_account: "wybrane konto",
+    mini_mode: "Mini-tryb",
+    open_mini: "Otwórz mini-switcher",
+    close_mini: "Zamknij mini-switcher",
+    mini_confirm_title: "Zamknąć Antigravity?",
+    mini_confirm_btn: "Tak, przełącz",
+    mini_cancel_btn: "Anuluj",
+    mini_switching: "Przełączanie...",
 
     // TitleBar
     titlebar_title: "Antigravity Account Switcher",
@@ -247,6 +254,13 @@ export const translations = {
     close_message: "Close message",
     no_data: "No data",
     selected_account: "selected account",
+    mini_mode: "Mini mode",
+    open_mini: "Open mini switcher",
+    close_mini: "Close mini switcher",
+    mini_confirm_title: "Close Antigravity?",
+    mini_confirm_btn: "Yes, switch",
+    mini_cancel_btn: "Cancel",
+    mini_switching: "Switching...",
 
     // TitleBar
     titlebar_title: "Antigravity Account Switcher",

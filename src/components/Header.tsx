@@ -13,6 +13,7 @@ interface HeaderProps {
   demoMode?: boolean;
   demoScenario?: DemoScenario;
   onDemoScenarioChange?: (scenario: DemoScenario) => void;
+  onOpenMini?: () => void;
 }
 
 const enginePresentation: Record<
@@ -33,6 +34,7 @@ export function Header({
   demoMode = false,
   demoScenario = "dashboard",
   onDemoScenarioChange,
+  onOpenMini,
 }: HeaderProps) {
   const engine = enginePresentation[engineStatus];
   const engineLabels: Record<EngineStatus, string> = {
@@ -80,6 +82,17 @@ export function Header({
         </nav>
 
         <div className="header-actions">
+          {onOpenMini && (
+            <button
+              className="button button--secondary button--small"
+              onClick={onOpenMini}
+              title={t("open_mini")}
+              type="button"
+            >
+              <Icon name="mini" size={14} />
+              <span>{t("mini_mode")}</span>
+            </button>
+          )}
           {demoMode && onDemoScenarioChange ? (
             <label className="demo-selector">
               <span className="sr-only">Scenariusz demonstracyjny</span>

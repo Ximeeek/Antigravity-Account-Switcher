@@ -2781,4 +2781,257 @@ button.brand:focus-visible {
   box-shadow: 0 0 8px rgba(248, 138, 138, 0.3);
 }
 
+/* Mini Switcher Window Styles */
+body.mini-window-body {
+  background: transparent !important;
+  margin: 0;
+  padding: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.mini-window-card {
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 14, 26, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.mini-window-card:hover {
+  border-color: var(--border-hover);
+}
+
+.mini-window-loading {
+  align-items: center;
+}
+
+/* Normal flow inside mini switcher */
+.mini-main-flow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.mini-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.mini-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.mini-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.mini-select {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 3px 8px;
+  width: 200px;
+  max-width: 100%;
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.mini-select:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background-color: var(--surface-hover);
+}
+
+.mini-select:focus {
+  border-color: var(--border-active);
+}
+
+.mini-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.mini-badge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mini-badge--success {
+  color: #65e2b2;
+  border-color: rgba(53, 211, 154, 0.16);
+  background: rgba(53, 211, 154, 0.05);
+}
+
+.mini-badge--warning {
+  color: #f7ca72;
+  border-color: rgba(243, 177, 55, 0.16);
+  background: rgba(243, 177, 55, 0.05);
+}
+
+.mini-badge--danger {
+  color: #f88a8a;
+  border-color: rgba(245, 83, 83, 0.16);
+  background: rgba(245, 83, 83, 0.05);
+}
+
+.mini-badge__label {
+  opacity: 0.7;
+  font-weight: 700;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.mini-right {
+  display: flex;
+  align-items: center;
+}
+
+.mini-close-button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mini-close-button:hover {
+  background: rgba(232, 17, 35, 0.1);
+  color: #ff6b7a;
+}
+
+/* Confirmation flow */
+.mini-confirm-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  justify-content: center;
+}
+
+.mini-confirm-flow__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.mini-warning-icon {
+  color: var(--warning);
+}
+
+.mini-confirm-flow__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mini-btn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.mini-btn:active {
+  transform: scale(0.97);
+}
+
+.mini-btn--primary {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.mini-btn--primary:hover:not(:disabled) {
+  background: #3a7ce7;
+}
+
+.mini-btn--secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.mini-btn--secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mini-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Progress flow */
+.mini-progress-flow {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.mini-progress-flow__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mini-progress-flow__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-progress-flow__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mini-progress-flow__step {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+
 
