@@ -435,13 +435,31 @@ export default function App() {
         ) : null}
 
         {view === "dashboard" ? (
-          <Dashboard
-            busy={switchBusy}
-            onActivate={(profile) => void handleActivate(profile)}
-            onAdd={() => setAddProfileOpen(true)}
-            onDelete={setDeleteTarget}
-            state={state}
-          />
+          <>
+            {!state.settings.antigravity_path.trim() ? (
+              <div className="inline-notice inline-notice--warning" role="alert" style={{ marginBottom: "20px" }}>
+                <Icon name="alert" size={19} />
+                <div style={{ flex: 1 }}>
+                  <strong>{t("antigravity_not_detected_title")}</strong>
+                  <p>{t("antigravity_not_detected_desc")}</p>
+                </div>
+                <button
+                  className="button button--secondary button--small"
+                  onClick={() => setView("settings")}
+                  type="button"
+                >
+                  <span>{t("antigravity_not_detected_btn")}</span>
+                </button>
+              </div>
+            ) : null}
+            <Dashboard
+              busy={switchBusy}
+              onActivate={(profile) => void handleActivate(profile)}
+              onAdd={() => setAddProfileOpen(true)}
+              onDelete={setDeleteTarget}
+              state={state}
+            />
+          </>
         ) : (
           <Settings
             onCopyDiagnostics={handleCopyDiagnostics}
