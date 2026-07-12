@@ -4,18 +4,20 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use parking_lot::{Mutex, RwLock};
+use rusqlite::{Connection, params};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     fs,
+    io::Read,
     path::{Path, PathBuf},
     sync::Arc,
     time::Instant,
 };
 use switcher_core::{
     AppStateView, EngineStatus, HttpStatusView, JournalStore, LockStatus,
-    MoveRecord, OperationProgress, PersistentConfig, ProfileManifest, ProfileMetadata, ProfileView,
+    OperationProgress, PersistentConfig, ProfileManifest, ProfileMetadata, ProfileView,
     RecoveryView, Result, SettingsView, SwitchLock, SwitchRequestResult, SwitchStep, SwitcherError,
     TokenStatus, atomic_write, load_json, save_json,
 };
@@ -82,6 +84,7 @@ impl SwitcherService {
             paths,
         });
         service.logger.info(None, "app", "Application initialized");
+        service.log_artifact_inventory(None, "startup-active", None);
         if let Some(lock) = service.journal().read()? {
             service.logger.warn(
                 Some(lock.operation_id),
@@ -166,7 +169,7 @@ impl SwitcherService {
             return Err(SwitcherError::ProfileAlreadyActive);
         }
         self.require_profile(target_profile_id)?;
-        self.preflight_target(target_profile_id)?;
+        self.preflight_target_identity(target_profile_id)?;
         let operation_id = Uuid::new_v4();
         let requires_confirmation = self.process_manager()?.is_running();
         self.pending.lock().insert(
@@ -180,7 +183,9 @@ impl SwitcherService {
         self.logger.info(
             Some(operation_id),
             "profile",
-            format!("Switch requested: {active} -> {target_profile_id}"),
+            format!(
+                "Switch requested: {active} -> {target_profile_id}, requires_confirmation={requires_confirmation}"
+            ),
         );
         Ok(SwitchRequestResult {
             requires_confirmation,
@@ -200,12 +205,27 @@ impl SwitcherService {
     }
 
     pub fn confirm_switch(&self, operation_id: Uuid) -> Result<SwitchOutcome> {
+        self.logger.info(
+            Some(operation_id),
+            "profile",
+            "Switch confirmation received",
+        );
         let pending = self
             .pending
             .lock()
             .remove(&operation_id)
             .ok_or_else(|| SwitcherError::Message("Żądanie przełączenia wygasło lub zostało anulowane".to_owned()))?;
-        self.perform_switch(pending.operation_id, pending.target_profile_id)
+        match self.perform_switch(pending.operation_id, pending.target_profile_id) {
+            Ok(outcome) => Ok(outcome),
+            Err(error) => {
+                self.logger.error(
+                    Some(operation_id),
+                    "profile",
+                    format!("Switch failed before completion: {error}"),
+                );
+                Err(error)
+            }
+        }
     }
 
     pub fn add_current_profile(&self, display_name: String, account_email: Option<String>) -> Result<ProfileView> {
@@ -243,6 +263,7 @@ impl SwitcherService {
             created_at: now,
             last_activated_at: now,
             token_expiry: parse_token_expiry(&credential),
+            snapshot_initialized: true,
         };
         save_json(&profile_dir.join("metadata.json"), &metadata)?;
         let manifest = self.capture_active_manifest(&credential)?;
@@ -343,8 +364,19 @@ impl SwitcherService {
             format!("Windows: {}", windows_version()),
             format!("Wykryte instalacje: {}", installations.join(", ")),
             "".to_owned(),
-            "Ostatnie zdarzenia:".to_owned(),
+            "Artifact diagnostics:".to_owned(),
         ];
+        for artifact in self.paths.artifacts() {
+            report.push(format!(
+                "{:?}: path={} required={} {}",
+                artifact.kind,
+                switcher_core::sanitize_path(&artifact.active),
+                artifact.required,
+                path_summary(&artifact.active),
+            ));
+        }
+        report.push("".to_owned());
+        report.push("Ostatnie zdarzenia:".to_owned());
         report.extend(self.logger.tail(200)?);
         Ok(report.join("\n"))
     }
@@ -405,9 +437,12 @@ impl SwitcherService {
             return Err(SwitcherError::RecoveryRequired);
         }
         self.paths.validate_same_volume()?;
-        self.preflight_active()?;
-        self.preflight_target(target_profile_id)?;
+        self.preflight_active_artifacts()?;
+        self.preflight_target_identity(target_profile_id)?;
         let from_profile_id = self.config.read().active_profile_id.ok_or(SwitcherError::NoActiveProfile)?;
+        let active_credential = self.credentials.read_active()?;
+        let protected_active = self.credentials.protect(&active_credential)?;
+        let target_credential = self.load_profile_credential(target_profile_id)?;
         let started = Instant::now();
         let mut lock = SwitchLock::new(from_profile_id, target_profile_id);
         lock.operation_id = operation_id;
@@ -438,10 +473,28 @@ impl SwitcherService {
             return Err(error);
         }
 
-        let active_credential = self.credentials.read_active()?;
-        let protected_active = self.credentials.protect(&active_credential)?;
-        let target_manifest = self.load_manifest(target_profile_id)?;
-        let target_credential = self.load_profile_credential(target_profile_id)?;
+        if let Err(error) = (|| -> Result<()> {
+            self.repair_active_state_database_if_needed(operation_id)?;
+            self.preflight_active()?;
+            self.merge_legacy_profile_artifacts(operation_id)
+        })() {
+            self.logger.error(
+                Some(operation_id),
+                "profile",
+                format!("Shared editor data preparation failed before credentials were changed: {error}"),
+            );
+            self.journal().remove()?;
+            self.progress.write().take();
+            if let Err(launch_error) = process.launch(Some(operation_id)) {
+                self.logger.warn(
+                    Some(operation_id),
+                    "process",
+                    format!("Failed to relaunch Antigravity after shared data preparation error: {launch_error}"),
+                );
+            }
+            return Err(error);
+        }
+        self.log_artifact_inventory(Some(operation_id), "shared-data-ready", None);
 
         lock.current_step = SwitchStep::BackupCurrent;
         self.journal().write(&lock)?;
@@ -455,11 +508,11 @@ impl SwitcherService {
         lock.current_step = SwitchStep::LoadTarget;
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
-        if let Err(error) = self.load_target_profile(&mut lock) {
-            lock.status = LockStatus::FailedAtStep5RolledBack;
-            self.fail_with_rollback(&mut lock, &error)?;
-            return Err(error);
-        }
+        self.logger.info(
+            Some(operation_id),
+            "profile",
+            "Shared editor and conversation data kept in place",
+        );
 
         lock.current_step = SwitchStep::UpdateCredential;
         self.journal().write(&lock)?;
@@ -480,7 +533,7 @@ impl SwitcherService {
         lock.current_step = SwitchStep::VerifyConsistency;
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
-        if let Err(error) = self.verify_target(&target_manifest, &target_credential) {
+        if let Err(error) = self.verify_target(&target_credential) {
             lock.status = LockStatus::InconsistentStateRequiresManualRecovery;
             self.journal().write(&lock)?;
             self.progress.write().take();
@@ -510,6 +563,7 @@ impl SwitcherService {
 
         lock.current_step = SwitchStep::Relaunch;
         self.set_progress(&lock, None);
+        self.log_artifact_inventory(Some(operation_id), "active-before-relaunch", None);
         let (relaunched_pid, warning) = match process.launch(Some(operation_id)) {
             Ok(pid) => (Some(pid), None),
             Err(error) => {
@@ -535,63 +589,10 @@ impl SwitcherService {
         let manifest = self.capture_active_manifest(active_credential)?;
         save_json(&profile_dir.join("manifest.json"), &manifest)?;
         self.journal().write(lock)?;
-        for artifact in self.paths.artifacts() {
-            if !artifact.active.exists() {
-                if artifact.required {
-                    return Err(SwitcherError::MissingActiveData(artifact.active));
-                }
-                continue;
-            }
-            let destination = profile_dir.join(&artifact.profile_relative);
-            self.move_with_journal(lock, artifact.kind, artifact.active, destination)?;
-        }
-        Ok(())
-    }
-
-    fn load_target_profile(&self, lock: &mut SwitchLock) -> Result<()> {
-        let profile_dir = self.paths.profile_dir(lock.to_profile_id);
-        for artifact in self.paths.artifacts() {
-            let source = profile_dir.join(&artifact.profile_relative);
-            if !source.exists() {
-                if artifact.required {
-                    return Err(SwitcherError::MissingActiveData(source));
-                }
-                continue;
-            }
-            self.move_with_journal(lock, artifact.kind, source, artifact.active)?;
-        }
-        Ok(())
-    }
-
-    fn move_with_journal(
-        &self,
-        lock: &mut SwitchLock,
-        kind: switcher_core::MoveKind,
-        source: PathBuf,
-        destination: PathBuf,
-    ) -> Result<()> {
-        if destination.exists() {
-            return Err(SwitcherError::DestinationExists(destination));
-        }
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent).map_err(|source_error| SwitcherError::io(parent, source_error))?;
-        }
-        lock.moves.push(MoveRecord {
-            kind,
-            source: source.clone(),
-            destination: destination.clone(),
-            completed: false,
-        });
-        self.journal().write(lock)?;
-        fs::rename(&source, &destination).map_err(|source_error| SwitcherError::io(&source, source_error))?;
-        if let Some(record) = lock.moves.last_mut() {
-            record.completed = true;
-        }
-        self.journal().write(lock)?;
         self.logger.info(
             Some(lock.operation_id),
             "profile",
-            format!("Moved {} -> {}", source.display(), destination.display()),
+            "Current credential backed up; shared editor data was not moved",
         );
         Ok(())
     }
@@ -655,24 +656,9 @@ impl SwitcherService {
         Ok(())
     }
 
-    fn verify_target(&self, expected: &ProfileManifest, credential: &[u8]) -> Result<()> {
-        let actual = self.capture_active_manifest(credential)?;
-        if expected.credential_digest != actual.credential_digest {
-            return Err(SwitcherError::Consistency("Credential Manager nie pasuje do profilu docelowego".to_owned()));
-        }
-        if expected.state_digest != actual.state_digest {
-            return Err(SwitcherError::Consistency("state.vscdb nie pasuje do profilu docelowego".to_owned()));
-        }
-        if expected.brain_marker != actual.brain_marker {
-            return Err(SwitcherError::Consistency("Katalog brain nie pasuje do profilu docelowego".to_owned()));
-        }
-        if expected.conversations_marker != actual.conversations_marker {
-            return Err(SwitcherError::Consistency(
-                "Katalog conversations nie pasuje do profilu docelowego".to_owned(),
-            ));
-        }
+    fn verify_target(&self, credential: &[u8]) -> Result<()> {
         let active = self.credentials.read_active()?;
-        if CredentialStore::digest(&active) != expected.credential_digest {
+        if CredentialStore::digest(&active) != CredentialStore::digest(credential) {
             return Err(SwitcherError::Consistency("Aktywne poświadczenie nie przeszło odczytu zwrotnego".to_owned()));
         }
         Ok(())
@@ -688,24 +674,148 @@ impl SwitcherService {
         })
     }
 
+    fn log_artifact_inventory(
+        &self,
+        operation_id: Option<Uuid>,
+        label: &str,
+        profile_id: Option<Uuid>,
+    ) {
+        for artifact in self.paths.artifacts() {
+            let path = profile_id
+                .map(|id| self.paths.profile_dir(id).join(&artifact.profile_relative))
+                .unwrap_or_else(|| artifact.active.clone());
+            self.logger.debug(
+                operation_id,
+                "diagnostics",
+                format!(
+                    "Artifact inventory label={label} kind={:?} required={} path={} {}",
+                    artifact.kind,
+                    artifact.required,
+                    switcher_core::sanitize_path(&path),
+                    path_summary(&path),
+                ),
+            );
+        }
+    }
+
     fn preflight_active(&self) -> Result<()> {
+        self.preflight_active_artifacts()?;
+        validate_state_database(&self.paths.state_db)
+    }
+
+    fn preflight_active_artifacts(&self) -> Result<()> {
         for artifact in self.paths.artifacts().into_iter().filter(|artifact| artifact.required) {
             if !artifact.active.exists() {
+                if artifact.kind == switcher_core::MoveKind::StateDatabase
+                    && self.paths.state_db.with_file_name("storage.json").is_file()
+                {
+                    continue;
+                }
                 return Err(SwitcherError::MissingActiveData(artifact.active));
             }
         }
         Ok(())
     }
 
-    fn preflight_target(&self, profile_id: Uuid) -> Result<()> {
-        let profile = self.paths.profile_dir(profile_id);
-        for artifact in self.paths.artifacts().into_iter().filter(|artifact| artifact.required) {
-            let path = profile.join(artifact.profile_relative);
-            if !path.exists() {
-                return Err(SwitcherError::MissingActiveData(path));
+    fn repair_active_state_database_if_needed(&self, operation_id: Uuid) -> Result<()> {
+        if validate_state_database(&self.paths.state_db).is_ok() {
+            return Ok(());
+        }
+        let storage_json = self.paths.state_db.with_file_name("storage.json");
+        if !storage_json.is_file() {
+            return validate_state_database(&self.paths.state_db);
+        }
+        self.logger.warn(
+            Some(operation_id),
+            "recovery",
+            format!(
+                "Active state database is invalid; rebuilding it from {}",
+                switcher_core::sanitize_path(&storage_json),
+            ),
+        );
+        let rebuilt = self
+            .paths
+            .state_db
+            .with_file_name(format!("state.vscdb.rebuild-{operation_id}"));
+        if rebuilt.exists() {
+            remove_path(&rebuilt)?;
+        }
+        let migrated = rebuild_state_database_from_json(&storage_json, &rebuilt)?;
+        validate_state_database(&rebuilt)?;
+
+        let recovery_dir = self.paths.root.join("recovery");
+        fs::create_dir_all(&recovery_dir)
+            .map_err(|source| SwitcherError::io(&recovery_dir, source))?;
+        let backup = recovery_dir.join(format!("active-state-{operation_id}.vscdb.invalid"));
+        if self.paths.state_db.exists() {
+            fs::rename(&self.paths.state_db, &backup)
+                .map_err(|source| SwitcherError::io(&self.paths.state_db, source))?;
+        }
+        fs::rename(&rebuilt, &self.paths.state_db)
+            .map_err(|source| SwitcherError::io(&rebuilt, source))?;
+        self.logger.info(
+            Some(operation_id),
+            "recovery",
+            format!("Active state database rebuilt successfully, migrated_items={migrated}"),
+        );
+        Ok(())
+    }
+
+    fn merge_legacy_profile_artifacts(&self, operation_id: Uuid) -> Result<()> {
+        let mut copied_files = 0_u64;
+        let shared_directories = [
+            ("brain", self.paths.gemini_root.join("brain")),
+            ("conversations", self.paths.gemini_root.join("conversations")),
+            ("annotations", self.paths.gemini_root.join("annotations")),
+            ("html_artifacts", self.paths.gemini_root.join("html_artifacts")),
+            ("workspaceStorage", self.paths.workspace_storage.clone()),
+        ];
+        let active_summaries = self.paths.gemini_root.join("agyhub_summaries_proto.pb");
+
+        for entry in fs::read_dir(&self.paths.profiles)
+            .map_err(|source| SwitcherError::io(&self.paths.profiles, source))?
+        {
+            let entry = entry.map_err(|source| SwitcherError::io(&self.paths.profiles, source))?;
+            if !entry.path().is_dir() {
+                continue;
+            }
+            for (relative, active) in &shared_directories {
+                copied_files += merge_missing_files(&entry.path().join(relative), active)?;
+            }
+
+            let stored_summaries = entry.path().join("agyhub_summaries_proto.pb");
+            if stored_summaries.is_file() {
+                let stored_size = fs::metadata(&stored_summaries)
+                    .map_err(|source| SwitcherError::io(&stored_summaries, source))?
+                    .len();
+                let active_size = fs::metadata(&active_summaries)
+                    .map(|metadata| metadata.len())
+                    .unwrap_or(0);
+                if stored_size > active_size {
+                    if let Some(parent) = active_summaries.parent() {
+                        fs::create_dir_all(parent)
+                            .map_err(|source| SwitcherError::io(parent, source))?;
+                    }
+                    fs::copy(&stored_summaries, &active_summaries)
+                        .map_err(|source| SwitcherError::io(&stored_summaries, source))?;
+                    copied_files += 1;
+                }
             }
         }
-        for name in ["credentials.enc", "metadata.json", "manifest.json"] {
+
+        self.logger.info(
+            Some(operation_id),
+            "recovery",
+            format!(
+                "Legacy per-profile editor data merged into shared storage, copied_files={copied_files}"
+            ),
+        );
+        Ok(())
+    }
+
+    fn preflight_target_identity(&self, profile_id: Uuid) -> Result<()> {
+        let profile = self.paths.profile_dir(profile_id);
+        for name in ["credentials.enc", "metadata.json"] {
             let path = profile.join(name);
             if !path.is_file() {
                 return Err(SwitcherError::MissingActiveData(path));
@@ -790,10 +900,6 @@ impl SwitcherService {
         self.credentials.unprotect(&protected)
     }
 
-    fn load_manifest(&self, profile_id: Uuid) -> Result<ProfileManifest> {
-        load_json(&self.paths.profile_dir(profile_id).join("manifest.json"))
-    }
-
     fn touch_profile(&self, profile_id: Uuid) -> Result<()> {
         let path = self.paths.profile_dir(profile_id).join("metadata.json");
         let mut metadata: ProfileMetadata = load_json(&path)?;
@@ -827,7 +933,7 @@ impl SwitcherService {
 
     pub async fn start_oauth_login(&self, display_name: String) -> Result<ProfileView> {
         println!("[OAuth] --- start_oauth_login started ---");
-        println!("[OAuth] Display name: {}", display_name);
+        println!("[OAuth] Display name validated locally (not logged).");
         validate_display_name(&display_name)?;
         if self.journal().exists() {
             println!("[OAuth] Error: Journal exists, recovery required.");
@@ -842,7 +948,7 @@ impl SwitcherService {
 
         let operation_id = Uuid::new_v4();
         println!("[OAuth] Operation ID generated: {}", operation_id);
-        self.logger.info(Some(operation_id), "oauth", format!("Rozpoczęto logowanie bezpośrednie dla: {}", display_name));
+        self.logger.info(Some(operation_id), "oauth", "Direct OAuth login started");
 
         let code_verifier = format!("{}{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple(), Uuid::new_v4().simple());
         let mut hasher = Sha256::new();
@@ -872,7 +978,7 @@ impl SwitcherService {
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
         *self.active_oauth_cancellation.lock() = Some(tx);
 
-        let reversed_client_id = "moc.tnetnocresugegoog.sppa.pe4g4hjo1otv532cae3fl12h2hnt-1950606001701";
+        let reversed_client_id = "moc.tnetnocresuelgoog.sppa.pe304g4hjolotv532ercl12h2nisshmt-1950606001701";
         let client_id: String = reversed_client_id.chars().rev().collect();
         let state = Uuid::new_v4().simple().to_string();
         let scopes = vec![
@@ -903,8 +1009,8 @@ impl SwitcherService {
             &state,
             scopes_encoded
         );
-        println!("[OAuth] Built authorization URL: {}", auth_url);
-        self.logger.debug(Some(operation_id), "oauth", format!("OAuth authorization URL built: {}", auth_url));
+        println!("[OAuth] Authorization URL built (sensitive query parameters omitted).");
+        self.logger.debug(Some(operation_id), "oauth", "OAuth authorization URL built; query parameters omitted");
         self.logger.info(Some(operation_id), "oauth", "Otwieranie przeglądarki systemowej...");
 
         #[cfg(windows)]
@@ -1038,7 +1144,7 @@ impl SwitcherService {
         let refresh_token = token_val.get("refresh_token")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                eprintln!("[OAuth] Error: Google response is missing 'refresh_token'. Google response JSON: {:?}", token_val);
+                eprintln!("[OAuth] Error: Google response is missing 'refresh_token' (response body omitted).");
                 SwitcherError::Message("Brak refresh_token w odpowiedzi (upewnij się, że to pierwsze logowanie na tym kliencie lub wyczyść uprawnienia)".to_owned())
             })?;
         let id_token = token_val.get("id_token")
@@ -1056,7 +1162,7 @@ impl SwitcherService {
                 eprintln!("[OAuth] Error: Failed to extract email address from 'id_token' JWT payload.");
                 SwitcherError::Message("Nie udało się odczytać adresu email z id_token".to_owned())
             })?;
-        println!("[OAuth] Extracted email from ID token: {}", email);
+        println!("[OAuth] Account identity extracted from ID token (email omitted).");
 
         let now = Utc::now();
         let token_expiry = now + chrono::Duration::seconds(expires_in);
@@ -1081,25 +1187,6 @@ impl SwitcherService {
         let protected = self.credentials.protect(&credential_bytes)?;
         atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
 
-        println!("[OAuth] Creating placeholder state.vscdb, brain, conversations...");
-        let state_db_path = profile_dir.join("state.vscdb");
-        fs::write(&state_db_path, []).map_err(|source| SwitcherError::io(&state_db_path, source))?;
-
-        let brain_dir = profile_dir.join("brain");
-        fs::create_dir_all(&brain_dir).map_err(|source| SwitcherError::io(&brain_dir, source))?;
-        let conv_dir = profile_dir.join("conversations");
-        fs::create_dir_all(&conv_dir).map_err(|source| SwitcherError::io(&conv_dir, source))?;
-
-        println!("[OAuth] Saving manifest.json...");
-        let manifest = ProfileManifest {
-            credential_digest: CredentialStore::digest(&credential_bytes),
-            state_digest: hash_file(&state_db_path)?,
-            brain_marker: hash_directory(&brain_dir)?,
-            conversations_marker: hash_directory(&conv_dir)?,
-            captured_at: Some(now),
-        };
-        save_json(&profile_dir.join("manifest.json"), &manifest)?;
-
         println!("[OAuth] Saving metadata.json...");
         let metadata = ProfileMetadata {
             profile_id: new_profile_id,
@@ -1108,6 +1195,7 @@ impl SwitcherService {
             created_at: now,
             last_activated_at: now,
             token_expiry: Some(token_expiry),
+            snapshot_initialized: true,
         };
         save_json(&profile_dir.join("metadata.json"), &metadata)?;
 
@@ -1129,6 +1217,150 @@ impl SwitcherService {
         }
         Ok(())
     }
+}
+
+fn rebuild_state_database_from_json(source: &Path, destination: &Path) -> Result<usize> {
+    let bytes = fs::read(source).map_err(|error| SwitcherError::io(source, error))?;
+    let values: serde_json::Map<String, Value> = serde_json::from_slice(&bytes)
+        .map_err(|error| SwitcherError::Json {
+            path: source.to_path_buf(),
+            source: error,
+        })?;
+    if destination.exists() {
+        remove_path(destination)?;
+    }
+    let mut connection = Connection::open(destination).map_err(|error| {
+        SwitcherError::Consistency(format!(
+            "Nie udało się utworzyć bazy {}: {error}",
+            destination.display(),
+        ))
+    })?;
+    connection
+        .execute_batch(
+            "PRAGMA user_version = 1;
+             CREATE TABLE IF NOT EXISTS ItemTable (
+                 key TEXT UNIQUE ON CONFLICT REPLACE,
+                 value BLOB
+             );",
+        )
+        .map_err(|error| SwitcherError::Consistency(format!("Nie udało się utworzyć schematu SQLite: {error}")))?;
+    let transaction = connection
+        .transaction()
+        .map_err(|error| SwitcherError::Consistency(format!("Nie udało się rozpocząć migracji SQLite: {error}")))?;
+    {
+        let mut insert = transaction
+            .prepare("INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?1, ?2)")
+            .map_err(|error| SwitcherError::Consistency(format!("Nie udało się przygotować migracji SQLite: {error}")))?;
+        for (key, value) in &values {
+            let stored_value = match value {
+                Value::String(value) => value.clone(),
+                _ => serde_json::to_string(value).map_err(|error| SwitcherError::Json {
+                    path: source.to_path_buf(),
+                    source: error,
+                })?,
+            };
+            insert
+                .execute(params![key, stored_value])
+                .map_err(|error| SwitcherError::Consistency(format!("Nie udało się zapisać elementu SQLite: {error}")))?;
+        }
+    }
+    transaction
+        .commit()
+        .map_err(|error| SwitcherError::Consistency(format!("Nie udało się zatwierdzić migracji SQLite: {error}")))?;
+    drop(connection);
+    Ok(values.len())
+}
+
+fn validate_state_database(path: &Path) -> Result<()> {
+    let metadata = fs::metadata(path).map_err(|source| SwitcherError::io(path, source))?;
+    if metadata.len() < 16 {
+        return Err(SwitcherError::Consistency(format!(
+            "state.vscdb jest pusty lub niekompletny ({} bajtów): {}. Uruchom Antigravity, pozwól mu odtworzyć dane, zamknij je i spróbuj ponownie.",
+            metadata.len(),
+            path.display(),
+        )));
+    }
+    let mut file = fs::File::open(path).map_err(|source| SwitcherError::io(path, source))?;
+    let mut header = [0_u8; 16];
+    file.read_exact(&mut header)
+        .map_err(|source| SwitcherError::io(path, source))?;
+    if &header != b"SQLite format 3\0" {
+        return Err(SwitcherError::Consistency(format!(
+            "state.vscdb nie ma poprawnego nagłówka SQLite: {}",
+            path.display(),
+        )));
+    }
+    Ok(())
+}
+
+fn merge_missing_files(source: &Path, destination: &Path) -> Result<u64> {
+    if !source.is_dir() {
+        return Ok(0);
+    }
+    fs::create_dir_all(destination).map_err(|error| SwitcherError::io(destination, error))?;
+    let mut copied = 0_u64;
+    for entry in WalkDir::new(source).follow_links(false) {
+        let entry = entry.map_err(|error| {
+            SwitcherError::io(
+                error.path().unwrap_or(source),
+                std::io::Error::other(error.to_string()),
+            )
+        })?;
+        let relative = entry.path().strip_prefix(source).map_err(|error| {
+            SwitcherError::InvalidConfiguration(format!(
+                "Nie można scalić danych profilu: {error}"
+            ))
+        })?;
+        if relative.as_os_str().is_empty() {
+            continue;
+        }
+        let output = destination.join(relative);
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&output).map_err(|error| SwitcherError::io(&output, error))?;
+        } else if entry.file_type().is_file() && !output.exists() {
+            if let Some(parent) = output.parent() {
+                fs::create_dir_all(parent).map_err(|error| SwitcherError::io(parent, error))?;
+            }
+            fs::copy(entry.path(), &output)
+                .map_err(|error| SwitcherError::io(entry.path(), error))?;
+            copied += 1;
+        }
+    }
+    Ok(copied)
+}
+
+fn remove_path(path: &Path) -> Result<()> {
+    if path.is_dir() {
+        fs::remove_dir_all(path).map_err(|error| SwitcherError::io(path, error))
+    } else {
+        fs::remove_file(path).map_err(|error| SwitcherError::io(path, error))
+    }
+}
+
+fn path_summary(path: &Path) -> String {
+    let Ok(metadata) = fs::metadata(path) else {
+        return "status=missing".to_owned();
+    };
+    if metadata.is_file() {
+        return format!("status=file bytes={}", metadata.len());
+    }
+    let mut files = 0_u64;
+    let mut bytes = 0_u64;
+    let mut errors = 0_u64;
+    for entry in WalkDir::new(path).follow_links(false) {
+        match entry {
+            Ok(entry) if entry.file_type().is_file() => {
+                files += 1;
+                match entry.metadata() {
+                    Ok(metadata) => bytes = bytes.saturating_add(metadata.len()),
+                    Err(_) => errors += 1,
+                }
+            }
+            Ok(_) => {}
+            Err(_) => errors += 1,
+        }
+    }
+    format!("status=directory files={files} bytes={bytes} scan_errors={errors}")
 }
 
 fn validate_display_name(name: &str) -> Result<()> {
@@ -1313,7 +1545,7 @@ async fn listen_for_callback(
                 continue;
             }
         };
-        println!("[OAuth Listener] Request Line: {}", first_line);
+        println!("[OAuth Listener] Received callback request (query omitted).");
         let parts: Vec<&str> = first_line.split_whitespace().collect();
         if parts.len() < 2 || parts[0] != "GET" {
             println!("[OAuth Listener] Warning: Ignoring non-GET request.");
@@ -1325,7 +1557,7 @@ async fn listen_for_callback(
             continue;
         }
         let query = url_path.split('?').nth(1).unwrap_or("");
-        println!("[OAuth Listener] Parsed Callback Query String: {}", query);
+        println!("[OAuth Listener] Parsing callback parameters securely.");
         let mut code = None;
         let mut state = None;
         let mut error = None;
@@ -1353,7 +1585,7 @@ async fn listen_for_callback(
             return Err(SwitcherError::Message(format!("Google OAuth error: {}", decoded_err)));
         }
         let state_val = url_decode(&state.unwrap_or_default());
-        println!("[OAuth Listener] CSRF State check: Expected: '{}', Received: '{}'", expected_state, state_val);
+        println!("[OAuth Listener] Validating CSRF state (values omitted).");
         if state_val != expected_state {
             eprintln!("[OAuth Listener] Error: CSRF state mismatch!");
             let response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
@@ -1414,6 +1646,64 @@ mod tests {
     }
 
     #[test]
+    fn state_database_validation_rejects_placeholder_and_accepts_sqlite_header() {
+        let temp = tempfile::tempdir().unwrap();
+        let database = temp.path().join("state.vscdb");
+        std::fs::write(&database, []).unwrap();
+        assert!(validate_state_database(&database).is_err());
+
+        std::fs::write(&database, b"SQLite format 3\0payload").unwrap();
+        assert!(validate_state_database(&database).is_ok());
+    }
+
+    #[test]
+    fn rebuilds_state_database_from_legacy_storage_json() {
+        let temp = tempfile::tempdir().unwrap();
+        let storage = temp.path().join("storage.json");
+        let database = temp.path().join("state.vscdb");
+        std::fs::write(
+            &storage,
+            br#"{"theme":"dark","onboarding.complete":true,"window":{"x":10}}"#,
+        )
+        .unwrap();
+
+        let migrated = rebuild_state_database_from_json(&storage, &database).unwrap();
+
+        assert_eq!(migrated, 3);
+        validate_state_database(&database).unwrap();
+        let connection = Connection::open(&database).unwrap();
+        let theme: String = connection
+            .query_row(
+                "SELECT value FROM ItemTable WHERE key = 'theme'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(theme, "dark");
+    }
+
+    #[test]
+    fn legacy_merge_restores_missing_conversations_without_overwriting_shared_files() {
+        let temp = tempfile::tempdir().unwrap();
+        let stored = temp.path().join("stored");
+        let shared = temp.path().join("shared");
+        std::fs::create_dir_all(&stored).unwrap();
+        std::fs::create_dir_all(&shared).unwrap();
+        std::fs::write(stored.join("old.db"), b"stored conversation").unwrap();
+        std::fs::write(stored.join("current.db"), b"old copy").unwrap();
+        std::fs::write(shared.join("current.db"), b"current conversation").unwrap();
+
+        let copied = merge_missing_files(&stored, &shared).unwrap();
+
+        assert_eq!(copied, 1);
+        assert_eq!(std::fs::read(shared.join("old.db")).unwrap(), b"stored conversation");
+        assert_eq!(
+            std::fs::read(shared.join("current.db")).unwrap(),
+            b"current conversation",
+        );
+    }
+
+    #[test]
     fn base64_url_encode_decode_roundtrip() {
         let original = b"hello world?$-_";
         let encoded = base64_url_encode(original);
@@ -1429,6 +1719,13 @@ mod tests {
         assert_eq!(url_decode("hello%20world"), "hello world");
         assert_eq!(url_decode("4%2F0AdkVLPw"), "4/0AdkVLPw");
         assert_eq!(url_decode("some+space"), "some space");
+    }
+
+    #[test]
+    fn test_client_id_domain() {
+        let reversed_client_id = "moc.tnetnocresuelgoog.sppa.pe304g4hjolotv532ercl12h2nisshmt-1950606001701";
+        let client_id: String = reversed_client_id.chars().rev().collect();
+        assert_eq!(client_id, "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com");
     }
 }
 

@@ -17,6 +17,7 @@ walkdir = "2.5"
 reqwest = { workspace = true }
 base64 = { workspace = true }
 tokio = { workspace = true }
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 
 
@@ -34,4 +35,3 @@ windows-sys = { version = "0.59", features = [
 
 [dev-dependencies]
 tempfile = "3.14"
-

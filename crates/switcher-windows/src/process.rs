@@ -148,7 +148,17 @@ impl ProcessManager {
                 executable.display()
             )));
         }
+        self.logger.info(
+            operation_id,
+            "process",
+            format!(
+                "Launching Antigravity executable={} working_directory={} arguments=[]",
+                switcher_core::sanitize_path(&executable),
+                switcher_core::sanitize_path(&self.installation_path),
+            ),
+        );
         let child = Command::new(&executable)
+            .current_dir(&self.installation_path)
             .spawn()
             .map_err(|source| SwitcherError::io(&executable, source))?;
         let pid = child.id();
@@ -341,4 +351,3 @@ fn can_open_exclusive(path: &Path) -> bool {
         true
     }
 }
-

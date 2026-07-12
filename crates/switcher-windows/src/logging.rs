@@ -77,6 +77,7 @@ impl AuditLogger {
             component,
             safe_message
         );
+        eprint!("{line}");
         if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&self.path) {
             let _ = file.write_all(line.as_bytes());
             let _ = file.flush();
@@ -109,4 +110,3 @@ impl AuditLogger {
         Ok(())
     }
 }
-

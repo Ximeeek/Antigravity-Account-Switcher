@@ -14,6 +14,12 @@ pub struct ProfileMetadata {
     pub last_activated_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token_expiry: Option<DateTime<Utc>>,
+    #[serde(default = "existing_profile_has_snapshot")]
+    pub snapshot_initialized: bool,
+}
+
+fn existing_profile_has_snapshot() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -139,9 +145,14 @@ pub enum MoveKind {
     StateDatabase,
     StateDatabaseWal,
     StateDatabaseShm,
+    GlobalStorageJson,
     Brain,
     Conversations,
     AntigravityState,
+    Annotations,
+    ConversationSummaries,
+    HtmlArtifacts,
+    WorkspaceStorage,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -257,5 +268,23 @@ pub struct HttpStatusView {
     pub active_profile: Option<ProfileView>,
     pub profiles: Vec<ProfileView>,
     pub recovery_required: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_profile_metadata_defaults_to_initialized_snapshot() {
+        let profile_id = Uuid::new_v4();
+        let value = serde_json::json!({
+            "profileId": profile_id,
+            "displayName": "legacy",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "lastActivatedAt": "2026-01-01T00:00:00Z"
+        });
+        let metadata: ProfileMetadata = serde_json::from_value(value).unwrap();
+        assert!(metadata.snapshot_initialized);
+    }
 }
 

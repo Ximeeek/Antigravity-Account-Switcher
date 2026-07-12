@@ -1402,7 +1402,7 @@ summary {
 
 .modal-backdrop {
   position: fixed;
-  z-index: 100;
+  z-index: 20000;
   inset: 0;
   padding: 24px;
   display: grid;

@@ -20,6 +20,35 @@ pub fn redact_diagnostic_line(line: &str) -> String {
         }
         output.push_str(suffix);
     }
+    for key in [
+        "access_token",
+        "refresh_token",
+        "id_token",
+        "client_secret",
+        "code_challenge",
+        "code",
+        "state",
+    ] {
+        output = redact_assignment(&output, key);
+    }
+    output
+}
+
+fn redact_assignment(input: &str, key: &str) -> String {
+    let marker = format!("{key}=");
+    let mut output = String::with_capacity(input.len());
+    let mut remaining = input;
+    while let Some(index) = remaining.find(&marker) {
+        let value_start = index + marker.len();
+        output.push_str(&remaining[..value_start]);
+        output.push_str("[REDACTED]");
+        let value_end = remaining[value_start..]
+            .find(|character: char| character == '&' || character.is_whitespace())
+            .map(|offset| value_start + offset)
+            .unwrap_or(remaining.len());
+        remaining = &remaining[value_end..];
+    }
+    output.push_str(remaining);
     output
 }
 
@@ -52,5 +81,14 @@ mod tests {
         assert!(!redacted.contains("user@example.com"));
         assert!(redacted.contains("next=ok"));
     }
-}
 
+    #[test]
+    fn removes_oauth_query_parameters() {
+        let line = "GET /auth/callback?state=csrf-value&code=authorization-code HTTP/1.1";
+        let redacted = redact_diagnostic_line(line);
+        assert!(!redacted.contains("csrf-value"));
+        assert!(!redacted.contains("authorization-code"));
+        assert!(redacted.contains("state=[REDACTED]"));
+        assert!(redacted.contains("code=[REDACTED]"));
+    }
+}

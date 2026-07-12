@@ -19,6 +19,7 @@ pub struct SwitcherPaths {
     pub lock: PathBuf,
     pub state_db: PathBuf,
     pub gemini_root: PathBuf,
+    pub workspace_storage: PathBuf,
 }
 
 impl SwitcherPaths {
@@ -38,6 +39,7 @@ impl SwitcherPaths {
             lock: root.join("switcher.lock"),
             state_db: roaming.join("Antigravity").join("User").join("globalStorage").join("state.vscdb"),
             gemini_root: home.join(".gemini").join("antigravity"),
+            workspace_storage: roaming.join("Antigravity").join("User").join("workspaceStorage"),
             root,
         })
     }
@@ -74,16 +76,22 @@ impl SwitcherPaths {
                 required: false,
             },
             ArtifactPath {
+                kind: MoveKind::GlobalStorageJson,
+                active: self.state_db.with_file_name("storage.json"),
+                profile_relative: PathBuf::from("storage.json"),
+                required: false,
+            },
+            ArtifactPath {
                 kind: MoveKind::Brain,
                 active: self.gemini_root.join("brain"),
                 profile_relative: PathBuf::from("brain"),
-                required: true,
+                required: false,
             },
             ArtifactPath {
                 kind: MoveKind::Conversations,
                 active: self.gemini_root.join("conversations"),
                 profile_relative: PathBuf::from("conversations"),
-                required: true,
+                required: false,
             },
             ArtifactPath {
                 kind: MoveKind::AntigravityState,
@@ -91,11 +99,35 @@ impl SwitcherPaths {
                 profile_relative: PathBuf::from("antigravity_state.pbtxt"),
                 required: false,
             },
+            ArtifactPath {
+                kind: MoveKind::Annotations,
+                active: self.gemini_root.join("annotations"),
+                profile_relative: PathBuf::from("annotations"),
+                required: false,
+            },
+            ArtifactPath {
+                kind: MoveKind::ConversationSummaries,
+                active: self.gemini_root.join("agyhub_summaries_proto.pb"),
+                profile_relative: PathBuf::from("agyhub_summaries_proto.pb"),
+                required: false,
+            },
+            ArtifactPath {
+                kind: MoveKind::HtmlArtifacts,
+                active: self.gemini_root.join("html_artifacts"),
+                profile_relative: PathBuf::from("html_artifacts"),
+                required: false,
+            },
+            ArtifactPath {
+                kind: MoveKind::WorkspaceStorage,
+                active: self.workspace_storage.clone(),
+                profile_relative: PathBuf::from("workspaceStorage"),
+                required: false,
+            },
         ]
     }
 
     pub fn validate_same_volume(&self) -> Result<()> {
-        for active in [&self.state_db, &self.gemini_root] {
+        for active in [&self.state_db, &self.gemini_root, &self.workspace_storage] {
             if !same_volume(&self.profiles, active) {
                 return Err(SwitcherError::CrossVolume {
                     left: self.profiles.clone(),
@@ -152,4 +184,3 @@ fn same_volume(left: &Path, right: &Path) -> bool {
         true
     }
 }
-

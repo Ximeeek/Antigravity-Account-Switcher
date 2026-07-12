@@ -502,33 +502,36 @@ export const getAppState = async (): Promise<AppState> =>
 export const requestSwitch = async (targetProfileId: string): Promise<AppState> => {
   const result = await call<unknown>("request_switch", { targetProfileId });
   if (isRecord(result) && ("profiles" in result || "accounts" in result)) {
-    return normalizeAppState(result);
+    const state = normalizeAppState(result);
+    if (!state.operation) {
+      throw new Error("Backend nie zwrócił oczekującej operacji przełączenia.");
+    }
+    return state;
   }
 
   const state = await getAppState();
   if (!isRecord(result)) {
-    return state;
+    throw new Error("Backend zwrócił nieprawidłową odpowiedź na żądanie aktywacji.");
   }
 
   const requiresConfirmation = asBoolean(
     pick(result, "requiresConfirmation", "requires_confirmation"),
   );
-  if (!state.operation) {
-    state.operation = {
-      operation_id: asString(
-        pick(result, "operationId", "operation_id"),
-        "pending-operation",
-      ),
-      from_profile_id: state.active_profile_id,
-      to_profile_id: asString(
-        pick(result, "targetProfileId", "target_profile_id"),
-        targetProfileId,
-      ),
-      current_step: 0,
-      status: requiresConfirmation ? "awaiting_confirmation" : "in_progress",
-      editor_was_running: requiresConfirmation,
-    };
+  const operationId = asString(pick(result, "operationId", "operation_id"));
+  if (!operationId) {
+    throw new Error("Backend nie zwrócił identyfikatora operacji przełączenia.");
   }
+  state.operation = {
+    operation_id: operationId,
+    from_profile_id: state.active_profile_id,
+    to_profile_id: asString(
+      pick(result, "targetProfileId", "target_profile_id"),
+      targetProfileId,
+    ),
+    current_step: 0,
+    status: requiresConfirmation ? "awaiting_confirmation" : "in_progress",
+    editor_was_running: requiresConfirmation,
+  };
   return state;
 };
 

@@ -37,6 +37,7 @@ import type {
   AppState,
   DemoScenario,
   ProfileSummary,
+  SwitchOperation,
 } from "./types";
 
 interface Notice {
@@ -87,6 +88,7 @@ export default function App() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [addProfileOpen, setAddProfileOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProfileSummary | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<SwitchOperation | null>(null);
   const [demoScenario, setDemoScenarioState] = useState<DemoScenario>(() => {
     if (typeof window === "undefined") return "dashboard";
     const requested = new URLSearchParams(window.location.search).get("demo");
@@ -98,7 +100,7 @@ export default function App() {
       : "dashboard";
   });
   const mounted = useRef(true);
-  const previousOperation = useRef<string | null>(null);
+  const expectedSwitchTarget = useRef<string | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -142,12 +144,16 @@ export default function App() {
   }, [loadState, state?.engine_status, state?.operation]);
 
   useEffect(() => {
-    const currentOperation = state?.operation?.operation_id ?? null;
-    if (previousOperation.current && !currentOperation && state?.engine_status === "ready") {
+    const expectedTarget = expectedSwitchTarget.current;
+    if (
+      expectedTarget &&
+      state?.active_profile_id === expectedTarget &&
+      state.engine_status === "ready"
+    ) {
+      expectedSwitchTarget.current = null;
       setNotice({ tone: "success", message: "Konto zostało bezpiecznie przełączone." });
     }
-    previousOperation.current = currentOperation;
-  }, [state?.engine_status, state?.operation?.operation_id]);
+  }, [state?.active_profile_id, state?.engine_status]);
 
   const performStateAction = useCallback(
     async (
@@ -180,25 +186,49 @@ export default function App() {
     try {
       const requested = await requestSwitch(profile.profile_id);
       if (!mounted.current) return;
+      const operation = requested.operation;
+      if (!operation) {
+        throw new Error("Nie udało się utworzyć operacji przełączenia konta.");
+      }
+      expectedSwitchTarget.current = operation.to_profile_id;
+      setPendingSwitch(operation);
       setState(requested);
       setLoadError(null);
 
-      if (
-        requested.operation?.status === "in_progress" &&
-        requested.operation.editor_was_running === false
-      ) {
+      if (operation.status === "in_progress") {
         setWorkingAction("confirm-switch");
-        const completed = await confirmSwitch(requested.operation.operation_id);
-        if (mounted.current) setState(completed);
+        const completed = await confirmSwitch(operation.operation_id);
+        if (mounted.current) {
+          setPendingSwitch(null);
+          setState(completed);
+        }
       }
     } catch (error) {
-      if (mounted.current) setNotice({ tone: "danger", message: errorMessage(error) });
+      if (mounted.current) {
+        expectedSwitchTarget.current = null;
+        setPendingSwitch(null);
+        setState((current) =>
+          current
+            ? { ...current, engine_status: "ready", operation: null }
+            : current,
+        );
+        setNotice({ tone: "danger", message: errorMessage(error) });
+        void loadState(true);
+      }
     } finally {
       if (mounted.current) setWorkingAction(null);
     }
   };
 
   const handleConfirmSwitch = async () => {
+    const operationId = pendingSwitch?.operation_id ?? state?.operation?.operation_id;
+    if (!operationId) {
+      setNotice({ tone: "danger", message: "Brak operacji przełączenia do potwierdzenia." });
+      return;
+    }
+    setPendingSwitch((current) =>
+      current ? { ...current, status: "in_progress", current_step: 1 } : current,
+    );
     setState((current) =>
       current?.operation
         ? {
@@ -212,15 +242,26 @@ export default function App() {
           }
         : current,
     );
-    await performStateAction("confirm-switch", () =>
-      confirmSwitch(state?.operation?.operation_id),
+    const succeeded = await performStateAction(
+      "confirm-switch",
+      () => confirmSwitch(operationId),
     );
+    if (mounted.current) setPendingSwitch(null);
+    if (!succeeded) {
+      expectedSwitchTarget.current = null;
+      void loadState(true);
+    }
   };
 
   const handleCancelSwitch = async () => {
-    await performStateAction("cancel-switch", () =>
-      cancelSwitch(state?.operation?.operation_id),
+    const operationId = pendingSwitch?.operation_id ?? state?.operation?.operation_id;
+    const succeeded = await performStateAction(
+      "cancel-switch",
+      () => cancelSwitch(operationId),
     );
+    if (mounted.current) setPendingSwitch(null);
+    expectedSwitchTarget.current = null;
+    if (!succeeded) void loadState(true);
   };
 
   const handleAddProfile = async (displayName: string) => {
@@ -400,11 +441,11 @@ export default function App() {
       <SwitchConfirmModal
         onCancel={() => void handleCancelSwitch()}
         onConfirm={() => void handleConfirmSwitch()}
-        operation={state.operation}
+        operation={state.operation ?? pendingSwitch}
         state={state}
         working={workingAction === "confirm-switch" || workingAction === "cancel-switch"}
       />
-      <SwitchProgressModal operation={state.operation} state={state} />
+      <SwitchProgressModal operation={state.operation ?? pendingSwitch} state={state} />
       <AddProfileModal
         onClose={handleCloseAddProfile}
         onSubmit={handleAddProfile}

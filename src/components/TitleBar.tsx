@@ -4,16 +4,22 @@ import { Icon } from "./Icons";
 export function TitleBar() {
   const appWindow = getCurrentWindow();
 
+  const runWindowCommand = (command: Promise<void>) => {
+    void command.catch((error: unknown) => {
+      console.error("Window command failed:", error);
+    });
+  };
+
   const handleMinimize = () => {
-    void appWindow.minimize();
+    runWindowCommand(appWindow.minimize());
   };
 
   const handleMaximize = () => {
-    void appWindow.toggleMaximize();
+    runWindowCommand(appWindow.toggleMaximize());
   };
 
   const handleClose = () => {
-    void appWindow.close();
+    runWindowCommand(appWindow.close());
   };
 
   return (
