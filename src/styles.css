@@ -2783,28 +2783,30 @@ button.brand:focus-visible {
 
 /* Mini Switcher Window Styles */
 html.mini-window-html,
+body.mini-window-body,
 html.mini-window-html body,
-html.mini-window-html #root {
+html.mini-window-html #root,
+body.mini-window-body #root {
   height: 100% !important;
   min-height: 100% !important;
+  width: 100% !important;
   background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 body.mini-window-body {
-  background: transparent !important;
   margin: 0;
   padding: 0 !important;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
   box-sizing: border-box;
 }
 
 .mini-window-card {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);

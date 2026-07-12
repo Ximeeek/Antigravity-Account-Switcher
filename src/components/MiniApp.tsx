@@ -5,6 +5,7 @@ import {
   requestSwitch,
   confirmSwitch,
   hideMiniWindow,
+  resizeMiniWindow,
 } from "../bridge";
 import { Icon } from "./Icons";
 import { t } from "../i18n";
@@ -21,6 +22,7 @@ export default function MiniApp() {
     mounted.current = true;
     document.documentElement.classList.add("mini-window-html");
     document.body.classList.add("mini-window-body");
+    void resizeMiniWindow(140);
     return () => {
       mounted.current = false;
       document.documentElement.classList.remove("mini-window-html");

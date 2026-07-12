@@ -9,6 +9,7 @@ import { AccountCard } from "./AccountCard";
 import { Icon } from "./Icons";
 import { StatusPill } from "./StatusPill";
 import { t } from "../i18n";
+import { showMiniWindow } from "../bridge";
 
 interface DashboardProps {
   state: AppState;
@@ -16,6 +17,7 @@ interface DashboardProps {
   onActivate: (profile: ProfileSummary) => void;
   onAdd: () => void;
   onDelete: (profile: ProfileSummary) => void;
+  onToggleSmartSwitch: () => void;
 }
 
 function QuotaSection({ quota }: { quota?: ProfileSummary["quota"] }) {
@@ -98,7 +100,15 @@ function QuotaSection({ quota }: { quota?: ProfileSummary["quota"] }) {
   );
 }
 
-function ActiveAccount({ profile }: { profile: ProfileSummary }) {
+function ActiveAccount({ 
+  profile, 
+  smartSwitchEnabled, 
+  onToggleSmartSwitch 
+}: { 
+  profile: ProfileSummary;
+  smartSwitchEnabled: boolean;
+  onToggleSmartSwitch: () => void;
+}) {
   const token = getTokenPresentation(profile);
 
   return (
@@ -106,9 +116,44 @@ function ActiveAccount({ profile }: { profile: ProfileSummary }) {
       <div className="active-account-card__glow" aria-hidden="true" />
       <div className="active-account-card__content">
         <div className="active-account-card__identity">
-          <div className="active-account-card__label-row">
-            <p className="eyebrow">{t("active_account")}</p>
-            <StatusPill tone="success">{t("active")}</StatusPill>
+          <div className="active-account-card__label-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <p className="eyebrow">{t("active_account")}</p>
+              <StatusPill tone="success">{t("active")}</StatusPill>
+            </div>
+            
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }} className="smart-switch-quick-toggle">
+              <span style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px", color: smartSwitchEnabled ? "var(--accent-color, #5865f2)" : "var(--text-secondary, #8e9297)", fontWeight: 600 }}>
+                Smart Switch
+              </span>
+              <button 
+                type="button" 
+                onClick={onToggleSmartSwitch}
+                style={{
+                  width: "36px",
+                  height: "20px",
+                  borderRadius: "10px",
+                  backgroundColor: smartSwitchEnabled ? "var(--accent-color, #5865f2)" : "#2d3139",
+                  border: "none",
+                  position: "relative",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s",
+                  padding: 0
+                }}
+                title={t("smart_switch_hint")}
+              >
+                <div style={{
+                  width: "14px",
+                  height: "14px",
+                  borderRadius: "50%",
+                  backgroundColor: "#fff",
+                  position: "absolute",
+                  top: "3px",
+                  left: smartSwitchEnabled ? "19px" : "3px",
+                  transition: "left 0.2s"
+                }} />
+              </button>
+            </div>
           </div>
           <div className="profile-identity profile-identity--hero">
             <div className="profile-avatar profile-avatar--large" aria-hidden="true">
@@ -257,6 +302,7 @@ export function Dashboard({
   onActivate,
   onAdd,
   onDelete,
+  onToggleSmartSwitch,
 }: DashboardProps) {
   const disclaimer = getDisclaimerText();
   const isEmpty = state.profiles.length === 0;
@@ -289,7 +335,11 @@ export function Dashboard({
         <>
           <GlobalQuotaSummary profiles={state.profiles} />
           {active ? (
-            <ActiveAccount profile={active} />
+            <ActiveAccount 
+              profile={active} 
+              smartSwitchEnabled={state.settings.smart_switch_enabled}
+              onToggleSmartSwitch={onToggleSmartSwitch}
+            />
           ) : (
             <section className="inline-notice inline-notice--warning" role="status">
               <Icon name="alert" size={19} />
@@ -309,10 +359,22 @@ export function Dashboard({
                 </h2>
                 <p>{getProfilesCountLabel(otherProfiles.length)}</p>
               </div>
-              <button className="button button--secondary" onClick={onAdd} type="button">
-                <Icon name="plus" size={17} />
-                <span>{t("add_account")}</span>
-              </button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  className="button button--secondary"
+                  onClick={() => {
+                    showMiniWindow().catch((err) => console.error("Failed to open mini window", err));
+                  }}
+                  type="button"
+                >
+                  <Icon name="mini" size={15} />
+                  <span>{t("open_mini")}</span>
+                </button>
+                <button className="button button--primary" onClick={onAdd} type="button">
+                  <Icon name="plus" size={17} />
+                  <span>{t("add_account")}</span>
+                </button>
+              </div>
             </div>
 
             <div className="accounts-grid">

@@ -336,6 +336,14 @@ export default function App() {
     );
   };
 
+  const handleToggleSmartSwitch = async () => {
+    if (!state) return;
+    await handleSaveSettings({
+      ...state.settings,
+      smart_switch_enabled: !state.settings.smart_switch_enabled,
+    });
+  };
+
 
 
   const handleCopyDiagnostics = async () => {
@@ -479,6 +487,7 @@ export default function App() {
               onAdd={() => setAddProfileOpen(true)}
               onDelete={setDeleteTarget}
               state={state}
+              onToggleSmartSwitch={handleToggleSmartSwitch}
             />
           </>
         ) : (
