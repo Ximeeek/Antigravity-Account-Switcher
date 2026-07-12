@@ -1,6 +1,7 @@
 import type { DemoScenario, EngineStatus } from "../types";
 import { AppMark, Icon } from "./Icons";
 import { StatusPill, type StatusTone } from "./StatusPill";
+import { t } from "../i18n";
 
 export type AppView = "dashboard" | "settings";
 
@@ -15,12 +16,12 @@ interface HeaderProps {
 
 const enginePresentation: Record<
   EngineStatus,
-  { label: string; tone: StatusTone; pulse?: boolean }
+  { tone: StatusTone; pulse?: boolean }
 > = {
-  ready: { label: "Gotowy", tone: "success" },
-  busy: { label: "Operacja w toku", tone: "warning", pulse: true },
-  error: { label: "Wymaga uwagi", tone: "danger" },
-  offline: { label: "Niedostępny", tone: "neutral" },
+  ready: { tone: "success" },
+  busy: { tone: "warning", pulse: true },
+  error: { tone: "danger" },
+  offline: { tone: "neutral" },
 };
 
 export function Header({
@@ -32,17 +33,28 @@ export function Header({
   onDemoScenarioChange,
 }: HeaderProps) {
   const engine = enginePresentation[engineStatus];
+  const engineLabels: Record<EngineStatus, string> = {
+    ready: t("engine_ready"),
+    busy: t("engine_busy"),
+    error: t("engine_error"),
+    offline: t("engine_offline"),
+  };
 
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        <div className="brand" aria-label="Antigravity Account Switcher">
+        <button
+          className="brand brand-button"
+          onClick={() => onViewChange("dashboard")}
+          aria-label={t("brand_title_attr")}
+          title={t("brand_title_attr")}
+        >
           <AppMark />
           <div className="brand__text">
-            <span className="brand__name">Antigravity</span>
-            <span className="brand__product">Account Switcher</span>
+            <span className="brand__name">{t("brand_name")}</span>
+            <span className="brand__product">{t("brand_product")}</span>
           </div>
-        </div>
+        </button>
 
         <nav aria-label="Główna nawigacja" className="top-navigation">
           <button
@@ -52,7 +64,7 @@ export function Header({
             type="button"
           >
             <Icon name="accounts" size={16} />
-            <span>Konta</span>
+            <span>{t("nav_accounts")}</span>
           </button>
           <button
             aria-current={view === "settings" ? "page" : undefined}
@@ -61,7 +73,7 @@ export function Header({
             type="button"
           >
             <Icon name="settings" size={16} />
-            <span>Ustawienia</span>
+            <span>{t("nav_settings")}</span>
           </button>
         </nav>
 
@@ -76,16 +88,16 @@ export function Header({
                 }
                 value={demoScenario}
               >
-                <option value="dashboard">Demo: konta</option>
-                <option value="empty">Demo: pusty stan</option>
-                <option value="progress">Demo: postęp</option>
-                <option value="recovery">Demo: recovery</option>
-                <option value="error">Demo: błąd</option>
+                <option value="dashboard">{t("demo_accounts")}</option>
+                <option value="empty">{t("demo_empty")}</option>
+                <option value="progress">{t("demo_progress")}</option>
+                <option value="recovery">{t("demo_recovery")}</option>
+                <option value="error">{t("demo_error")}</option>
               </select>
             </label>
           ) : null}
           <StatusPill tone={engine.tone} pulse={engine.pulse} className="engine-pill">
-            {engine.label}
+            {engineLabels[engineStatus]}
           </StatusPill>
         </div>
       </div>

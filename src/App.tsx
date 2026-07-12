@@ -26,6 +26,7 @@ import {
   DeleteProfileModal,
 } from "./components/ProfileModals";
 import { Settings } from "./components/Settings";
+import { t, getLanguage, setLanguage, type Language } from "./i18n";
 import {
   RecoveryScreen,
   SwitchConfirmModal,
@@ -52,15 +53,15 @@ const errorMessage = (error: unknown): string => {
     const message = (error as { message?: unknown }).message;
     if (typeof message === "string") return message;
   }
-  return "Wystąpił nieoczekiwany błąd. Spróbuj ponownie.";
+  return t("unexpected_error");
 };
 
 function LoadingScreen() {
   return (
-    <main className="boot-screen" aria-busy="true" aria-label="Ładowanie aplikacji">
+    <main className="boot-screen" aria-busy="true" aria-label={t("loading_profiles")}>
       <div className="boot-screen__mark"><Icon name="loader" size={27} /></div>
-      <h1>Ładowanie profili</h1>
-      <p>Sprawdzamy stan Antigravity i lokalnego magazynu.</p>
+      <h1>{t("loading_profiles")}</h1>
+      <p>{t("checking_status")}</p>
     </main>
   );
 }
@@ -69,11 +70,11 @@ function LoadError({ message, onRetry }: { message: string; onRetry: () => void 
   return (
     <main className="boot-screen boot-screen--error">
       <div className="boot-screen__mark"><Icon name="error" size={27} /></div>
-      <h1>Nie udało się uruchomić aplikacji</h1>
+      <h1>{t("app_load_failed")}</h1>
       <p>{message}</p>
       <button className="button button--primary" onClick={onRetry} type="button">
         <Icon name="refresh" size={16} />
-        <span>Spróbuj ponownie</span>
+        <span>{t("try_again")}</span>
       </button>
     </main>
   );
@@ -89,6 +90,12 @@ export default function App() {
   const [addProfileOpen, setAddProfileOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProfileSummary | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<SwitchOperation | null>(null);
+  const [lang, setLang] = useState<Language>(getLanguage);
+
+  const handleLanguageChange = (newLang: Language) => {
+    setLanguage(newLang);
+    setLang(newLang);
+  };
   const [demoScenario, setDemoScenarioState] = useState<DemoScenario>(() => {
     if (typeof window === "undefined") return "dashboard";
     const requested = new URLSearchParams(window.location.search).get("demo");
@@ -298,7 +305,7 @@ export default function App() {
     await performStateAction(
       "settings",
       () => updateSettings(settings),
-      "Ustawienia zostały zapisane.",
+      t("settings_saved"),
     );
   };
 
@@ -306,7 +313,7 @@ export default function App() {
     await performStateAction(
       "extension",
       installExtension,
-      "Wtyczka Antigravity została zainstalowana.",
+      t("extension_installed"),
     );
   };
 
@@ -315,7 +322,7 @@ export default function App() {
     try {
       await copyDiagnostics();
       if (mounted.current) {
-        setNotice({ tone: "success", message: "Dziennik diagnostyczny skopiowano do schowka." });
+        setNotice({ tone: "success", message: t("diagnostics_copied") });
       }
     } catch (error) {
       if (mounted.current) setNotice({ tone: "danger", message: errorMessage(error) });
@@ -328,7 +335,7 @@ export default function App() {
     await performStateAction(
       "recovery-resume",
       recoveryResume,
-      "Odzyskiwanie zostało zakończone.",
+      t("recovery_completed"),
     );
   };
 
@@ -336,7 +343,7 @@ export default function App() {
     await performStateAction(
       "recovery-rollback",
       recoveryRollback,
-      "Poprzedni profil został przywrócony.",
+      t("rollback_completed"),
     );
   };
 
@@ -404,17 +411,17 @@ export default function App() {
           <div className="inline-notice inline-notice--danger" role="alert">
             <Icon name="error" size={19} />
             <div>
-              <strong>Aplikacja wymaga uwagi</strong>
+              <strong>{t("app_requires_attention")}</strong>
               <p>{state.last_error}</p>
             </div>
             <button
-              aria-label="Odśwież stan aplikacji"
+              aria-label={t("refresh_app_state")}
               className="button button--ghost button--small"
               onClick={() => void loadState(true)}
               type="button"
             >
               <Icon name="refresh" size={15} />
-              <span>Odśwież</span>
+              <span>{t("refresh")}</span>
             </button>
           </div>
         ) : null}
@@ -432,6 +439,7 @@ export default function App() {
             onCopyDiagnostics={handleCopyDiagnostics}
             onInstallExtension={handleInstallExtension}
             onSave={handleSaveSettings}
+            onLanguageChange={handleLanguageChange}
             state={state}
             workingAction={workingAction}
           />
@@ -475,7 +483,7 @@ function Toast({ notice, onClose }: { notice: Notice; onClose: () => void }) {
         <Icon name={notice.tone === "success" ? "check" : notice.tone === "danger" ? "error" : "info"} size={17} />
       </span>
       <span>{notice.message}</span>
-      <button aria-label="Zamknij komunikat" onClick={onClose} type="button">
+      <button aria-label={t("close_message")} onClick={onClose} type="button">
         <Icon name="close" size={15} />
       </button>
     </div>

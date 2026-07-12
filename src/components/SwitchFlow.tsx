@@ -7,6 +7,7 @@ import {
 import { AppMark, Icon } from "./Icons";
 import { Modal } from "./Modal";
 import { StatusPill } from "./StatusPill";
+import { t } from "../i18n";
 
 interface SwitchConfirmModalProps {
   state: AppState;
@@ -29,7 +30,7 @@ export function SwitchConfirmModal({
   return (
     <Modal
       dismissible={!working}
-      eyebrow="Potwierdzenie przełączenia"
+      eyebrow={t("confirm_modal_eyebrow")}
       footer={
         <>
           <button
@@ -39,7 +40,7 @@ export function SwitchConfirmModal({
             onClick={onCancel}
             type="button"
           >
-            Anuluj
+            {t("confirm_modal_cancel")}
           </button>
           <button
             className="button button--primary"
@@ -48,26 +49,26 @@ export function SwitchConfirmModal({
             type="button"
           >
             <Icon name={working ? "loader" : "refresh"} size={16} />
-            <span>{working ? "Uruchamianie…" : "Kontynuuj"}</span>
+            <span>{working ? t("confirm_modal_confirming") : t("confirm_modal_confirm")}</span>
           </button>
         </>
       }
       icon={<Icon name="alert" size={21} />}
       onClose={onCancel}
       open={operation?.status === "awaiting_confirmation"}
-      title="Antigravity zostanie zamknięty"
-      description="Do bezpiecznego przełączenia profilu konieczne jest ponowne uruchomienie edytora."
+      title={t("confirm_modal_title")}
+      description={t("confirm_modal_desc")}
     >
       <div className="switch-preview" aria-label={`Przełączenie z ${currentName} na ${targetName}`}>
         <div className="switch-preview__account">
-          <span className="switch-preview__label">Obecnie</span>
+          <span className="switch-preview__label">{t("confirm_modal_current")}</span>
           <strong>{currentName}</strong>
         </div>
         <span className="switch-preview__arrow" aria-hidden="true">
           <Icon name="refresh" size={18} />
         </span>
         <div className="switch-preview__account switch-preview__account--target">
-          <span className="switch-preview__label">Po przełączeniu</span>
+          <span className="switch-preview__label">{t("confirm_modal_target")}</span>
           <strong>{targetName}</strong>
         </div>
       </div>
@@ -75,20 +76,12 @@ export function SwitchConfirmModal({
       <div className="compact-alert compact-alert--warning">
         <Icon name="alert" size={17} />
         <span>
-          Upewnij się, że wszystkie pliki w Antigravity są zapisane. Niezapisane zmiany mogą zostać utracone.
+          {t("confirm_modal_warning")}
         </span>
       </div>
     </Modal>
   );
 }
-
-const userSteps = [
-  "Przygotowywanie operacji",
-  "Zamykanie Antigravity",
-  "Zapisywanie obecnego profilu",
-  "Ładowanie i sprawdzanie nowego profilu",
-  "Kończenie i uruchamianie Antigravity",
-];
 
 interface SwitchProgressModalProps {
   state: AppState;
@@ -100,16 +93,24 @@ export function SwitchProgressModal({ state, operation }: SwitchProgressModalPro
   const targetName = profileName(state.profiles, operation?.to_profile_id);
   const open = operation?.status === "in_progress";
 
+  const userSteps = [
+    t("step_preparing"),
+    t("step_closing"),
+    t("step_saving"),
+    t("step_loading"),
+    t("step_finishing"),
+  ];
+
   return (
     <Modal
       className="modal-panel--progress"
       dismissible={false}
-      eyebrow="Bezpieczna zmiana profilu"
+      eyebrow={t("progress_modal_eyebrow")}
       icon={<Icon name="refresh" size={21} />}
       onClose={() => undefined}
       open={open}
-      title={`Przełączanie na „${targetName}”`}
-      description="Zachowujemy dane obecnego konta i sprawdzamy spójność nowego profilu."
+      title={t("progress_modal_title", { name: targetName })}
+      description={t("progress_modal_desc")}
     >
       <div aria-atomic="true" aria-live="polite" className="operation-live-status">
         <Icon name="loader" size={17} />
@@ -146,18 +147,18 @@ export function SwitchProgressModal({ state, operation }: SwitchProgressModalPro
 
       <div className="operation-caution">
         <Icon name="shield" size={17} />
-        <span>Nie zamykaj aplikacji podczas przełączania.</span>
+        <span>{t("progress_modal_caution")}</span>
       </div>
 
       <details className="technical-details">
-        <summary>Szczegóły techniczne</summary>
+        <summary>{t("progress_modal_technical")}</summary>
         <dl>
           <div>
-            <dt>Identyfikator operacji</dt>
+            <dt>{t("progress_modal_op_id")}</dt>
             <dd>{operation?.operation_id ?? "—"}</dd>
           </div>
           <div>
-            <dt>Krok systemowy</dt>
+            <dt>{t("progress_modal_step")}</dt>
             <dd>{operation?.current_step ?? 0} / 9</dd>
           </div>
         </dl>
@@ -197,18 +198,17 @@ export function RecoveryScreen({
       <div className="recovery-shell">
         <div className="recovery-brand">
           <AppMark size={34} />
-          <span>Antigravity Account Switcher</span>
+          <span>{t("recovery_title_brand")}</span>
         </div>
 
         <section className="recovery-card" aria-labelledby="recovery-title">
           <div className="recovery-card__icon" aria-hidden="true">
             <Icon name="alert" size={30} />
           </div>
-          <StatusPill tone="warning">Odzyskiwanie wymagane</StatusPill>
-          <h1 id="recovery-title">Poprzednie przełączanie nie zostało dokończone</h1>
+          <StatusPill tone="warning">{t("recovery_required")}</StatusPill>
+          <h1 id="recovery-title">{t("recovery_title")}</h1>
           <p className="recovery-card__lead">
-            Operacja została przerwana na etapie: <strong>{getSwitchStepLabel(recovery.current_step)}</strong>.
-            Wybierz bezpieczny sposób kontynuacji, zanim wrócisz do aplikacji.
+            {t("recovery_desc", { step: getSwitchStepLabel(recovery.current_step) })}
           </p>
 
           {recovery.reason ? (
@@ -219,9 +219,9 @@ export function RecoveryScreen({
           ) : null}
 
           <div className="recovery-route" aria-label={`Odzyskiwanie z ${fromName} do ${toName}`}>
-            <div><span>Poprzedni profil</span><strong>{fromName}</strong></div>
+            <div><span>{t("recovery_prev_profile")}</span><strong>{fromName}</strong></div>
             <span className="recovery-route__line" aria-hidden="true" />
-            <div><span>Profil docelowy</span><strong>{toName}</strong></div>
+            <div><span>{t("recovery_target_profile")}</span><strong>{toName}</strong></div>
           </div>
 
           <div className="recovery-actions">
@@ -233,8 +233,8 @@ export function RecoveryScreen({
             >
               <span className="recovery-action__icon"><Icon name={resuming ? "loader" : "refresh"} /></span>
               <span>
-                <strong>{resuming ? "Wznawianie…" : "Spróbuj dokończyć"}</strong>
-                <small>Kontynuuj od bezpiecznego zapisanego etapu.</small>
+                <strong>{resuming ? t("recovery_resuming") : t("recovery_resume")}</strong>
+                <small>{t("recovery_resume_desc")}</small>
               </span>
             </button>
             <button
@@ -245,18 +245,18 @@ export function RecoveryScreen({
             >
               <span className="recovery-action__icon"><Icon name={rollingBack ? "loader" : "shield"} /></span>
               <span>
-                <strong>{rollingBack ? "Przywracanie…" : "Przywróć poprzedni stan"}</strong>
-                <small>Wycofaj operację i ponownie aktywuj „{fromName}”.</small>
+                <strong>{rollingBack ? t("recovery_rolling_back") : t("recovery_rollback")}</strong>
+                <small>{t("recovery_rollback_desc", { name: fromName })}</small>
               </span>
             </button>
           </div>
 
           <div className="recovery-footer">
             <details className="technical-details">
-              <summary>Pokaż szczegóły operacji</summary>
+              <summary>{t("recovery_technical")}</summary>
               <dl>
-                <div><dt>Id operacji</dt><dd>{recovery.operation_id ?? "—"}</dd></div>
-                <div><dt>Krok techniczny</dt><dd>{recovery.current_step} / 9</dd></div>
+                <div><dt>{t("recovery_op_id")}</dt><dd>{recovery.operation_id ?? "—"}</dd></div>
+                <div><dt>{t("recovery_step")}</dt><dd>{recovery.current_step} / 9</dd></div>
               </dl>
             </details>
             <button
@@ -266,12 +266,12 @@ export function RecoveryScreen({
               type="button"
             >
               <Icon name={copying ? "loader" : "copy"} size={16} />
-              <span>{copying ? "Kopiowanie…" : "Kopiuj diagnostykę"}</span>
+              <span>{copying ? t("recovery_copying") : t("recovery_copy")}</span>
             </button>
           </div>
         </section>
         <p className="recovery-security-note">
-          <Icon name="shield" size={15} /> Normalny dostęp pozostaje zablokowany, aby chronić dane profili.
+          <Icon name="shield" size={15} /> {t("recovery_security")}
         </p>
       </div>
     </main>

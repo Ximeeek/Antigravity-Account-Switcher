@@ -3,6 +3,7 @@ import type { AddProfileInput, ProfileSummary } from "../types";
 import { Icon } from "./Icons";
 import { Modal } from "./Modal";
 import { getDisclaimerText } from "../utils";
+import { t } from "../i18n";
 
 
 interface AddProfileModalProps {
@@ -34,7 +35,7 @@ export function AddProfileModal({
     event.preventDefault();
     const name = displayName.trim();
     if (name.length < 2) {
-      setError("Nazwa konta powinna mieć co najmniej 2 znaki.");
+      setError(t("add_modal_validation_len"));
       return;
     }
     setError(null);
@@ -44,7 +45,7 @@ export function AddProfileModal({
   return (
     <Modal
       dismissible={true} // Allow closing the modal to trigger cancel_oauth_login
-      eyebrow="Dodawanie profilu"
+      eyebrow={t("add_modal_eyebrow")}
       footer={
         <>
           <button
@@ -53,7 +54,7 @@ export function AddProfileModal({
             onClick={onClose}
             type="button"
           >
-            Anuluj
+            {t("add_modal_cancel")}
           </button>
           <button
             className="button button--primary"
@@ -62,30 +63,30 @@ export function AddProfileModal({
             type="submit"
           >
             <Icon name={working ? "loader" : "plus"} size={16} />
-            <span>{working ? "Logowanie…" : "Zaloguj się przez Google"}</span>
+            <span>{working ? t("add_modal_submitting") : t("add_modal_submit")}</span>
           </button>
         </>
       }
       icon={<Icon name="user" size={21} />}
       onClose={onClose}
       open={open}
-      title="Dodaj nowe konto Google"
-      description="Utwórz nowy profil, logując się bezpośrednio przez Google OAuth w przeglądarce."
+      title={t("add_modal_title")}
+      description={t("add_modal_desc")}
     >
       <form className="modal-form" id={formId} onSubmit={submit}>
         {working ? (
           <div className="compact-alert compact-alert--info">
             <Icon name="loader" size={17} className="animate-spin" />
             <span>
-              <strong>Oczekiwanie na logowanie...</strong><br />
-              W otwartym oknie przeglądarki zaloguj się na swoje konto Google. Kliknij „Anuluj”, aby przerwać.
+              <strong>{t("add_modal_waiting")}</strong><br />
+              {t("add_modal_waiting_desc")}
             </span>
           </div>
         ) : (
           <div className="compact-alert compact-alert--info">
             <Icon name="info" size={17} />
             <span>
-              Po zatwierdzeniu otworzy się przeglądarka systemowa z oficjalną stroną logowania Google.
+              {t("add_modal_redirect")}
             </span>
           </div>
         )}
@@ -107,19 +108,19 @@ export function AddProfileModal({
         </div>
 
         <label className="field" htmlFor={`${formId}-name`}>
-          <span className="field__label">Nazwa wyświetlana konta</span>
+          <span className="field__label">{t("add_modal_name_label")}</span>
           <input
             autoComplete="off"
             disabled={working}
             id={`${formId}-name`}
             maxLength={48}
             onChange={(event) => setDisplayName(event.target.value)}
-            placeholder="np. Praca, Studio, Prywatne"
+            placeholder={t("add_modal_name_placeholder")}
             required
             type="text"
             value={displayName}
           />
-          <span className="field-hint">Nazwa widoczna tylko lokalnie w Switcherze i wtyczce.</span>
+          <span className="field-hint">{t("add_modal_name_hint")}</span>
         </label>
 
         {error ? (
@@ -159,7 +160,7 @@ export function DeleteProfileModal({
             onClick={onClose}
             type="button"
           >
-            Anuluj
+            {t("delete_modal_cancel")}
           </button>
           <button
             className="button button--danger"
@@ -168,23 +169,23 @@ export function DeleteProfileModal({
             type="button"
           >
             <Icon name={working ? "loader" : "trash"} size={16} />
-            <span>{working ? "Usuwanie…" : "Usuń profil"}</span>
+            <span>{working ? t("delete_modal_confirming") : t("delete_modal_confirm")}</span>
           </button>
         </>
       }
       icon={<Icon name="trash" size={21} />}
       onClose={onClose}
       open={Boolean(profile)}
-      title="Usunąć zapisane konto?"
+      title={t("delete_modal_title")}
       description={
         profile
-          ? `Profil „${profile.display_name}” i jego lokalna historia zostaną trwale usunięte.`
+          ? t("delete_modal_desc", { name: profile.display_name })
           : undefined
       }
     >
       <div className="compact-alert compact-alert--danger">
         <Icon name="alert" size={17} />
-        <span>Tej operacji nie można cofnąć. Aktywnego profilu nie da się usunąć.</span>
+        <span>{t("delete_modal_warning")}</span>
       </div>
     </Modal>
   );

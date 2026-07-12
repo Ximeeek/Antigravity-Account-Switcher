@@ -1,4 +1,5 @@
 import type { ReactNode, SVGProps } from "react";
+import logoUrl from "../assets/logo.png";
 
 export type IconName =
   | "accounts"
@@ -162,38 +163,17 @@ export function Icon({ name, size = 18, className, ...props }: IconProps) {
 
 export function AppMark({ size = 30 }: { size?: number }) {
   return (
-    <svg
+    <img
       aria-hidden="true"
       className="app-mark"
-      height={size}
-      viewBox="0 0 32 32"
+      src={logoUrl}
+      alt="Antigravity Logo"
       width={size}
-    >
-      <defs>
-        <linearGradient id="app-mark-gradient" x1="4" y1="4" x2="28" y2="28">
-          <stop stopColor="#4a8cf7" />
-          <stop offset=".55" stopColor="#6a73f7" />
-          <stop offset="1" stopColor="#7de7f2" />
-        </linearGradient>
-      </defs>
-      <circle cx="16" cy="16" r="13" fill="url(#app-mark-gradient)" opacity=".16" />
-      <path
-        d="M9.2 18.6c1.8-6.3 9.3-9 14.1-4.6M22.8 11.7l.5 2.3-2.3.5"
-        fill="none"
-        stroke="url(#app-mark-gradient)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.3"
-      />
-      <path
-        d="M22.8 13.4c-1.8 6.3-9.3 9-14.1 4.6M9.2 20.3 8.7 18l2.3-.5"
-        fill="none"
-        stroke="url(#app-mark-gradient)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.3"
-      />
-      <circle cx="16" cy="16" r="2.2" fill="#baf7ff" />
-    </svg>
+      height={size}
+      style={{
+        borderRadius: "20%",
+        objectFit: "contain",
+      }}
+    />
   );
 }

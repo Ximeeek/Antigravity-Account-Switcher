@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { AppSettings, AppState, ExtensionStatus } from "../types";
 import { Icon } from "./Icons";
 import { StatusPill, type StatusTone } from "./StatusPill";
+import { t, getLanguage, type Language } from "../i18n";
 
 interface SettingsProps {
   state: AppState;
@@ -9,17 +10,8 @@ interface SettingsProps {
   onSave: (settings: AppSettings) => Promise<void>;
   onInstallExtension: () => Promise<void>;
   onCopyDiagnostics: () => Promise<void>;
+  onLanguageChange: (lang: Language) => void;
 }
-
-const extensionPresentation: Record<
-  ExtensionStatus,
-  { label: string; tone: StatusTone; action: string }
-> = {
-  installed: { label: "Zainstalowana", tone: "success", action: "Reinstaluj" },
-  not_installed: { label: "Niezainstalowana", tone: "neutral", action: "Zainstaluj" },
-  update_available: { label: "Dostępna aktualizacja", tone: "warning", action: "Aktualizuj" },
-  error: { label: "Wymaga uwagi", tone: "danger", action: "Napraw instalację" },
-};
 
 export function Settings({
   state,
@@ -27,7 +19,17 @@ export function Settings({
   onSave,
   onInstallExtension,
   onCopyDiagnostics,
+  onLanguageChange,
 }: SettingsProps) {
+  const extensionPresentation: Record<
+    ExtensionStatus,
+    { label: string; tone: StatusTone; action: string }
+  > = {
+    installed: { label: t("extension_installed_pill"), tone: "success", action: t("extension_action_reinstall") },
+    not_installed: { label: t("extension_not_installed_pill"), tone: "neutral", action: t("extension_action_install") },
+    update_available: { label: t("extension_update_pill"), tone: "warning", action: t("extension_action_update") },
+    error: { label: t("extension_error_pill"), tone: "danger", action: t("extension_action_repair") },
+  };
   const [draft, setDraft] = useState<AppSettings>(state.settings);
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -63,13 +65,13 @@ export function Settings({
     <div className="settings-page">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">Konfiguracja lokalna</p>
-          <h1>Ustawienia</h1>
-          <p>Zarządzaj połączeniem, wtyczką i bezpieczną diagnostyką.</p>
+          <p className="eyebrow">{t("settings_eyebrow")}</p>
+          <h1>{t("settings_title")}</h1>
+          <p>{t("settings_desc")}</p>
         </div>
-        <div className="version-stack" aria-label="Wersje aplikacji">
-          <span>Switcher {state.app_version ?? "—"}</span>
-          <span>Antigravity {state.antigravity_version ?? "—"}</span>
+        <div className="version-stack" aria-label={t("versions")}>
+          <span>{t("settings_switcher_ver", { version: state.app_version ?? "—" })}</span>
+          <span>{t("settings_antigravity_ver", { version: state.antigravity_version ?? "—" })}</span>
         </div>
       </div>
 
@@ -80,8 +82,8 @@ export function Settings({
               <Icon name="server" />
             </div>
             <div>
-              <h2 id="server-heading">Serwer lokalny</h2>
-              <p>Połączenie wtyczki z aplikacją desktopową.</p>
+              <h2 id="server-heading">{t("server_title")}</h2>
+              <p>{t("server_desc")}</p>
             </div>
             <StatusPill tone="success">127.0.0.1</StatusPill>
           </div>
@@ -89,7 +91,7 @@ export function Settings({
           <form className="settings-form" onSubmit={handleSubmit}>
             <div className="field-row field-row--port">
               <label className="field" htmlFor="http-port">
-                <span className="field__label">Port HTTP</span>
+                <span className="field__label">{t("port_label")}</span>
                 <input
                   aria-describedby={validationError ? "settings-validation" : "port-hint"}
                   id="http-port"
@@ -107,12 +109,12 @@ export function Settings({
                 />
               </label>
               <p className="field-hint" id="port-hint">
-                Dostępny wyłącznie lokalnie. Zmiana może wymagać ponownego połączenia wtyczki.
+                {t("port_hint")}
               </p>
             </div>
 
             <label className="field" htmlFor="antigravity-path">
-              <span className="field__label">Ścieżka instalacji Antigravity</span>
+              <span className="field__label">{t("path_label")}</span>
               <span className="path-input-wrap">
                 <Icon name="folder" size={17} />
                 <input
@@ -140,7 +142,7 @@ export function Settings({
 
             <div className="settings-form__actions">
               <span className="unsaved-status" aria-live="polite">
-                {dirty ? "Masz niezapisane zmiany" : "Ustawienia są aktualne"}
+                {dirty ? t("unsaved_changes") : t("settings_up_to_date")}
               </span>
               <button
                 className="button button--primary"
@@ -148,7 +150,7 @@ export function Settings({
                 type="submit"
               >
                 {saving ? <Icon name="loader" size={16} /> : <Icon name="check" size={16} />}
-                <span>{saving ? "Zapisywanie…" : "Zapisz zmiany"}</span>
+                <span>{saving ? t("saving") : t("save_changes")}</span>
               </button>
             </div>
           </form>
@@ -160,8 +162,8 @@ export function Settings({
               <Icon name="extension" />
             </div>
             <div>
-              <h2 id="extension-heading">Wtyczka Antigravity</h2>
-              <p>Thin client wyświetlający aktywne konto w edytorze.</p>
+              <h2 id="extension-heading">{t("extension_title")}</h2>
+              <p>{t("extension_desc")}</p>
             </div>
           </div>
           <div className="settings-card__body">
@@ -169,7 +171,7 @@ export function Settings({
               <div>
                 <StatusPill tone={extension.tone}>{extension.label}</StatusPill>
                 <span className="extension-version">
-                  {state.extension.version ? `Wersja ${state.extension.version}` : "Brak informacji o wersji"}
+                  {state.extension.version ? t("extension_version", { version: state.extension.version }) : t("extension_no_version")}
                 </span>
               </div>
               <button
@@ -179,7 +181,7 @@ export function Settings({
                 type="button"
               >
                 <Icon name={installing ? "loader" : "refresh"} size={16} />
-                <span>{installing ? "Instalowanie…" : extension.action}</span>
+                <span>{installing ? t("extension_installing") : extension.action}</span>
               </button>
             </div>
             {state.extension.message ? (
@@ -197,15 +199,15 @@ export function Settings({
               <Icon name="copy" />
             </div>
             <div>
-              <h2 id="diagnostics-heading">Diagnostyka</h2>
-              <p>Gotowy, zanonimizowany raport do zgłoszenia problemu.</p>
+              <h2 id="diagnostics-heading">{t("diagnostics_title")}</h2>
+              <p>{t("diagnostics_desc")}</p>
             </div>
           </div>
           <div className="settings-card__body settings-card__body--actions">
             <ul className="plain-check-list">
-              <li><Icon name="check" size={15} /> Ostatnie zdarzenia i wersje aplikacji</li>
-              <li><Icon name="check" size={15} /> Wykryte ścieżki bez sekretów</li>
-              <li><Icon name="shield" size={15} /> Tokeny i adresy e-mail są pomijane</li>
+              <li><Icon name="check" size={15} /> {t("diagnostics_item1")}</li>
+              <li><Icon name="check" size={15} /> {t("diagnostics_item2")}</li>
+              <li><Icon name="shield" size={15} /> {t("diagnostics_item3")}</li>
             </ul>
             <button
               className="button button--secondary button--full"
@@ -214,8 +216,41 @@ export function Settings({
               type="button"
             >
               <Icon name={copying ? "loader" : "copy"} size={16} />
-              <span>{copying ? "Kopiowanie…" : "Kopiuj dziennik diagnostyczny"}</span>
+              <span>{copying ? t("diagnostics_copying") : t("diagnostics_copy")}</span>
             </button>
+          </div>
+        </section>
+
+        <section className="settings-card" aria-labelledby="language-heading">
+          <div className="settings-card__header settings-card__header--stackable">
+            <div className="settings-card__icon settings-card__icon--blue">
+              <Icon name="settings" />
+            </div>
+            <div>
+              <h2 id="language-heading">{t("language_label")}</h2>
+              <p>Wybierz język interfejsu. / Choose the UI language.</p>
+            </div>
+          </div>
+          <div className="settings-card__body">
+            <select
+              value={getLanguage()}
+              onChange={(e) => onLanguageChange(e.target.value as Language)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "6px",
+                backgroundColor: "var(--background-secondary, #161920)",
+                border: "1px solid var(--border-color, #2d3139)",
+                color: "var(--text-primary, #fff)",
+                fontFamily: "inherit",
+                fontSize: "14px",
+                outline: "none",
+                cursor: "pointer"
+              }}
+            >
+              <option value="pl">Polski</option>
+              <option value="en">English</option>
+            </select>
           </div>
         </section>
 
@@ -225,8 +260,8 @@ export function Settings({
               <Icon name="shield" />
             </div>
             <div>
-              <h2 id="privacy-heading">Prywatność profili</h2>
-              <p>Dane kont pozostają na tym komputerze.</p>
+              <h2 id="privacy-heading">{t("privacy_title")}</h2>
+              <p>{t("privacy_desc")}</p>
             </div>
           </div>
           <div className="privacy-visual" aria-hidden="true">
@@ -237,7 +272,7 @@ export function Settings({
             <span className="privacy-node"><Icon name="folder" size={16} /></span>
           </div>
           <p className="settings-card__note">
-            Profile są identyfikowane losowym UUID. Dane uwierzytelniające nie trafiają do logów.
+            {t("privacy_note")}
           </p>
         </section>
       </div>

@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Icon } from "./Icons";
+import { t } from "../i18n";
 
 export function TitleBar() {
   const appWindow = getCurrentWindow();
@@ -25,52 +26,32 @@ export function TitleBar() {
   return (
     <div className="titlebar" data-tauri-drag-region>
       <div className="titlebar__left" data-tauri-drag-region>
-        <span className="titlebar__icon" data-tauri-drag-region>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 32 32"
-            fill="none"
-            aria-hidden="true"
-            data-tauri-drag-region
-          >
-            <defs>
-              <linearGradient id="titlebar-gradient" x1="4" y1="4" x2="28" y2="28">
-                <stop stopColor="#4a8cf7" />
-                <stop offset=".55" stopColor="#6a73f7" />
-                <stop offset="1" stopColor="#7de7f2" />
-              </linearGradient>
-            </defs>
-            <circle cx="16" cy="16" r="14" fill="url(#titlebar-gradient)" />
-            <circle cx="16" cy="16" r="4" fill="#baf7ff" />
-          </svg>
-        </span>
         <span className="titlebar__title" data-tauri-drag-region>
-          Antigravity Account Switcher
+          {t("titlebar_title")}
         </span>
       </div>
       <div className="titlebar__right">
         <button
           className="titlebar__button titlebar__button--minimize"
           onClick={handleMinimize}
-          title="Minimalizuj"
-          aria-label="Minimalizuj"
+          title={t("minimize")}
+          aria-label={t("minimize")}
         >
           <Icon name="minus" size={13} />
         </button>
         <button
           className="titlebar__button titlebar__button--maximize"
           onClick={handleMaximize}
-          title="Maksymalizuj"
-          aria-label="Maksymalizuj"
+          title={t("maximize")}
+          aria-label={t("maximize")}
         >
           <Icon name="square" size={11} />
         </button>
         <button
           className="titlebar__button titlebar__button--close"
           onClick={handleClose}
-          title="Zamknij"
-          aria-label="Zamknij"
+          title={t("close")}
+          aria-label={t("close")}
         >
           <Icon name="close" size={13} />
         </button>

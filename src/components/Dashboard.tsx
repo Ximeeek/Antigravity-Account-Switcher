@@ -8,6 +8,7 @@ import {
 import { AccountCard } from "./AccountCard";
 import { Icon } from "./Icons";
 import { StatusPill } from "./StatusPill";
+import { t } from "../i18n";
 
 interface DashboardProps {
   state: AppState;
@@ -26,8 +27,8 @@ function ActiveAccount({ profile }: { profile: ProfileSummary }) {
       <div className="active-account-card__content">
         <div className="active-account-card__identity">
           <div className="active-account-card__label-row">
-            <p className="eyebrow">Aktywne konto</p>
-            <StatusPill tone="success">Aktywne</StatusPill>
+            <p className="eyebrow">{t("active_account")}</p>
+            <StatusPill tone="success">{t("active")}</StatusPill>
           </div>
           <div className="profile-identity profile-identity--hero">
             <div className="profile-avatar profile-avatar--large" aria-hidden="true">
@@ -41,7 +42,7 @@ function ActiveAccount({ profile }: { profile: ProfileSummary }) {
                   <span>{profile.account_email}</span>
                 </p>
               ) : (
-                <p className="profile-email profile-email--muted">Adres e-mail jest ukryty</p>
+                <p className="profile-email profile-email--muted">{t("email_hidden")}</p>
               )}
             </div>
           </div>
@@ -53,7 +54,7 @@ function ActiveAccount({ profile }: { profile: ProfileSummary }) {
               <Icon name="key" size={18} />
             </div>
             <div>
-              <span className="fact-label">Uwierzytelnianie</span>
+              <span className="fact-label">{t("fact_auth")}</span>
               <StatusPill tone={token.tone}>{token.label}</StatusPill>
               <span className="fact-detail">{token.detail}</span>
             </div>
@@ -63,9 +64,9 @@ function ActiveAccount({ profile }: { profile: ProfileSummary }) {
               <Icon name="clock" size={18} />
             </div>
             <div>
-              <span className="fact-label">Ostatnia aktywacja</span>
+              <span className="fact-label">{t("fact_last_active")}</span>
               <strong>{formatDateTime(profile.last_activated_at)}</strong>
-              <span className="fact-detail">Kontekst profilu jest zachowany</span>
+              <span className="fact-detail">{t("fact_context_kept")}</span>
             </div>
           </div>
         </div>
@@ -85,19 +86,16 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
           <span className="empty-state__plus"><Icon name="plus" size={13} /></span>
         </div>
       </div>
-      <p className="eyebrow">Pierwszy krok</p>
-      <h1 id="empty-state-title">Dodaj swoje pierwsze konto</h1>
-      <p>
-        Zapisz aktualnie zalogowany profil Antigravity, aby później przełączać konto
-        bez utraty historii i ustawień.
-      </p>
+      <p className="eyebrow">{t("empty_eyebrow")}</p>
+      <h1 id="empty-state-title">{t("empty_title")}</h1>
+      <p>{t("empty_desc")}</p>
       <button className="button button--primary" onClick={onAdd} type="button">
         <Icon name="plus" size={17} />
-        <span>Dodaj bieżące konto</span>
+        <span>{t("empty_button")}</span>
       </button>
       <div className="empty-state__hint">
         <Icon name="shield" size={16} />
-        <span>Dane profilu pozostają lokalnie na tym komputerze.</span>
+        <span>{t("empty_hint")}</span>
       </div>
     </section>
   );
@@ -120,6 +118,19 @@ export function Dashboard({
     (profile) => profile.profile_id !== state.active_profile_id,
   );
 
+  const getProfilesCountLabel = (count: number): string => {
+    if (count === 0) return t("section_desc_empty");
+    if (count === 1) return t("section_desc_one");
+    
+    // In Polish, numbers ending in 2, 3, 4 (except 12, 13, 14) take "profile gotowe", others take "profili gotowych"
+    const lastDigit = count % 10;
+    const lastTwoDigits = count % 100;
+    if (lastDigit >= 2 && lastDigit <= 4 && (lastTwoDigits < 10 || lastTwoDigits >= 20)) {
+      return t("section_desc_many", { count: String(count) });
+    }
+    return t("section_desc_many_generic", { count: String(count) });
+  };
+
   return (
     <div className="dashboard">
       {isEmpty ? (
@@ -132,8 +143,8 @@ export function Dashboard({
             <section className="inline-notice inline-notice--warning" role="status">
               <Icon name="alert" size={19} />
               <div>
-                <strong>Nie wykryto aktywnego konta</strong>
-                <p>Wybierz jeden z zapisanych profili, aby ustawić go jako aktywny.</p>
+                <strong>{t("no_active_account")}</strong>
+                <p>{t("no_active_account_desc")}</p>
               </div>
             </section>
           )}
@@ -141,21 +152,15 @@ export function Dashboard({
           <section aria-labelledby="saved-accounts-title" className="accounts-section">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Profile lokalne</p>
+                <p className="eyebrow">{t("section_eyebrow")}</p>
                 <h2 id="saved-accounts-title">
-                  {otherProfiles.length > 0 ? "Pozostałe konta" : "Zapisane konta"}
+                  {otherProfiles.length > 0 ? t("section_title_other") : t("section_title_saved")}
                 </h2>
-                <p>
-                  {otherProfiles.length === 0
-                    ? "Brak innych zapisanych profili"
-                    : otherProfiles.length === 1
-                      ? "1 profil gotowy do przełączenia"
-                      : `${otherProfiles.length} profile gotowe do przełączenia`}
-                </p>
+                <p>{getProfilesCountLabel(otherProfiles.length)}</p>
               </div>
               <button className="button button--secondary" onClick={onAdd} type="button">
                 <Icon name="plus" size={17} />
-                <span>Dodaj konto</span>
+                <span>{t("add_account")}</span>
               </button>
             </div>
 
@@ -171,8 +176,8 @@ export function Dashboard({
               ))}
               <button className="add-account-card" onClick={onAdd} type="button">
                 <span className="add-account-card__icon"><Icon name="plus" size={22} /></span>
-                <strong>Dodaj konto</strong>
-                <span>Importuj bieżący profil Antigravity</span>
+                <strong>{t("add_account")}</strong>
+                <span>{t("import_current")}</span>
               </button>
             </div>
           </section>

@@ -1,21 +1,17 @@
 import type { ProfileSummary, TokenStatus } from "./types";
-
-const dateTimeFormatter = new Intl.DateTimeFormat("pl-PL", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const timeFormatter = new Intl.DateTimeFormat("pl-PL", {
-  hour: "2-digit",
-  minute: "2-digit",
-});
+import { getLanguage, t, type TranslationKey } from "./i18n";
 
 export const formatDateTime = (value?: string | null): string => {
-  if (!value) return "Brak danych";
+  if (!value) return t("no_data");
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Brak danych" : dateTimeFormatter.format(date);
+  if (Number.isNaN(date.getTime())) return t("no_data");
+  const locale = getLanguage() === "pl" ? "pl-PL" : "en-US";
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 };
 
 export const getInitials = (name: string): string => {
@@ -24,7 +20,7 @@ export const getInitials = (name: string): string => {
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => part[0]?.toLocaleUpperCase("pl-PL"))
+    .map((part) => part[0]?.toLocaleUpperCase(getLanguage() === "pl" ? "pl-PL" : "en-US"))
     .join("");
   return initials || "A";
 };
@@ -35,53 +31,79 @@ export interface TokenPresentation {
   tone: "success" | "warning" | "danger" | "info" | "neutral";
 }
 
-const statusLabels: Record<TokenStatus, Omit<TokenPresentation, "detail">> = {
-  valid: { label: "Token ważny", tone: "success" },
-  expiring: { label: "Wygasa wkrótce", tone: "warning" },
-  expired: { label: "Wymaga logowania", tone: "danger" },
-  refreshing: { label: "Odświeżanie", tone: "info" },
-  unknown: { label: "Status nieznany", tone: "neutral" },
-};
-
 export const getTokenPresentation = (profile: ProfileSummary): TokenPresentation => {
+  const tKeyMap: Record<TokenStatus, { labelKey: TranslationKey; tone: TokenPresentation["tone"] }> = {
+    valid: { labelKey: "token_valid", tone: "success" },
+    expiring: { labelKey: "token_expiring", tone: "warning" },
+    expired: { labelKey: "token_expired", tone: "danger" },
+    refreshing: { labelKey: "token_refreshing", tone: "info" },
+    unknown: { labelKey: "token_unknown", tone: "neutral" },
+  };
+
+  const status = tKeyMap[profile.token_status] || tKeyMap.unknown;
+
   if (profile.has_refresh_token) {
     if (profile.token_status === "refreshing") {
-      return { ...statusLabels.refreshing, detail: "Bezpieczne odświeżanie tokenu" };
+      return {
+        label: t("token_refreshing"),
+        tone: "info",
+        detail: t("token_refreshing_secure")
+      };
     }
     return {
-      label: "Autoodświeżanie",
-      detail: "Ważny (odświeżany automatycznie)",
+      label: t("token_auto_refresh"),
+      detail: t("token_auto_refresh_desc"),
       tone: "success",
     };
   }
 
-  const base = statusLabels[profile.token_status];
   const expiryTime = profile.token_expiry ? Date.parse(profile.token_expiry) : Number.NaN;
 
   if (!Number.isFinite(expiryTime)) {
     return {
-      ...base,
+      label: t(status.labelKey),
+      tone: status.tone,
       detail:
         profile.token_status === "expired"
-          ? "Zaloguj konto ponownie w Antigravity"
-          : "Brak informacji o wygaśnięciu",
+          ? t("token_relogin_needed")
+          : t("token_no_expiry_info"),
     };
   }
 
   const remainingMinutes = Math.ceil((expiryTime - Date.now()) / 60_000);
   if (profile.token_status === "expired" || remainingMinutes <= 0) {
-    return { ...statusLabels.expired, detail: "Token wygasł" };
+    return {
+      label: t("token_expired"),
+      tone: "danger",
+      detail: t("token_expired_detail")
+    };
   }
   if (profile.token_status === "expiring" || remainingMinutes <= 30) {
     return {
-      ...statusLabels.expiring,
-      detail: `Wygasa za ${Math.max(1, remainingMinutes)} min`,
+      label: t("token_expiring"),
+      tone: "warning",
+      detail: t("token_expiring_in", { minutes: String(Math.max(1, remainingMinutes)) }),
     };
   }
   if (profile.token_status === "refreshing") {
-    return { ...base, detail: "Bezpieczne odświeżanie tokenu" };
+    return {
+      label: t("token_refreshing"),
+      tone: "info",
+      detail: t("token_refreshing_secure")
+    };
   }
-  return { ...base, detail: `Ważny do ${timeFormatter.format(new Date(expiryTime))}` };
+
+  const locale = getLanguage() === "pl" ? "pl-PL" : "en-US";
+  const formattedTime = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(expiryTime));
+
+  return {
+    label: t(status.labelKey),
+    tone: status.tone,
+    detail: t("token_valid_until", { time: formattedTime })
+  };
 };
 
 export const getSwitchStage = (step: number): number => {
@@ -93,14 +115,15 @@ export const getSwitchStage = (step: number): number => {
 };
 
 export const getSwitchStepLabel = (step: number): string => {
-  const labels = [
-    "Przygotowywanie operacji",
-    "Zamykanie Antigravity",
-    "Zapisywanie obecnego profilu",
-    "Ładowanie i sprawdzanie nowego profilu",
-    "Kończenie i uruchamianie Antigravity",
+  const keys: TranslationKey[] = [
+    "step_preparing",
+    "step_closing",
+    "step_saving",
+    "step_loading",
+    "step_finishing",
   ];
-  return labels[getSwitchStage(step)] ?? labels[0];
+  const key = keys[getSwitchStage(step)] ?? keys[0];
+  return t(key);
 };
 
 export const profileName = (
@@ -108,7 +131,7 @@ export const profileName = (
   profileId?: string | null,
 ): string =>
   profiles.find((profile) => profile.profile_id === profileId)?.display_name ??
-  "wybrane konto";
+  t("selected_account");
 
 export interface DisclaimerData {
   title: string;
@@ -120,7 +143,7 @@ export interface DisclaimerData {
 }
 
 export const getDisclaimerText = (): DisclaimerData => {
-  const lang = navigator.language?.toLowerCase().startsWith("pl") ? "pl" : "en";
+  const lang = getLanguage();
   if (lang === "pl") {
     return {
       title: "Zastrzeżenie prawne i zrzeczenie się odpowiedzialności",
@@ -140,4 +163,3 @@ export const getDisclaimerText = (): DisclaimerData => {
     fairUseLink: "Google Anti-Abuse Policies",
   };
 };
-
