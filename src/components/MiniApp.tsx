@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import {
   getAppState,
   requestSwitch,
@@ -11,6 +11,143 @@ import { Icon, AppMark } from "./Icons";
 import { t } from "../i18n";
 import type { AppState, ProfileSummary, SwitchOperation } from "../types";
 import { getSwitchStepLabel } from "../utils";
+
+function CustomSelect({
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  options: ProfileSummary[];
+  value: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedOption = options.find((o) => o.profile_id === value);
+
+  // Resize window on open/close
+  useEffect(() => {
+    const resizeWindow = async () => {
+      try {
+        const appWindow = getCurrentWindow();
+        if (isOpen) {
+          await appWindow.setSize(new LogicalSize(320, 220));
+        } else {
+          await appWindow.setSize(new LogicalSize(320, 72));
+        }
+      } catch (e) {
+        console.error("Failed to resize window", e);
+      }
+    };
+    void resizeWindow();
+  }, [isOpen]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isOpen]);
+
+  const handleSelect = (id: string) => {
+    onChange(id);
+    setIsOpen(false);
+  };
+
+  const getQuotas = (profile?: ProfileSummary) => {
+    if (!profile?.quota?.quota_groups) return null;
+    let weekly = null;
+    let fiveHour = null;
+    for (const group of profile.quota.quota_groups) {
+      const w = group.buckets.find((b) => b.bucket_id === "gemini-weekly");
+      if (w) weekly = w;
+      const f = group.buckets.find((b) => b.bucket_id === "gemini-5h");
+      if (f) fiveHour = f;
+    }
+    return { weekly, fiveHour };
+  };
+
+  return (
+    <div
+      className={`custom-select-container ${disabled ? "custom-select--disabled" : ""}`}
+      ref={containerRef}
+    >
+      <button
+        type="button"
+        className={`custom-select-trigger ${isOpen ? "custom-select-trigger--open" : ""}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+      >
+        <span className="custom-select-trigger__text">
+          {selectedOption ? selectedOption.display_name : t("no_active_account")}
+        </span>
+        <Icon name="chevron-down" size={13} className="custom-select-trigger__arrow" />
+      </button>
+
+      {isOpen && (
+        <div className="custom-select-options">
+          {options.map((p) => {
+            const quotas = getQuotas(p);
+            return (
+              <button
+                key={p.profile_id}
+                type="button"
+                className={`custom-select-option ${p.profile_id === value ? "custom-select-option--active" : ""}`}
+                onClick={() => handleSelect(p.profile_id)}
+              >
+                <span className="custom-select-option__name">{p.display_name}</span>
+                <div className="custom-select-option__badges">
+                  {quotas?.fiveHour && (
+                    <span
+                      className={`mini-badge mini-badge--${
+                        Math.round(quotas.fiveHour.remaining_fraction * 100) < 20
+                          ? "danger"
+                          : Math.round(quotas.fiveHour.remaining_fraction * 100) < 50
+                          ? "warning"
+                          : "success"
+                      }`}
+                    >
+                      <span className="mini-badge__label">{t("quota_5h_label")}</span>
+                      <span>{Math.round(quotas.fiveHour.remaining_fraction * 100)}%</span>
+                    </span>
+                  )}
+                  {quotas?.weekly && (
+                    <span
+                      className={`mini-badge mini-badge--${
+                        Math.round(quotas.weekly.remaining_fraction * 100) < 20
+                          ? "danger"
+                          : Math.round(quotas.weekly.remaining_fraction * 100) < 50
+                          ? "warning"
+                          : "success"
+                      }`}
+                    >
+                      <span className="mini-badge__label">{t("quota_weekly_label")}</span>
+                      <span>{Math.round(quotas.weekly.remaining_fraction * 100)}%</span>
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MiniApp() {
   const [state, setState] = useState<AppState | null>(null);
@@ -205,25 +342,6 @@ export default function MiniApp() {
 
   return (
     <div className="mini-window-card" data-tauri-drag-region>
-      <div className="mini-controls">
-        <button
-          className="mini-control-button mini-control-button--minimize"
-          onClick={handleMinimize}
-          title={t("minimize")}
-          aria-label={t("minimize")}
-        >
-          <Icon name="minus" size={12} />
-        </button>
-        <button
-          className="mini-control-button mini-control-button--close"
-          onClick={handleClose}
-          title={t("close_mini")}
-          aria-label={t("close_mini")}
-        >
-          <Icon name="close" size={12} />
-        </button>
-      </div>
-
       {isAwaiting ? (
         <div className="mini-confirm-flow" data-tauri-drag-region>
           <div className="mini-confirm-flow__title" data-tauri-drag-region>
@@ -271,30 +389,12 @@ export default function MiniApp() {
               <AppMark size={24} />
             </div>
             <div className="mini-info" data-tauri-drag-region>
-              <select
-                className="mini-select"
+              <CustomSelect
+                options={state.profiles}
                 value={state.active_profile_id || ""}
-                onChange={(e) => handleActivate(e.target.value)}
+                onChange={handleActivate}
                 disabled={isBusy}
-              >
-                {!state.active_profile_id && (
-                  <option value="">{t("no_active_account")}</option>
-                )}
-                {state.profiles.map((p) => {
-                  const quotas = getQuotas(p);
-                  let limitStr = "";
-                  if (quotas) {
-                    const fPct = quotas.fiveHour ? `${Math.round(quotas.fiveHour.remaining_fraction * 100)}%` : "100%";
-                    const wPct = quotas.weekly ? `${Math.round(quotas.weekly.remaining_fraction * 100)}%` : "100%";
-                    limitStr = ` (5h: ${fPct}, 7d: ${wPct})`;
-                  }
-                  return (
-                    <option key={p.profile_id} value={p.profile_id}>
-                      {p.display_name}{limitStr}
-                    </option>
-                  );
-                })}
-              </select>
+              />
               <div className="mini-badges" data-tauri-drag-region>
                 {activeQuotas?.fiveHour && (
                   <div
@@ -332,6 +432,24 @@ export default function MiniApp() {
                 )}
               </div>
             </div>
+          </div>
+          <div className="mini-right">
+            <button
+              className="mini-control-button"
+              onClick={handleMinimize}
+              title={t("minimize")}
+              aria-label={t("minimize")}
+            >
+              <Icon name="minus" size={13} />
+            </button>
+            <button
+              className="mini-control-button mini-control-button--close"
+              onClick={handleClose}
+              title={t("close_mini")}
+              aria-label={t("close_mini")}
+            >
+              <Icon name="close" size={13} />
+            </button>
           </div>
         </div>
       )}

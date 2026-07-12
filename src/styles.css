@@ -2790,7 +2790,7 @@ html.mini-window-html body {
 body.mini-window-body {
   background: transparent !important;
   margin: 0;
-  padding: 4px;
+  padding: 0 !important;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -2813,7 +2813,6 @@ body.mini-window-body {
   flex-direction: column;
   justify-content: center;
   box-sizing: border-box;
-  position: relative;
 }
 
 .mini-window-card:hover {
@@ -2824,38 +2823,124 @@ body.mini-window-body {
   align-items: center;
 }
 
-/* Window controls */
-.mini-controls {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 4px;
-  z-index: 10;
+/* Custom Select Dropdown styles */
+.custom-select-container {
+  position: relative;
+  width: 190px;
 }
 
-.mini-control-button {
+.custom-select-trigger {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 3px 8px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+  height: 26px;
+}
+
+.custom-select-trigger:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background-color: var(--surface-hover);
+}
+
+.custom-select-trigger:focus {
+  border-color: var(--border-active);
+}
+
+.custom-select-trigger--open {
+  border-color: var(--border-active);
+}
+
+.custom-select-trigger__arrow {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  margin-left: 6px;
+}
+
+.custom-select-trigger--open .custom-select-trigger__arrow {
+  transform: rotate(180deg);
+}
+
+.custom-select-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  background: rgba(13, 17, 30, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  max-height: 130px;
+  overflow-y: auto;
+  z-index: 100;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-select-option {
+  width: 100%;
   background: transparent;
   border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  width: 20px;
-  height: 20px;
+  padding: 6px 8px;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-}
-
-.mini-control-button:hover {
-  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  text-align: left;
 }
 
-.mini-control-button--close:hover {
-  background: rgba(232, 17, 35, 0.9) !important;
-  color: #ffffff !important;
+.custom-select-option:hover {
+  background: var(--surface-hover);
+}
+
+.custom-select-option--active {
+  background: rgba(74, 140, 247, 0.15);
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.custom-select-option__name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.custom-select-option__badges {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.custom-select-option__badges .mini-badge {
+  padding: 1px 4px;
+  font-size: 9px;
 }
 
 /* Normal flow inside mini switcher */
@@ -2886,29 +2971,6 @@ body.mini-window-body {
   flex-direction: column;
   gap: 3px;
   flex: 1;
-}
-
-.mini-select {
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 3px 8px;
-  width: 220px;
-  max-width: 100%;
-  outline: none;
-  transition: border-color 0.15s, background-color 0.15s;
-}
-
-.mini-select:hover:not(:disabled) {
-  border-color: var(--border-hover);
-  background-color: var(--surface-hover);
-}
-
-.mini-select:focus {
-  border-color: var(--border-active);
 }
 
 .mini-badges {
@@ -2952,6 +3014,38 @@ body.mini-window-body {
   font-weight: 700;
   font-size: 8px;
   text-transform: uppercase;
+}
+
+/* Control bar on the right */
+.mini-right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 6px;
+}
+
+.mini-control-button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mini-control-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.mini-control-button--close:hover {
+  background: rgba(232, 17, 35, 0.9) !important;
+  color: #ffffff !important;
 }
 
 /* Confirmation flow */

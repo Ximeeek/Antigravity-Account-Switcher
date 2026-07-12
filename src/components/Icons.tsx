@@ -5,6 +5,7 @@ export type IconName =
   | "accounts"
   | "alert"
   | "check"
+  | "chevron-down"
   | "clock"
   | "close"
   | "copy"
@@ -46,6 +47,7 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   check: <path d="m5 12.5 4.25 4.25L19 7" />,
+  "chevron-down": <path d="m6 9 6 6 6-6" />,
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />
