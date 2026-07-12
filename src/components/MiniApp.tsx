@@ -4,155 +4,16 @@ import {
   getAppState,
   requestSwitch,
   confirmSwitch,
-  cancelSwitch,
   hideMiniWindow,
-  resizeMiniWindow,
 } from "../bridge";
 import { Icon, AppMark } from "./Icons";
 import { t } from "../i18n";
 import type { AppState, ProfileSummary, SwitchOperation } from "../types";
 import { getSwitchStepLabel } from "../utils";
 
-function CustomSelect({
-  options,
-  value,
-  onChange,
-  disabled,
-}: {
-  options: ProfileSummary[];
-  value: string;
-  onChange: (id: string) => void;
-  disabled?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const selectedOption = options.find((o) => o.profile_id === value);
-
-  // Resize window on open/close
-  useEffect(() => {
-    const resizeWindow = async () => {
-      try {
-        if (isOpen) {
-          await resizeMiniWindow(220);
-        } else {
-          await resizeMiniWindow(72);
-        }
-      } catch (e) {
-        console.error("Failed to resize window", e);
-      }
-    };
-    void resizeWindow();
-  }, [isOpen]);
-
-  // Click outside to close
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, [isOpen]);
-
-  const handleSelect = (id: string) => {
-    onChange(id);
-    setIsOpen(false);
-  };
-
-  const getQuotas = (profile?: ProfileSummary) => {
-    if (!profile?.quota?.quota_groups) return null;
-    let weekly = null;
-    let fiveHour = null;
-    for (const group of profile.quota.quota_groups) {
-      const w = group.buckets.find((b) => b.bucket_id === "gemini-weekly");
-      if (w) weekly = w;
-      const f = group.buckets.find((b) => b.bucket_id === "gemini-5h");
-      if (f) fiveHour = f;
-    }
-    return { weekly, fiveHour };
-  };
-
-  return (
-    <div
-      className={`custom-select-container ${disabled ? "custom-select--disabled" : ""}`}
-      ref={containerRef}
-    >
-      <button
-        type="button"
-        className={`custom-select-trigger ${isOpen ? "custom-select-trigger--open" : ""}`}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-      >
-        <span className="custom-select-trigger__text">
-          {selectedOption ? selectedOption.display_name : t("no_active_account")}
-        </span>
-        <Icon name="chevron-down" size={13} className="custom-select-trigger__arrow" />
-      </button>
-
-      {isOpen && (
-        <div className="custom-select-options">
-          {options.map((p) => {
-            const quotas = getQuotas(p);
-            return (
-              <button
-                key={p.profile_id}
-                type="button"
-                className={`custom-select-option ${p.profile_id === value ? "custom-select-option--active" : ""}`}
-                onClick={() => handleSelect(p.profile_id)}
-              >
-                <span className="custom-select-option__name">{p.display_name}</span>
-                <div className="custom-select-option__badges">
-                  {quotas?.fiveHour && (
-                    <span
-                      className={`mini-badge mini-badge--${
-                        Math.round(quotas.fiveHour.remaining_fraction * 100) < 20
-                          ? "danger"
-                          : Math.round(quotas.fiveHour.remaining_fraction * 100) < 50
-                          ? "warning"
-                          : "success"
-                      }`}
-                    >
-                      <span className="mini-badge__label">{t("quota_5h_label")}</span>
-                      <span>{Math.round(quotas.fiveHour.remaining_fraction * 100)}%</span>
-                    </span>
-                  )}
-                  {quotas?.weekly && (
-                    <span
-                      className={`mini-badge mini-badge--${
-                        Math.round(quotas.weekly.remaining_fraction * 100) < 20
-                          ? "danger"
-                          : Math.round(quotas.weekly.remaining_fraction * 100) < 50
-                          ? "warning"
-                          : "success"
-                      }`}
-                    >
-                      <span className="mini-badge__label">{t("quota_weekly_label")}</span>
-                      <span>{Math.round(quotas.weekly.remaining_fraction * 100)}%</span>
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function MiniApp() {
   const [state, setState] = useState<AppState | null>(null);
   const [workingAction, setWorkingAction] = useState<string | null>(null);
-  const [pendingSwitch, setPendingSwitch] = useState<SwitchOperation | null>(null);
   const mounted = useRef(true);
   const expectedSwitchTarget = useRef<string | null>(null);
 
@@ -210,82 +71,22 @@ export default function MiniApp() {
       if (!operation) {
         throw new Error("Failed to create switch operation.");
       }
+
       expectedSwitchTarget.current = operation.to_profile_id;
-      setPendingSwitch(operation);
       setState(requested);
 
-      if (operation.status === "in_progress") {
-        setWorkingAction("confirm-switch");
-        const completed = await confirmSwitch(operation.operation_id);
-        if (mounted.current) {
-          setPendingSwitch(null);
-          setState(completed);
-        }
+      // Instantly confirm the switch without any user confirmation prompts
+      setWorkingAction("confirm-switch");
+      const completed = await confirmSwitch(operation.operation_id);
+      if (mounted.current) {
+        setState(completed);
       }
     } catch (error) {
       console.error("Activate failed:", error);
       if (mounted.current) {
-        setPendingSwitch(null);
         setState((current) =>
           current ? { ...current, engine_status: "ready", operation: null } : current
         );
-        void loadState(true);
-      }
-    } finally {
-      if (mounted.current) setWorkingAction(null);
-    }
-  };
-
-  const handleConfirmSwitch = async () => {
-    const operationId = pendingSwitch?.operation_id ?? state?.operation?.operation_id;
-    if (!operationId) return;
-    setPendingSwitch((current) =>
-      current ? { ...current, status: "in_progress", current_step: 1 } : current
-    );
-    setState((current) =>
-      current?.operation
-        ? {
-            ...current,
-            engine_status: "busy",
-            operation: {
-              ...current.operation,
-              current_step: Math.max(1, current.operation.current_step),
-              status: "in_progress",
-            },
-          }
-        : current
-    );
-    setWorkingAction("confirm-switch");
-    try {
-      const completed = await confirmSwitch(operationId);
-      if (mounted.current) {
-        setPendingSwitch(null);
-        setState(completed);
-      }
-    } catch (e) {
-      console.error("Confirm switch failed:", e);
-      if (mounted.current) {
-        setPendingSwitch(null);
-        void loadState(true);
-      }
-    } finally {
-      if (mounted.current) setWorkingAction(null);
-    }
-  };
-
-  const handleCancelSwitch = async () => {
-    const operationId = pendingSwitch?.operation_id ?? state?.operation?.operation_id;
-    setWorkingAction("cancel-switch");
-    try {
-      const next = await cancelSwitch(operationId);
-      if (mounted.current) {
-        setPendingSwitch(null);
-        setState(next);
-      }
-    } catch (e) {
-      console.error("Cancel switch failed:", e);
-      if (mounted.current) {
-        setPendingSwitch(null);
         void loadState(true);
       }
     } finally {
@@ -321,9 +122,8 @@ export default function MiniApp() {
     (p) => p.profile_id === state.active_profile_id
   );
 
-  const operation = state.operation ?? pendingSwitch;
-  const isBusy = state.engine_status === "busy" || workingAction === "confirm-switch" || workingAction === "cancel-switch";
-  const isAwaiting = operation?.status === "awaiting_confirmation";
+  const operation = state.operation;
+  const isBusy = state.engine_status === "busy" || workingAction === "confirm-switch";
 
   const getQuotas = (profile?: ProfileSummary) => {
     if (!profile?.quota?.quota_groups) return null;
@@ -338,37 +138,30 @@ export default function MiniApp() {
     return { weekly, fiveHour };
   };
 
+  const getOptionLabel = (p: ProfileSummary) => {
+    const quotas = getQuotas(p);
+    if (!quotas) return p.display_name;
+
+    const getStatusEmoji = (remainingFraction: number) => {
+      const pct = Math.round(remainingFraction * 100);
+      if (pct < 20) return "🔴";
+      if (pct < 50) return "🟡";
+      return "🟢";
+    };
+
+    const fPct = quotas.fiveHour ? `${Math.round(quotas.fiveHour.remaining_fraction * 100)}%` : "100%";
+    const wPct = quotas.weekly ? `${Math.round(quotas.weekly.remaining_fraction * 100)}%` : "100%";
+    const fEmoji = quotas.fiveHour ? getStatusEmoji(quotas.fiveHour.remaining_fraction) : "🟢";
+    const wEmoji = quotas.weekly ? getStatusEmoji(quotas.weekly.remaining_fraction) : "🟢";
+
+    return `${p.display_name}  (5h: ${fEmoji} ${fPct}, 7d: ${wEmoji} ${wPct})`;
+  };
+
   const activeQuotas = getQuotas(activeProfile);
 
   return (
     <div className="mini-window-card" data-tauri-drag-region>
-      {isAwaiting ? (
-        <div className="mini-confirm-flow" data-tauri-drag-region>
-          <div className="mini-confirm-flow__title" data-tauri-drag-region>
-            <Icon name="alert" size={14} className="mini-warning-icon" />
-            <span>{t("mini_confirm_title")}</span>
-          </div>
-          <div className="mini-confirm-flow__actions">
-            <button
-              className="mini-btn mini-btn--primary"
-              onClick={handleConfirmSwitch}
-              disabled={workingAction !== null}
-            >
-              {workingAction === "confirm-switch" ? (
-                <Icon name="loader" size={12} />
-              ) : null}
-              <span>{t("mini_confirm_btn")}</span>
-            </button>
-            <button
-              className="mini-btn mini-btn--secondary"
-              onClick={handleCancelSwitch}
-              disabled={workingAction !== null}
-            >
-              <span>{t("mini_cancel_btn")}</span>
-            </button>
-          </div>
-        </div>
-      ) : isBusy && operation ? (
+      {isBusy && operation ? (
         <div className="mini-progress-flow" data-tauri-drag-region>
           <div className="mini-progress-flow__status" data-tauri-drag-region>
             <Icon name="loader" size={16} />
@@ -389,12 +182,21 @@ export default function MiniApp() {
               <AppMark size={24} />
             </div>
             <div className="mini-info" data-tauri-drag-region>
-              <CustomSelect
-                options={state.profiles}
+              <select
+                className="mini-select"
                 value={state.active_profile_id || ""}
-                onChange={handleActivate}
+                onChange={(e) => handleActivate(e.target.value)}
                 disabled={isBusy}
-              />
+              >
+                {!state.active_profile_id && (
+                  <option value="">{t("no_active_account")}</option>
+                )}
+                {state.profiles.map((p) => (
+                  <option key={p.profile_id} value={p.profile_id}>
+                    {getOptionLabel(p)}
+                  </option>
+                ))}
+              </select>
               <div className="mini-badges" data-tauri-drag-region>
                 {activeQuotas?.fiveHour && (
                   <div
