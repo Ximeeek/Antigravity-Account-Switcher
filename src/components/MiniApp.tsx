@@ -6,10 +6,10 @@ import {
   confirmSwitch,
   hideMiniWindow,
 } from "../bridge";
-import { Icon, AppMark } from "./Icons";
+import { Icon } from "./Icons";
 import { t } from "../i18n";
-import type { AppState, ProfileSummary, SwitchOperation } from "../types";
-import { getSwitchStepLabel } from "../utils";
+import type { AppState, ProfileSummary } from "../types";
+import { getSwitchStepLabel, getInitials } from "../utils";
 
 export default function MiniApp() {
   const [state, setState] = useState<AppState | null>(null);
@@ -138,26 +138,40 @@ export default function MiniApp() {
     return { weekly, fiveHour };
   };
 
-  const getOptionLabel = (p: ProfileSummary) => {
-    const quotas = getQuotas(p);
-    if (!quotas) return p.display_name;
-
-    const getStatusEmoji = (remainingFraction: number) => {
-      const pct = Math.round(remainingFraction * 100);
-      if (pct < 20) return "🔴";
-      if (pct < 50) return "🟡";
-      return "🟢";
-    };
-
-    const fPct = quotas.fiveHour ? `${Math.round(quotas.fiveHour.remaining_fraction * 100)}%` : "100%";
-    const wPct = quotas.weekly ? `${Math.round(quotas.weekly.remaining_fraction * 100)}%` : "100%";
-    const fEmoji = quotas.fiveHour ? getStatusEmoji(quotas.fiveHour.remaining_fraction) : "🟢";
-    const wEmoji = quotas.weekly ? getStatusEmoji(quotas.weekly.remaining_fraction) : "🟢";
-
-    return `${p.display_name}  (5h: ${fEmoji} ${fPct}, 7d: ${wEmoji} ${wPct})`;
+  const get5hRemainingFraction = (profile: ProfileSummary) => {
+    const quotas = getQuotas(profile);
+    return quotas?.fiveHour?.remaining_fraction ?? 1.0;
   };
 
-  const activeQuotas = getQuotas(activeProfile);
+  const getProfileQuotaInfo = (p: ProfileSummary) => {
+    const quotas = getQuotas(p);
+    let pct = 100;
+    let isWeeklyWarning = false;
+
+    if (quotas) {
+      const weeklyPct = quotas.weekly ? Math.round(quotas.weekly.remaining_fraction * 100) : 100;
+      const fiveHourPct = quotas.fiveHour ? Math.round(quotas.fiveHour.remaining_fraction * 100) : 100;
+
+      if (weeklyPct < 10) {
+        pct = weeklyPct;
+        isWeeklyWarning = true;
+      } else {
+        pct = fiveHourPct;
+      }
+    }
+
+    const tone = pct < 20 ? "danger" : pct < 50 ? "warning" : "success";
+
+    return { pct, isWeeklyWarning, tone };
+  };
+
+  const otherProfilesSorted = state.profiles
+    .filter((p) => p.profile_id !== state.active_profile_id)
+    .sort((a, b) => get5hRemainingFraction(b) - get5hRemainingFraction(a));
+
+  const sortedProfiles = activeProfile
+    ? [activeProfile, ...otherProfilesSorted]
+    : otherProfilesSorted;
 
   return (
     <div className="mini-window-card" data-tauri-drag-region>
@@ -176,82 +190,59 @@ export default function MiniApp() {
           </div>
         </div>
       ) : (
-        <div className="mini-main-flow" data-tauri-drag-region>
-          <div className="mini-left" data-tauri-drag-region>
-            <div className="mini-logo-container" data-tauri-drag-region>
-              <AppMark size={24} />
-            </div>
-            <div className="mini-info" data-tauri-drag-region>
-              <select
-                className="mini-select"
-                value={state.active_profile_id || ""}
-                onChange={(e) => handleActivate(e.target.value)}
-                disabled={isBusy}
-              >
-                {!state.active_profile_id && (
-                  <option value="">{t("no_active_account")}</option>
-                )}
-                {state.profiles.map((p) => (
-                  <option key={p.profile_id} value={p.profile_id}>
-                    {getOptionLabel(p)}
-                  </option>
-                ))}
-              </select>
-              <div className="mini-badges" data-tauri-drag-region>
-                {activeQuotas?.fiveHour && (
-                  <div
-                    className={`mini-badge mini-badge--${
-                      Math.round(activeQuotas.fiveHour.remaining_fraction * 100) < 20
-                        ? "danger"
-                        : Math.round(activeQuotas.fiveHour.remaining_fraction * 100) < 50
-                        ? "warning"
-                        : "success"
-                    }`}
-                    title={`${activeQuotas.fiveHour.display_name}: ${Math.round(activeQuotas.fiveHour.remaining_fraction * 100)}%`}
-                  >
-                    <span className="mini-badge__label">{t("quota_5h_label")}</span>
-                    <span>
-                      {Math.round(activeQuotas.fiveHour.remaining_fraction * 100)}%
-                    </span>
-                  </div>
-                )}
-                {activeQuotas?.weekly && (
-                  <div
-                    className={`mini-badge mini-badge--${
-                      Math.round(activeQuotas.weekly.remaining_fraction * 100) < 20
-                        ? "danger"
-                        : Math.round(activeQuotas.weekly.remaining_fraction * 100) < 50
-                        ? "warning"
-                        : "success"
-                    }`}
-                    title={`${activeQuotas.weekly.display_name}: ${Math.round(activeQuotas.weekly.remaining_fraction * 100)}%`}
-                  >
-                    <span className="mini-badge__label">{t("quota_weekly_label")}</span>
-                    <span>
-                      {Math.round(activeQuotas.weekly.remaining_fraction * 100)}%
-                    </span>
-                  </div>
-                )}
+        <div className="mini-container" data-tauri-drag-region>
+          <header className="mini-header" data-tauri-drag-region>
+            <span className="mini-header-title" data-tauri-drag-region>AAC / MINI</span>
+            <div className="mini-header-controls">
+              <span className={`mini-status-dot mini-status-dot--${state.engine_status}`} />
+              <div className="mini-control-buttons">
+                <button
+                  className="mini-control-button"
+                  onClick={handleMinimize}
+                  title={t("minimize")}
+                  aria-label={t("minimize")}
+                >
+                  <Icon name="minus" size={12} />
+                </button>
+                <button
+                  className="mini-control-button mini-control-button--close"
+                  onClick={handleClose}
+                  title={t("close_mini")}
+                  aria-label={t("close_mini")}
+                >
+                  <Icon name="close" size={12} />
+                </button>
               </div>
             </div>
-          </div>
-          <div className="mini-right">
-            <button
-              className="mini-control-button"
-              onClick={handleMinimize}
-              title={t("minimize")}
-              aria-label={t("minimize")}
-            >
-              <Icon name="minus" size={13} />
-            </button>
-            <button
-              className="mini-control-button mini-control-button--close"
-              onClick={handleClose}
-              title={t("close_mini")}
-              aria-label={t("close_mini")}
-            >
-              <Icon name="close" size={13} />
-            </button>
+          </header>
+          
+          <div className="mini-profile-list">
+            {sortedProfiles.map((p) => {
+              const isActive = p.profile_id === state.active_profile_id;
+              const { pct, isWeeklyWarning, tone } = getProfileQuotaInfo(p);
+              
+              return (
+                <div
+                  key={p.profile_id}
+                  className={`mini-profile-row ${isActive ? "mini-profile-row--active" : ""} ${isBusy ? "mini-profile-row--disabled" : ""}`}
+                  onClick={() => !isActive && !isBusy && handleActivate(p.profile_id)}
+                >
+                  <div className="mini-profile-avatar">
+                    {getInitials(p.display_name)}
+                  </div>
+                  <div className="mini-profile-info">
+                    <span className="mini-profile-name">{p.display_name}</span>
+                    {isActive && (
+                      <span className="mini-profile-badge">{t("used_badge")}</span>
+                    )}
+                  </div>
+                  <div className={`mini-profile-quota mini-profile-quota--${tone}`}>
+                    <span className="quota-percent">{pct}%</span>
+                    {isWeeklyWarning && <span className="quota-period">7d</span>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

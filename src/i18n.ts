@@ -46,6 +46,7 @@ export const translations = {
     mini_confirm_btn: "Tak, przełącz",
     mini_cancel_btn: "Anuluj",
     mini_switching: "Przełączanie...",
+    used_badge: "Używane",
 
     // TitleBar
     titlebar_title: "Antigravity Account Switcher",
@@ -265,6 +266,7 @@ export const translations = {
     mini_confirm_btn: "Yes, switch",
     mini_cancel_btn: "Cancel",
     mini_switching: "Switching...",
+    used_badge: "Used",
 
     // TitleBar
     titlebar_title: "Antigravity Account Switcher",
