@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   getAppState,
   requestSwitch,
@@ -20,9 +21,11 @@ export default function MiniApp() {
 
   useEffect(() => {
     mounted.current = true;
+    document.documentElement.classList.add("mini-window-html");
     document.body.classList.add("mini-window-body");
     return () => {
       mounted.current = false;
+      document.documentElement.classList.remove("mini-window-html");
       document.body.classList.remove("mini-window-body");
     };
   }, []);
@@ -161,6 +164,14 @@ export default function MiniApp() {
     }
   };
 
+  const handleMinimize = async () => {
+    try {
+      await getCurrentWindow().minimize();
+    } catch (e) {
+      console.error("Failed to minimize", e);
+    }
+  };
+
   if (!state) {
     return (
       <div className="mini-window-card mini-window-loading">
@@ -194,6 +205,25 @@ export default function MiniApp() {
 
   return (
     <div className="mini-window-card" data-tauri-drag-region>
+      <div className="mini-controls">
+        <button
+          className="mini-control-button mini-control-button--minimize"
+          onClick={handleMinimize}
+          title={t("minimize")}
+          aria-label={t("minimize")}
+        >
+          <Icon name="minus" size={12} />
+        </button>
+        <button
+          className="mini-control-button mini-control-button--close"
+          onClick={handleClose}
+          title={t("close_mini")}
+          aria-label={t("close_mini")}
+        >
+          <Icon name="close" size={12} />
+        </button>
+      </div>
+
       {isAwaiting ? (
         <div className="mini-confirm-flow" data-tauri-drag-region>
           <div className="mini-confirm-flow__title" data-tauri-drag-region>
@@ -250,11 +280,20 @@ export default function MiniApp() {
                 {!state.active_profile_id && (
                   <option value="">{t("no_active_account")}</option>
                 )}
-                {state.profiles.map((p) => (
-                  <option key={p.profile_id} value={p.profile_id}>
-                    {p.display_name}
-                  </option>
-                ))}
+                {state.profiles.map((p) => {
+                  const quotas = getQuotas(p);
+                  let limitStr = "";
+                  if (quotas) {
+                    const fPct = quotas.fiveHour ? `${Math.round(quotas.fiveHour.remaining_fraction * 100)}%` : "100%";
+                    const wPct = quotas.weekly ? `${Math.round(quotas.weekly.remaining_fraction * 100)}%` : "100%";
+                    limitStr = ` (5h: ${fPct}, 7d: ${wPct})`;
+                  }
+                  return (
+                    <option key={p.profile_id} value={p.profile_id}>
+                      {p.display_name}{limitStr}
+                    </option>
+                  );
+                })}
               </select>
               <div className="mini-badges" data-tauri-drag-region>
                 {activeQuotas?.fiveHour && (
@@ -293,16 +332,6 @@ export default function MiniApp() {
                 )}
               </div>
             </div>
-          </div>
-          <div className="mini-right">
-            <button
-              className="mini-close-button"
-              onClick={handleClose}
-              title={t("close_mini")}
-              aria-label={t("close_mini")}
-            >
-              <Icon name="close" size={13} />
-            </button>
           </div>
         </div>
       )}

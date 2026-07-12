@@ -2782,6 +2782,11 @@ button.brand:focus-visible {
 }
 
 /* Mini Switcher Window Styles */
+html.mini-window-html,
+html.mini-window-html body {
+  background: transparent !important;
+}
+
 body.mini-window-body {
   background: transparent !important;
   margin: 0;
@@ -2797,7 +2802,7 @@ body.mini-window-body {
 .mini-window-card {
   width: 100%;
   height: 100%;
-  background: rgba(10, 14, 26, 0.94);
+  background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
@@ -2808,6 +2813,7 @@ body.mini-window-body {
   flex-direction: column;
   justify-content: center;
   box-sizing: border-box;
+  position: relative;
 }
 
 .mini-window-card:hover {
@@ -2816,6 +2822,40 @@ body.mini-window-body {
 
 .mini-window-loading {
   align-items: center;
+}
+
+/* Window controls */
+.mini-controls {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+
+.mini-control-button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mini-control-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.mini-control-button--close:hover {
+  background: rgba(232, 17, 35, 0.9) !important;
+  color: #ffffff !important;
 }
 
 /* Normal flow inside mini switcher */
@@ -2856,7 +2896,7 @@ body.mini-window-body {
   font-size: 13px;
   font-weight: 500;
   padding: 3px 8px;
-  width: 200px;
+  width: 220px;
   max-width: 100%;
   outline: none;
   transition: border-color 0.15s, background-color 0.15s;
@@ -2912,29 +2952,6 @@ body.mini-window-body {
   font-weight: 700;
   font-size: 8px;
   text-transform: uppercase;
-}
-
-.mini-right {
-  display: flex;
-  align-items: center;
-}
-
-.mini-close-button {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-}
-
-.mini-close-button:hover {
-  background: rgba(232, 17, 35, 0.1);
-  color: #ff6b7a;
 }
 
 /* Confirmation flow */
