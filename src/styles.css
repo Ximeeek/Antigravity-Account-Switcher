@@ -3212,5 +3212,78 @@ body.mini-window-body {
   color: var(--text-muted);
 }
 
+/* Custom Switch Level Slider Styles */
+.switch-level-slider-container {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.switch-level-slider-track {
+  position: relative;
+  display: flex;
+  background-color: var(--background-secondary, #161920);
+  border: 1px solid var(--border-color, #2d3139);
+  border-radius: 8px;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.switch-level-slider-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  background-color: var(--accent-color, #5865f2);
+  border-radius: 6px;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.switch-level-btn {
+  position: relative;
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-secondary, #8e9297);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 0;
+  cursor: pointer;
+  outline: none;
+  z-index: 1;
+  transition: color 0.2s ease;
+}
+
+.switch-level-btn:hover {
+  color: var(--text-primary, #fff);
+}
+
+.switch-level-btn.active {
+  color: var(--text-primary, #fff);
+}
+
+/* Pulse animation for faster badge */
+@keyframes pulse-faster {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.badge-faster {
+  animation: pulse-faster 2s infinite ease-in-out;
+}
+
 
 

@@ -25,7 +25,8 @@ export type IconName =
   | "shield"
   | "square"
   | "trash"
-  | "user";
+  | "user"
+  | "zap";
 
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, "name"> {
   name: IconName;
@@ -144,6 +145,7 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M4.5 21c.55-4.15 3.05-6.25 7.5-6.25s6.95 2.1 7.5 6.25" />
     </>
   ),
+  zap: <path d="M13 2 3 14h9l-1 8 10-12h-9z" />,
 };
 
 export function Icon({ name, size = 18, className, ...props }: IconProps) {

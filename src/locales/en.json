@@ -1,5 +1,12 @@
 {
   "unexpected_error": "An unexpected error occurred. Please try again.",
+  "switch_level_title": "Account Switching Level",
+  "switch_level_desc": "Choose the speed and scope of restart when switching profiles.",
+  "switch_level_1": "Level 1 (Full Restart)",
+  "switch_level_2": "Level 2 (Fast Restart)",
+  "switch_level_1_desc": "Restarts the entire Antigravity application. Slower (~8s), but guarantees a complete interface and session refresh.",
+  "switch_level_2_desc": "Restarts only the language server process (language_server.exe). Blazing fast (~2s). Keeps the open window and chat history!",
+  "switch_level_faster": "up to 4x faster!",
   "loading_profiles": "Loading profiles",
   "checking_status": "Checking Antigravity and local storage status.",
   "app_load_failed": "Failed to start the application",

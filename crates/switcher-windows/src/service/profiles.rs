@@ -88,6 +88,7 @@ impl SwitcherService {
                 detected_installations,
                 token_refresh_enabled: false,
                 smart_switch_enabled: config.smart_switch_enabled,
+                switch_level: config.switch_level,
             },
             app_version: version.to_owned(),
         })
@@ -135,6 +136,7 @@ impl SwitcherService {
                 detected_installations,
                 token_refresh_enabled: false,
                 smart_switch_enabled: config.smart_switch_enabled,
+                switch_level: config.switch_level,
             },
             app_version: version.to_owned(),
         })
@@ -268,6 +270,7 @@ impl SwitcherService {
         http_port: u16,
         installation_path: Option<String>,
         smart_switch_enabled: bool,
+        switch_level: u8,
     ) -> Result<SettingsView> {
         let path = installation_path
             .map(PathBuf::from)
@@ -277,11 +280,17 @@ impl SwitcherService {
                 "Dozwolone są wyłącznie porty nieuprzywilejowane (>= 1024)".to_owned(),
             ));
         }
+        if switch_level != 1 && switch_level != 2 {
+            return Err(SwitcherError::InvalidConfiguration(
+                "Nieprawidłowy poziom przełączania kont".to_owned(),
+            ));
+        }
         {
             let mut config = self.config.write();
             config.http_port = http_port;
             config.installation_path = path;
             config.smart_switch_enabled = smart_switch_enabled;
+            config.switch_level = switch_level;
             save_json(&self.paths.config, &*config)?;
         }
         let state = self.app_state(env!("CARGO_PKG_VERSION"))?;

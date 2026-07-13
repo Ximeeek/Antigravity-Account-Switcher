@@ -81,6 +81,7 @@ pub struct AppSettingsInput {
     http_port: u16,
     antigravity_path: String,
     smart_switch_enabled: bool,
+    switch_level: u8,
 }
 
 #[tauri::command]
@@ -94,7 +95,12 @@ pub fn update_settings(
         Some(settings.antigravity_path)
     };
     service
-        .update_settings(settings.http_port, path, settings.smart_switch_enabled)
+        .update_settings(
+            settings.http_port,
+            path,
+            settings.smart_switch_enabled,
+            settings.switch_level,
+        )
         .map_err(|e| e.to_string())
 }
 

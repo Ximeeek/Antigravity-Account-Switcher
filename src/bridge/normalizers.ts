@@ -222,6 +222,11 @@ export const normalizeAppState = (value: unknown): AppState => {
           pick(source, "smart_switch_enabled", "smartSwitchEnabled"),
         false,
       ),
+      switch_level: asNumber(
+        pick(settingsSource, "switch_level", "switchLevel") ??
+          pick(source, "switch_level", "switchLevel"),
+        1,
+      ),
     },
     app_version: asNullableString(pick(source, "app_version", "appVersion", "version")),
     antigravity_version: asNullableString(

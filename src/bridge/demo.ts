@@ -56,6 +56,7 @@ export const makeDemoState = (): AppState => ({
     http_port: 43127,
     antigravity_path: "C:\\Program Files\\Antigravity\\Antigravity.exe",
     smart_switch_enabled: false,
+    switch_level: 1,
   },
   app_version: "1.0.0-demo",
   antigravity_version: "1.4.2-demo",
@@ -198,6 +199,10 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
         smart_switch_enabled: asBoolean(
           pick(settings, "smart_switch_enabled", "smartSwitchEnabled"),
           demoState.settings.smart_switch_enabled,
+        ),
+        switch_level: asNumber(
+          pick(settings, "switch_level", "switchLevel"),
+          demoState.settings.switch_level,
         ),
       };
       return clone(demoState);

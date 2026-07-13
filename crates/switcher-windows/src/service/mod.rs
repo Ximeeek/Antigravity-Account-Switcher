@@ -11,6 +11,7 @@ pub mod oauth;
 pub mod profiles;
 pub mod smart_switch;
 pub mod switch;
+pub mod switch_fast;
 #[cfg(test)]
 pub mod tests;
 
@@ -50,6 +51,7 @@ pub struct SwitcherService {
     pub(crate) operation_lock: Mutex<()>,
     pub(crate) active_oauth_cancellation: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
     pub(crate) quota_cache: Mutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>>,
+    pub(crate) last_switches: Mutex<Vec<std::time::Instant>>,
 }
 
 impl SwitcherService {
@@ -78,6 +80,7 @@ impl SwitcherService {
             operation_lock: Mutex::new(()),
             active_oauth_cancellation: Mutex::new(None),
             quota_cache: Mutex::new(HashMap::new()),
+            last_switches: Mutex::new(Vec::new()),
             paths,
         });
         service.logger.info(None, "app", "Application initialized");

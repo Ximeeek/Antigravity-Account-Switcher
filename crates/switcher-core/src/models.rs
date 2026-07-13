@@ -119,6 +119,11 @@ pub struct SettingsView {
     pub detected_installations: Vec<String>,
     pub token_refresh_enabled: bool,
     pub smart_switch_enabled: bool,
+    pub switch_level: u8,
+}
+
+fn default_switch_level() -> u8 {
+    1
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -131,6 +136,8 @@ pub struct PersistentConfig {
     pub active_profile_id: Option<Uuid>,
     #[serde(default)]
     pub smart_switch_enabled: bool,
+    #[serde(default = "default_switch_level")]
+    pub switch_level: u8,
 }
 
 impl Default for PersistentConfig {
@@ -142,9 +149,11 @@ impl Default for PersistentConfig {
             installation_path: None,
             active_profile_id: None,
             smart_switch_enabled: false,
+            switch_level: 1,
         }
     }
 }
+
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]

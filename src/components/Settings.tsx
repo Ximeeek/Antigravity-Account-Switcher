@@ -35,7 +35,8 @@ export function Settings({
     () =>
       draft.http_port !== state.settings.http_port ||
       draft.antigravity_path.trim() !== state.settings.antigravity_path.trim() ||
-      draft.smart_switch_enabled !== state.settings.smart_switch_enabled,
+      draft.smart_switch_enabled !== state.settings.smart_switch_enabled ||
+      draft.switch_level !== state.settings.switch_level,
     [draft, state.settings],
   );
 
@@ -127,6 +128,79 @@ export function Settings({
                 />
               </span>
             </label>
+
+            <div className="switch-level-section" style={{ marginTop: "24px", marginBottom: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <span className="field__label" style={{ fontWeight: 600, fontSize: "14px", color: "var(--text-primary, #fff)" }}>
+                  {t("switch_level_title")}
+                </span>
+                {draft.switch_level === 2 && (
+                  <span className="badge-faster" style={{ 
+                    fontSize: "11px", 
+                    fontWeight: 700, 
+                    color: "#43b581", 
+                    backgroundColor: "rgba(67, 181, 129, 0.1)", 
+                    padding: "2px 6px", 
+                    borderRadius: "4px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    {t("switch_level_faster")}
+                  </span>
+                )}
+              </div>
+              <p className="field-hint" style={{ margin: "0 0 12px 0", fontSize: "12px", color: "var(--text-secondary, #8e9297)", lineHeight: "1.4" }}>
+                {t("switch_level_desc")}
+              </p>
+              
+              <div className="switch-level-slider-container">
+                <div className="switch-level-slider-track">
+                  <div 
+                    className="switch-level-slider-pill" 
+                    style={{ 
+                      transform: `translateX(${draft.switch_level === 1 ? '0%' : '100%'})` 
+                    }}
+                  />
+                  <button 
+                    type="button"
+                    className={`switch-level-btn ${draft.switch_level === 1 ? 'active' : ''}`}
+                    onClick={() => setDraft(current => ({ ...current, switch_level: 1 }))}
+                  >
+                    {t("switch_level_1")}
+                  </button>
+                  <button 
+                    type="button"
+                    className={`switch-level-btn ${draft.switch_level === 2 ? 'active' : ''}`}
+                    onClick={() => setDraft(current => ({ ...current, switch_level: 2 }))}
+                  >
+                    {t("switch_level_2")}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="switch-level-description-box" style={{ 
+                marginTop: "12px", 
+                padding: "12px", 
+                borderRadius: "6px", 
+                backgroundColor: "var(--background-secondary, #161920)", 
+                border: "1px solid var(--border-color, #2d3139)",
+                fontSize: "12px",
+                lineHeight: "1.5",
+                color: "var(--text-secondary, #8e9297)"
+              }}>
+                <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                  <div style={{ color: draft.switch_level === 2 ? "#43b581" : "#5865f2", marginTop: "2px" }}>
+                    <Icon name={draft.switch_level === 2 ? "zap" : "shield"} size={16} />
+                  </div>
+                  <div>
+                    <strong style={{ display: "block", color: "var(--text-primary, #fff)", marginBottom: "4px" }}>
+                      {draft.switch_level === 1 ? t("switch_level_1") : t("switch_level_2")}
+                    </strong>
+                    {draft.switch_level === 1 ? t("switch_level_1_desc") : t("switch_level_2_desc")}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div className="field-row field-row--checkbox" style={{ marginTop: "20px", marginBottom: "12px" }}>
               <label className="checkbox-field" style={{ display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer" }}>

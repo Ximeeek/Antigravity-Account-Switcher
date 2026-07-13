@@ -207,6 +207,42 @@ impl ProcessManager {
         );
         Ok(pid)
     }
+
+    pub fn kill_pid(&self, pid: u32) -> Result<()> {
+        #[cfg(windows)]
+        {
+            terminate_process(pid)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = pid;
+            Err(SwitcherError::UnsupportedPlatform)
+        }
+    }
+
+    pub fn get_language_server_process(&self) -> Result<Option<AntigravityProcess>> {
+        let target_exe = self.installation_path.join("resources").join("bin").join("language_server.exe");
+        let target_canonical = target_exe.canonicalize().unwrap_or(target_exe);
+        
+        let processes = self.enumerate()?;
+        for proc in processes {
+            if let Some(ref path) = proc.executable_path {
+                let proc_canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+                let match_canonical = proc_canonical == target_canonical;
+                let match_plain = {
+                    let s1 = proc_canonical.to_string_lossy().replace("\\\\?\\", "").to_lowercase();
+                    let s2 = target_canonical.to_string_lossy().replace("\\\\?\\", "").to_lowercase();
+                    s1 == s2
+                };
+                if match_canonical || match_plain {
+                    if proc.name.to_lowercase() == "language_server.exe" {
+                        return Ok(Some(proc));
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
 }
 
 #[cfg(windows)]

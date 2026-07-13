@@ -5,7 +5,7 @@
  */
 
 use std::fs;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 use crate::{SwitcherService, SwitchOutcome, PendingSwitch};
@@ -16,6 +16,43 @@ use switcher_core::{
 use super::database::validate_state_database;
 
 impl SwitcherService {
+    pub fn check_cooldown(&self) -> Result<()> {
+        let mut history = self.last_switches.lock();
+        let now = Instant::now();
+        
+        // Clean up entries older than 60 seconds
+        history.retain(|&t| now.duration_since(t) < Duration::from_secs(60));
+        
+        // Enforce minimum gap of 4 seconds between any two switches
+        if let Some(&last) = history.last() {
+            let elapsed = now.duration_since(last);
+            if elapsed < Duration::from_secs(4) {
+                let remaining = 4 - elapsed.as_secs();
+                return Err(SwitcherError::Message(format!(
+                    "Odczekaj {} s przed kolejną próbą przełączenia konta.",
+                    remaining
+                )));
+            }
+        }
+        
+        // Enforce max 2 switches in 60 seconds
+        if history.len() >= 2 {
+            let oldest = history[0];
+            let elapsed = now.duration_since(oldest);
+            let wait_secs = if elapsed < Duration::from_secs(60) {
+                60 - elapsed.as_secs()
+            } else {
+                1
+            };
+            return Err(SwitcherError::Message(format!(
+                "Przekroczono limit przełączeń w czasie. Spróbuj ponownie za {} s.",
+                wait_secs
+            )));
+        }
+        
+        Ok(())
+    }
+
     pub fn request_switch(&self, target_profile_id: Uuid) -> Result<SwitchRequestResult> {
         if self.journal().exists() {
             return Err(SwitcherError::RecoveryRequired);
@@ -32,8 +69,16 @@ impl SwitcherService {
         }
         self.require_profile(target_profile_id)?;
         self.preflight_target_identity(target_profile_id)?;
+        
+        // Cooldown check
+        self.check_cooldown()?;
+        
         let operation_id = Uuid::new_v4();
-        let requires_confirmation = self.process_manager()?.is_running();
+        let requires_confirmation = if config.switch_level == 2 {
+            false
+        } else {
+            self.process_manager()?.is_running()
+        };
         self.pending.lock().insert(
             operation_id,
             PendingSwitch {
@@ -147,6 +192,12 @@ impl SwitcherService {
         if self.journal().exists() {
             return Err(SwitcherError::RecoveryRequired);
         }
+        
+        let config = self.config.read().clone();
+        if config.switch_level == 2 {
+            return self.perform_fast_switch(operation_id, target_profile_id);
+        }
+        
         self.paths.validate_same_volume()?;
         self.preflight_active_artifacts()?;
         self.preflight_target_identity(target_profile_id)?;
@@ -304,7 +355,7 @@ impl SwitcherService {
         })
     }
 
-    fn backup_current_profile(
+    pub(crate) fn backup_current_profile(
         &self,
         lock: &mut SwitchLock,
         active_credential: &[u8],
@@ -402,7 +453,7 @@ impl SwitcherService {
         Ok(())
     }
 
-    fn verify_target(&self, credential: &[u8]) -> Result<()> {
+    pub(crate) fn verify_target(&self, credential: &[u8]) -> Result<()> {
         let active = self.credentials.read_active()?;
         if crate::CredentialStore::digest(&active) != crate::CredentialStore::digest(credential) {
             return Err(SwitcherError::Consistency(
@@ -548,4 +599,5 @@ impl SwitcherService {
         }
         Ok(())
     }
+
 }
