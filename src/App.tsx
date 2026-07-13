@@ -46,10 +46,9 @@ import type {
   SwitchOperation,
 } from "./types";
 
-interface Notice {
-  tone: "success" | "danger" | "info";
-  message: string;
-}
+import LoadingScreen from "./components/LoadingScreen";
+import LoadError from "./components/LoadError";
+import Toast, { type Notice } from "./components/Toast";
 
 const errorMessage = (error: unknown): string => {
   if (error instanceof Error && error.message) return error.message;
@@ -61,29 +60,7 @@ const errorMessage = (error: unknown): string => {
   return t("unexpected_error");
 };
 
-function LoadingScreen() {
-  return (
-    <main className="boot-screen" aria-busy="true" aria-label={t("loading_profiles")}>
-      <div className="boot-screen__mark"><Icon name="loader" size={27} /></div>
-      <h1>{t("loading_profiles")}</h1>
-      <p>{t("checking_status")}</p>
-    </main>
-  );
-}
 
-function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <main className="boot-screen boot-screen--error">
-      <div className="boot-screen__mark"><Icon name="error" size={27} /></div>
-      <h1>{t("app_load_failed")}</h1>
-      <p>{message}</p>
-      <button className="button button--primary" onClick={onRetry} type="button">
-        <Icon name="refresh" size={16} />
-        <span>{t("try_again")}</span>
-      </button>
-    </main>
-  );
-}
 
 export default function App() {
   const [windowLabel, setWindowLabel] = useState<string>("main");
@@ -532,20 +509,4 @@ export default function App() {
   );
 }
 
-function Toast({ notice, onClose }: { notice: Notice; onClose: () => void }) {
-  return (
-    <div
-      aria-atomic="true"
-      className={`toast toast--${notice.tone}`}
-      role={notice.tone === "danger" ? "alert" : "status"}
-    >
-      <span className="toast__icon">
-        <Icon name={notice.tone === "success" ? "check" : notice.tone === "danger" ? "error" : "info"} size={17} />
-      </span>
-      <span>{notice.message}</span>
-      <button aria-label={t("close_message")} onClick={onClose} type="button">
-        <Icon name="close" size={15} />
-      </button>
-    </div>
-  );
-}
+
