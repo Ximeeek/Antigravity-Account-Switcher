@@ -75,15 +75,19 @@ export default function ActiveAccount({
         const dx = Math.max(rect.left - mouseX, 0, mouseX - rect.right);
         const dy = Math.max(rect.top - mouseY, 0, mouseY - rect.bottom);
         const distance = Math.sqrt(dx * dx + dy * dy);
-        isNear = distance < 200;
+        isNear = distance < 80;
       } else {
         isNear = false;
       }
 
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
-      const rx = rect.width / 2 + 50;
-      const ry = rect.height / 2 + 30;
+      
+      // Dynamic radius breathing to simulate random drifting path
+      const rxBase = rect.width / 2 + 40;
+      const ryBase = rect.height / 2 + 25;
+      const rx = rxBase + Math.sin(timestamp / 1200) * 35;
+      const ry = ryBase + Math.cos(timestamp / 1200) * 20;
 
       // Snapping theta to the closest angle on the orbit ellipse when user moves the mouse away
       if (wasNear && !isNear) {
@@ -91,16 +95,19 @@ export default function ActiveAccount({
       }
       wasNear = isNear;
 
-      let lerpFactor = 0.035;
+      // Slower lerping factors (0.02 for orbit, 0.075 for following) for organic liquid movement
+      let lerpFactor = 0.02;
 
       if (isNear) {
         targetX = mouseX - rect.left;
         targetY = mouseY - rect.top;
         targetScale = 1.15;
         targetOpacity = 0.48;
-        lerpFactor = 0.12;
+        lerpFactor = 0.075;
       } else {
-        theta += 0.5 * dt;
+        // Speed fluctuations (sometimes slows down, pauses, or drifts backward)
+        const speedVal = 0.16 + Math.sin(timestamp / 1600) * 0.18 + Math.cos(timestamp / 900) * 0.1;
+        theta += speedVal * dt;
 
         targetX = centerX + rx * Math.cos(theta);
         targetY = centerY + ry * Math.sin(theta);
