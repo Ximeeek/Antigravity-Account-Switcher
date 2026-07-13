@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "antigravity-account-switcher",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.1-nightly.20260714",
   "identifier": "com.ximeeek.antigravity-account-switcher",
   "build": {
     "frontendDist": "../dist",
