@@ -17,9 +17,39 @@ pub fn wipe_app_data_and_relaunch() -> Result<(), String> {
     let current_exe = std::env::current_exe()
         .map_err(|e| format!("Failed to get current executable path: {}", e))?;
     let exe_path = current_exe.to_string_lossy().to_string();
+    let current_pid = std::process::id();
+
+    let relaunch_cmd = if cfg!(debug_assertions) {
+        "".to_string()
+    } else {
+        format!("Start-Process -FilePath '{}';", exe_path)
+    };
 
     let script = format!(
-        "Start-Sleep -Seconds 2; \
+        "$parentPid = {}; \
+         $targetDir = \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\"; \
+         while (Get-Process -Id $parentPid -ErrorAction SilentlyContinue) {{ Start-Sleep -Milliseconds 100 }} \
+         $processes = Get-CimInstance Win32_Process -Filter \"Name = 'msedgewebview2.exe'\" -ErrorAction SilentlyContinue; \
+         if (-not $processes) {{ \
+             $processes = Get-WmiObject Win32_Process -Filter \"Name = 'msedgewebview2.exe'\" -ErrorAction SilentlyContinue; \
+         }} \
+         if ($processes) {{ \
+             $processes | Where-Object {{ $_.CommandLine -like \"*$targetDir*\" }} | ForEach-Object {{ \
+                 Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; \
+             }} \
+         }} \
+         $appProcesses = Get-CimInstance Win32_Process -Filter \"Name = 'app.exe'\" -ErrorAction SilentlyContinue; \
+         if (-not $appProcesses) {{ \
+             $appProcesses = Get-WmiObject Win32_Process -Filter \"Name = 'app.exe'\" -ErrorAction SilentlyContinue; \
+         }} \
+         if ($appProcesses) {{ \
+             $appProcesses | ForEach-Object {{ \
+                 if ($_.ProcessId -ne $parentPid) {{ \
+                     Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; \
+                 }} \
+             }} \
+         }} \
+         Start-Sleep -Milliseconds 500; \
          Remove-Item -Path 'HKCU:\\Software\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          Remove-Item -Path 'HKLM:\\Software\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          Remove-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
@@ -28,11 +58,22 @@ pub fn wipe_app_data_and_relaunch() -> Result<(), String> {
          Remove-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          cmd.exe /c \"cmdkey /delete:gemini:antigravity\"; \
          cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity\"; \
-         Remove-Item -Path \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\" -Recurse -Force -ErrorAction SilentlyContinue; \
-         Remove-Item -Path \"$env:LOCALAPPDATA\\AntigravitySwitcher\" -Recurse -Force -ErrorAction SilentlyContinue; \
-         Remove-Item -Path \"$env:LOCALAPPDATA\\AntigravitySwitcherDev\" -Recurse -Force -ErrorAction SilentlyContinue; \
-         Start-Process -FilePath '{}';",
-        exe_path
+         $folders = @( \
+             \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\", \
+             \"$env:LOCALAPPDATA\\AntigravitySwitcher\", \
+             \"$env:LOCALAPPDATA\\AntigravitySwitcherDev\" \
+         ); \
+         foreach ($folder in $folders) {{ \
+             if (Test-Path $folder) {{ \
+                 for ($i = 0; $i -lt 5; $i++) {{ \
+                     Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue; \
+                     if (-not (Test-Path $folder)) {{ break; }} \
+                     Start-Sleep -Milliseconds 500; \
+                 }} \
+             }} \
+         }} \
+         {}",
+        current_pid, relaunch_cmd
     );
 
     Command::new("powershell.exe")
@@ -50,9 +91,33 @@ pub fn uninstall_app_and_self_delete() -> Result<(), String> {
     let current_exe = std::env::current_exe()
         .map_err(|e| format!("Failed to get current executable path: {}", e))?;
     let exe_path = current_exe.to_string_lossy().to_string();
+    let current_pid = std::process::id();
 
     let script = format!(
-        "Start-Sleep -Seconds 2; \
+        "$parentPid = {}; \
+         $targetDir = \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\"; \
+         while (Get-Process -Id $parentPid -ErrorAction SilentlyContinue) {{ Start-Sleep -Milliseconds 100 }} \
+         $processes = Get-CimInstance Win32_Process -Filter \"Name = 'msedgewebview2.exe'\" -ErrorAction SilentlyContinue; \
+         if (-not $processes) {{ \
+             $processes = Get-WmiObject Win32_Process -Filter \"Name = 'msedgewebview2.exe'\" -ErrorAction SilentlyContinue; \
+         }} \
+         if ($processes) {{ \
+             $processes | Where-Object {{ $_.CommandLine -like \"*$targetDir*\" }} | ForEach-Object {{ \
+                 Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; \
+             }} \
+         }} \
+         $appProcesses = Get-CimInstance Win32_Process -Filter \"Name = 'app.exe'\" -ErrorAction SilentlyContinue; \
+         if (-not $appProcesses) {{ \
+             $appProcesses = Get-WmiObject Win32_Process -Filter \"Name = 'app.exe'\" -ErrorAction SilentlyContinue; \
+         }} \
+         if ($appProcesses) {{ \
+             $appProcesses | ForEach-Object {{ \
+                 if ($_.ProcessId -ne $parentPid) {{ \
+                     Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; \
+                 }} \
+             }} \
+         }} \
+         Start-Sleep -Milliseconds 500; \
          Remove-Item -Path 'HKCU:\\Software\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          Remove-Item -Path 'HKLM:\\Software\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          Remove-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
@@ -61,11 +126,27 @@ pub fn uninstall_app_and_self_delete() -> Result<(), String> {
          Remove-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          cmd.exe /c \"cmdkey /delete:gemini:antigravity\"; \
          cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity\"; \
-         Remove-Item -Path \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\" -Recurse -Force -ErrorAction SilentlyContinue; \
-         Remove-Item -Path \"$env:LOCALAPPDATA\\AntigravitySwitcher\" -Recurse -Force -ErrorAction SilentlyContinue; \
-         Remove-Item -Path \"$env:LOCALAPPDATA\\AntigravitySwitcherDev\" -Recurse -Force -ErrorAction SilentlyContinue; \
-         Remove-Item -Path '{}' -Force -ErrorAction SilentlyContinue;",
-        exe_path
+         $folders = @( \
+             \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\", \
+             \"$env:LOCALAPPDATA\\AntigravitySwitcher\", \
+             \"$env:LOCALAPPDATA\\AntigravitySwitcherDev\" \
+         ); \
+         foreach ($folder in $folders) {{ \
+             if (Test-Path $folder) {{ \
+                 for ($i = 0; $i -lt 5; $i++) {{ \
+                     Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue; \
+                     if (-not (Test-Path $folder)) {{ break; }} \
+                     Start-Sleep -Milliseconds 500; \
+                 }} \
+             }} \
+         }} \
+         $exePath = '{}'; \
+         for ($i = 0; $i -lt 5; $i++) {{ \
+             Remove-Item -Path $exePath -Force -ErrorAction SilentlyContinue; \
+             if (-not (Test-Path $exePath)) {{ break; }} \
+             Start-Sleep -Milliseconds 500; \
+         }}",
+        current_pid, exe_path
     );
 
     Command::new("powershell.exe")
