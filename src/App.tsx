@@ -276,10 +276,10 @@ export default function App() {
     if (!succeeded) void loadState(true);
   };
 
-  const handleAddProfile = async (displayName: string) => {
+  const handleAddProfile = async (displayName: string, autoActivate: boolean) => {
     const succeeded = await performStateAction(
       "add-profile",
-      () => startOauthLogin(displayName, lang),
+      () => startOauthLogin(displayName, lang, autoActivate),
       `Konto „${displayName}” zostało zapisane.`,
     );
     if (succeeded) setAddProfileOpen(false);
@@ -526,6 +526,7 @@ export default function App() {
         onSubmit={handleAddProfile}
         open={addProfileOpen}
         working={workingAction === "add-profile"}
+        isFirstProfile={!state?.profiles || state.profiles.length === 0}
       />
       <DeleteProfileModal
         onClose={() => setDeleteTarget(null)}

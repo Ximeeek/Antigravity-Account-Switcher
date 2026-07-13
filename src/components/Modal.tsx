@@ -85,7 +85,16 @@ export function Modal({
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      
+      const otherModals = Array.from(document.querySelectorAll(".modal-backdrop"));
+      const remaining = otherModals.filter(
+        (el) => panelRef.current && !el.contains(panelRef.current)
+      ).length;
+      
+      if (remaining === 0) {
+        document.body.style.overflow = "";
+      }
+      
       previouslyFocused?.focus();
     };
   }, [dismissible, onClose, open]);

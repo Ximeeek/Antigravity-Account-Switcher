@@ -20,7 +20,7 @@ use super::helpers::{
 };
 
 impl SwitcherService {
-    pub async fn start_oauth_login<F>(&self, display_name: String, lang: String, on_callback: F) -> Result<ProfileView>
+    pub async fn start_oauth_login<F>(&self, display_name: String, lang: String, auto_activate: bool, on_callback: F) -> Result<ProfileView>
     where
         F: Fn() + Send + Sync + 'static,
     {
@@ -281,7 +281,7 @@ impl SwitcherService {
         );
 
         let mut auto_activated = false;
-        let should_auto_activate = self.config.read().active_profile_id.is_none();
+        let should_auto_activate = auto_activate && self.config.read().active_profile_id.is_none();
         if should_auto_activate {
             self.logger.info(
                 Some(operation_id),

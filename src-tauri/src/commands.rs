@@ -132,6 +132,7 @@ pub async fn start_oauth_login(
     app_handle: AppHandle,
     display_name: String,
     lang: String,
+    auto_activate: Option<bool>,
 ) -> Result<ProfileView, String> {
     let handle_clone = app_handle.clone();
     let on_callback = move || {
@@ -142,7 +143,7 @@ pub async fn start_oauth_login(
         }
     };
     service
-        .start_oauth_login(display_name, lang, on_callback)
+        .start_oauth_login(display_name, lang, auto_activate.unwrap_or(true), on_callback)
         .await
         .map_err(|e| e.to_string())
 }

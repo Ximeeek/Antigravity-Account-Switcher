@@ -160,6 +160,7 @@
   "add_modal_name_label": "Nazwa wyświetlana konta",
   "add_modal_name_placeholder": "np. Praca, Studio, Prywatne",
   "add_modal_name_hint": "Nazwa widoczna tylko lokalnie w Switcherze i wtyczce.",
+  "add_modal_auto_activate": "Automatycznie aktywuj to konto w Antigravity (zamknie i uruchomi ponownie procesy)",
   "add_modal_validation_len": "Nazwa konta powinna mieć co najmniej 2 znaki.",
   "delete_modal_title": "Usunąć zapisane konto?",
   "delete_modal_desc": "Profil „{name}” i jego lokalna historia zostaną trwale usunięte.",

@@ -160,6 +160,7 @@
   "add_modal_name_label": "Account display name",
   "add_modal_name_placeholder": "e.g. Work, Studio, Private",
   "add_modal_name_hint": "Name visible only locally in the Switcher and plugin.",
+  "add_modal_auto_activate": "Automatically activate this account in Antigravity (closes and restarts processes)",
   "add_modal_validation_len": "Account name should be at least 2 characters long.",
   "delete_modal_title": "Delete saved account?",
   "delete_modal_desc": "Profile \"{name}\" and its local history will be permanently deleted.",

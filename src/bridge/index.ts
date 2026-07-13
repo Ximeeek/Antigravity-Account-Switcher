@@ -97,8 +97,8 @@ export const addCurrentProfile = (profile: AddProfileInput): Promise<AppState> =
   return commandThenState("add_current_profile", args);
 };
 
-export const startOauthLogin = (displayName: string, lang: string): Promise<AppState> =>
-  commandThenState("start_oauth_login", { displayName, lang });
+export const startOauthLogin = (displayName: string, lang: string, autoActivate?: boolean): Promise<AppState> =>
+  commandThenState("start_oauth_login", { displayName, lang, autoActivate });
 
 export const cancelOauthLogin = (): Promise<AppState> =>
   commandThenState("cancel_oauth_login");

@@ -10,7 +10,8 @@ interface AddProfileModalProps {
   open: boolean;
   working?: boolean;
   onClose: () => void;
-  onSubmit: (displayName: string) => Promise<void>;
+  onSubmit: (displayName: string, autoActivate: boolean) => Promise<void>;
+  isFirstProfile: boolean;
 }
 
 export function AddProfileModal({
@@ -18,16 +19,19 @@ export function AddProfileModal({
   working = false,
   onClose,
   onSubmit,
+  isFirstProfile,
 }: AddProfileModalProps) {
   const rawFormId = useId();
   const formId = `add-profile-${rawFormId.replaceAll(":", "")}`;
   const [displayName, setDisplayName] = useState("");
+  const [autoActivate, setAutoActivate] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const disclaimer = getDisclaimerText();
 
   useEffect(() => {
     if (!open) return;
     setDisplayName("");
+    setAutoActivate(true);
     setError(null);
   }, [open]);
 
@@ -39,7 +43,7 @@ export function AddProfileModal({
       return;
     }
     setError(null);
-    await onSubmit(name);
+    await onSubmit(name, autoActivate);
   };
 
   return (
@@ -122,6 +126,21 @@ export function AddProfileModal({
           />
           <span className="field-hint">{t("add_modal_name_hint")}</span>
         </label>
+
+        {isFirstProfile && (
+          <label className="field-checkbox" style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "16px", marginBottom: "16px", cursor: "pointer", userSelect: "none" }}>
+            <input
+              type="checkbox"
+              disabled={working}
+              checked={autoActivate}
+              onChange={(event) => setAutoActivate(event.target.checked)}
+              style={{ width: "16px", height: "16px", cursor: "pointer" }}
+            />
+            <span style={{ fontSize: "0.9em", color: "var(--text-color, #e1e4e8)" }}>
+              {t("add_modal_auto_activate")}
+            </span>
+          </label>
+        )}
 
         {error ? (
           <p className="field-error" role="alert">
