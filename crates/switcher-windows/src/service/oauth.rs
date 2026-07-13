@@ -280,6 +280,26 @@ impl SwitcherService {
             ),
         );
 
+        let should_auto_activate = self.config.read().active_profile_id.is_none();
+        if should_auto_activate {
+            self.logger.info(
+                Some(operation_id),
+                "oauth",
+                format!("No active profile set. Auto-activating newly created profile {}", new_profile_id),
+            );
+            if let Err(e) = self.credentials.write_active(&credential_bytes) {
+                self.logger.error(
+                    Some(operation_id),
+                    "oauth",
+                    format!("Failed to auto-activate credential: {}", e),
+                );
+            } else {
+                let mut config = self.config.write();
+                config.active_profile_id = Some(new_profile_id);
+                let _ = save_json(&self.paths.config, &*config);
+            }
+        }
+
         let mut quota = if let Some(ref email) = metadata.account_email {
             QuotaDecryptor::decrypt_all_quotas().ok().and_then(|mut m| m.remove(email))
         } else {
@@ -292,7 +312,7 @@ impl SwitcherService {
 
         Ok(ProfileView {
             token_status: TokenStatus::Valid,
-            is_active: false,
+            is_active: should_auto_activate,
             metadata,
             has_refresh_token: true,
             quota,

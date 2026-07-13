@@ -386,7 +386,33 @@ impl SwitcherService {
             return Ok(Some(profile_id));
         }
 
-        // Otherwise, see if any profile matches the active credential
+        let active_email = try_parse_email_from_credential(&active_credential);
+
+        // 1. Try matching by email address
+        if let Some(ref email) = active_email {
+            for profile_id in &profiles_in_dir {
+                let metadata_path = self.paths.profile_dir(*profile_id).join("metadata.json");
+                if let Ok(metadata) = load_json::<ProfileMetadata>(&metadata_path) {
+                    if metadata.account_email.as_ref() == Some(email) {
+                        // Found a match by email! Ensure config is in sync.
+                        let current_active = self.config.read().active_profile_id;
+                        if current_active != Some(*profile_id) {
+                            self.logger.info(
+                                None,
+                                "profile",
+                                format!("Auto-detected active profile by email matching Antigravity session: {} ({})", metadata.display_name, email),
+                            );
+                            let mut config = self.config.write();
+                            config.active_profile_id = Some(*profile_id);
+                            save_json(&self.paths.config, &*config)?;
+                        }
+                        return Ok(Some(*profile_id));
+                    }
+                }
+            }
+        }
+
+        // 2. Otherwise, see if any profile matches by credential digest
         for profile_id in &profiles_in_dir {
             if let Ok(profile_credential) = self.load_profile_credential(*profile_id) {
                 if crate::CredentialStore::digest(&profile_credential) == active_digest {
@@ -396,7 +422,7 @@ impl SwitcherService {
                         self.logger.info(
                             None,
                             "profile",
-                            format!("Auto-detected active profile matching Antigravity session: {profile_id}"),
+                            format!("Auto-detected active profile matching Antigravity session by digest: {profile_id}"),
                         );
                         let mut config = self.config.write();
                         config.active_profile_id = Some(*profile_id);
