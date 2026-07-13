@@ -280,6 +280,7 @@ impl SwitcherService {
             ),
         );
 
+        let mut auto_activated = false;
         let should_auto_activate = self.config.read().active_profile_id.is_none();
         if should_auto_activate {
             self.logger.info(
@@ -287,16 +288,20 @@ impl SwitcherService {
                 "oauth",
                 format!("No active profile set. Auto-activating newly created profile {}", new_profile_id),
             );
-            if let Err(e) = self.credentials.write_active(&credential_bytes) {
-                self.logger.error(
-                    Some(operation_id),
-                    "oauth",
-                    format!("Failed to auto-activate credential: {}", e),
-                );
-            } else {
-                let mut config = self.config.write();
-                config.active_profile_id = Some(new_profile_id);
-                let _ = save_json(&self.paths.config, &*config);
+            let switch_res = tokio::task::block_in_place(|| {
+                self.perform_switch(operation_id, new_profile_id)
+            });
+            match switch_res {
+                Ok(_) => {
+                    auto_activated = true;
+                }
+                Err(e) => {
+                    self.logger.error(
+                        Some(operation_id),
+                        "oauth",
+                        format!("Failed to auto-activate profile: {}", e),
+                    );
+                }
             }
         }
 
@@ -312,7 +317,7 @@ impl SwitcherService {
 
         Ok(ProfileView {
             token_status: TokenStatus::Valid,
-            is_active: should_auto_activate,
+            is_active: auto_activated,
             metadata,
             has_refresh_token: true,
             quota,
