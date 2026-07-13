@@ -45,6 +45,8 @@ export default function ActiveAccount({
     let mouseX = -9999;
     let mouseY = -9999;
     let isNear = false;
+    let wasNear = false;
+    let lastTime = 0;
     let theta = 0;
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -63,6 +65,10 @@ export default function ActiveAccount({
     let animationFrameId: number;
 
     const tick = (timestamp: number) => {
+      if (!lastTime) lastTime = timestamp;
+      const dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
       const rect = card.getBoundingClientRect();
 
       if (mouseX !== -9999 && mouseY !== -9999) {
@@ -74,6 +80,17 @@ export default function ActiveAccount({
         isNear = false;
       }
 
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rx = rect.width / 2 + 50;
+      const ry = rect.height / 2 + 30;
+
+      // Snapping theta to the closest angle on the orbit ellipse when user moves the mouse away
+      if (wasNear && !isNear) {
+        theta = Math.atan2((currentY - centerY) / ry, (currentX - centerX) / rx);
+      }
+      wasNear = isNear;
+
       let lerpFactor = 0.035;
 
       if (isNear) {
@@ -83,12 +100,7 @@ export default function ActiveAccount({
         targetOpacity = 0.48;
         lerpFactor = 0.12;
       } else {
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const rx = rect.width / 2 + 50;
-        const ry = rect.height / 2 + 30;
-
-        theta = (timestamp / 1000) * 0.5;
+        theta += 0.5 * dt;
 
         targetX = centerX + rx * Math.cos(theta);
         targetY = centerY + ry * Math.sin(theta);
@@ -101,8 +113,15 @@ export default function ActiveAccount({
       currentScale += (targetScale - currentScale) * 0.1;
       currentOpacity += (targetOpacity - currentOpacity) * 0.1;
 
+      // Update center glow position & scale
       glow.style.transform = `translate3d(${currentX.toFixed(1)}px, ${currentY.toFixed(1)}px, 0) scale(${currentScale.toFixed(2)})`;
       glow.style.opacity = currentOpacity.toFixed(3);
+
+      // Sync border gradient with the current position of the glow
+      card.style.setProperty(
+        "--active-border-bg",
+        `radial-gradient(150px circle at ${currentX.toFixed(1)}px ${currentY.toFixed(1)}px, rgba(125, 231, 246, 0.72) 0%, rgba(111, 92, 246, 0.35) 45%, transparent 100%), linear-gradient(105deg, rgba(72, 137, 244, 0.15), rgba(111, 92, 246, 0.1) 48%, rgba(111, 229, 241, 0.08))`
+      );
 
       animationFrameId = requestAnimationFrame(tick);
     };
