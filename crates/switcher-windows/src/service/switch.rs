@@ -61,9 +61,16 @@ impl SwitcherService {
             return Err(SwitcherError::OperationInProgress);
         }
         let config = self.config.read().clone();
-        let active = config
-            .active_profile_id
-            .ok_or(SwitcherError::NoActiveProfile)?;
+        let active = match config.active_profile_id {
+            Some(id) => id,
+            None => {
+                if self.credentials.read_active().is_ok() {
+                    return Err(SwitcherError::NoActiveProfile);
+                } else {
+                    Uuid::nil()
+                }
+            }
+        };
         if active == target_profile_id {
             return Err(SwitcherError::ProfileAlreadyActive);
         }
@@ -205,9 +212,17 @@ impl SwitcherService {
             .config
             .read()
             .active_profile_id
-            .ok_or(SwitcherError::NoActiveProfile)?;
-        let active_credential = self.credentials.read_active()?;
-        let protected_active = self.credentials.protect(&active_credential)?;
+            .unwrap_or_else(Uuid::nil);
+        let active_credential = if from_profile_id.is_nil() {
+            Vec::new()
+        } else {
+            self.credentials.read_active()?
+        };
+        let protected_active = if from_profile_id.is_nil() {
+            crate::ProtectedCredential(Vec::new())
+        } else {
+            self.credentials.protect(&active_credential)?
+        };
         let target_credential = self.load_profile_credential(target_profile_id)?;
         let started = Instant::now();
         let mut lock = SwitchLock::new(from_profile_id, target_profile_id);
@@ -270,12 +285,14 @@ impl SwitcherService {
         lock.current_step = SwitchStep::BackupCurrent;
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
-        if let Err(error) =
-            self.backup_current_profile(&mut lock, &active_credential, &protected_active)
-        {
-            lock.status = LockStatus::FailedAtStep4RolledBack;
-            self.fail_with_rollback(&mut lock, &error)?;
-            return Err(error);
+        if !from_profile_id.is_nil() {
+            if let Err(error) =
+                self.backup_current_profile(&mut lock, &active_credential, &protected_active)
+            {
+                lock.status = LockStatus::FailedAtStep4RolledBack;
+                self.fail_with_rollback(&mut lock, &error)?;
+                return Err(error);
+            }
         }
 
         lock.current_step = SwitchStep::LoadTarget;

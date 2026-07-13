@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{SwitcherService, SwitchOutcome};
 use switcher_core::{
-    Result, SwitcherError, SwitchLock, SwitchStep,
+    Result, SwitchLock, SwitchStep,
     save_json,
 };
 
@@ -23,10 +23,18 @@ impl SwitcherService {
             .config
             .read()
             .active_profile_id
-            .ok_or(SwitcherError::NoActiveProfile)?;
+            .unwrap_or_else(Uuid::nil);
             
-        let active_credential = self.credentials.read_active()?;
-        let protected_active = self.credentials.protect(&active_credential)?;
+        let active_credential = if from_profile_id.is_nil() {
+            Vec::new()
+        } else {
+            self.credentials.read_active()?
+        };
+        let protected_active = if from_profile_id.is_nil() {
+            crate::ProtectedCredential(Vec::new())
+        } else {
+            self.credentials.protect(&active_credential)?
+        };
         let target_credential = self.load_profile_credential(target_profile_id)?;
         
         let started = Instant::now();
@@ -48,7 +56,9 @@ impl SwitcherService {
         lock.current_step = SwitchStep::BackupCurrent;
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
-        self.backup_current_profile(&mut lock, &active_credential, &protected_active)?;
+        if !from_profile_id.is_nil() {
+            self.backup_current_profile(&mut lock, &active_credential, &protected_active)?;
+        }
         
         // 4. Update credentials BEFORE killing
         lock.current_step = SwitchStep::UpdateCredential;

@@ -18,7 +18,7 @@ use switcher_core::{
 };
 use super::helpers::{
     check_has_refresh_token, parse_token_expiry, validate_display_name, parse_refresh_token,
-    read_antigravity_version, windows_version,
+    read_antigravity_version, windows_version, try_parse_email_from_credential,
 };
 use super::manifest::path_summary;
 
@@ -323,7 +323,95 @@ impl SwitcherService {
         save_json(&path, &metadata)
     }
 
+    pub(crate) fn sync_active_profile_on_read(&self) -> Result<Option<Uuid>> {
+        let active_credential = match self.credentials.read_active() {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                return Ok(self.config.read().active_profile_id);
+            }
+        };
+
+        let active_digest = crate::CredentialStore::digest(&active_credential);
+        let mut profiles_in_dir = Vec::new();
+
+        for entry in fs::read_dir(&self.paths.profiles)
+            .map_err(|source| SwitcherError::io(&self.paths.profiles, source))?
+            .filter_map(std::result::Result::ok)
+        {
+            let metadata_path = entry.path().join("metadata.json");
+            if !metadata_path.is_file() {
+                continue;
+            }
+            if let Ok(metadata) = load_json::<ProfileMetadata>(&metadata_path) {
+                profiles_in_dir.push(metadata.profile_id);
+            }
+        }
+
+        // If profiles list is empty, auto-import the current session!
+        if profiles_in_dir.is_empty() {
+            let email = try_parse_email_from_credential(&active_credential);
+            let display_name = email.clone().unwrap_or_else(|| "Sesja Antigravity".to_owned());
+            
+            self.logger.info(
+                None,
+                "profile",
+                format!("Profiles list is empty. Auto-importing active session as display_name='{}'", display_name),
+            );
+
+            let protected = self.credentials.protect(&active_credential)?;
+            let profile_id = Uuid::new_v4();
+            let profile_dir = self.paths.profile_dir(profile_id);
+            fs::create_dir_all(&profile_dir)
+                .map_err(|source| SwitcherError::io(&profile_dir, source))?;
+            atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
+            let now = Utc::now();
+            let metadata = ProfileMetadata {
+                profile_id,
+                display_name: display_name.clone(),
+                account_email: email,
+                created_at: now,
+                last_activated_at: now,
+                token_expiry: parse_token_expiry(&active_credential),
+                snapshot_initialized: true,
+            };
+            save_json(&profile_dir.join("metadata.json"), &metadata)?;
+            let manifest = self.capture_active_manifest(&active_credential)?;
+            save_json(&profile_dir.join("manifest.json"), &manifest)?;
+
+            {
+                let mut config = self.config.write();
+                config.active_profile_id = Some(profile_id);
+                save_json(&self.paths.config, &*config)?;
+            }
+            return Ok(Some(profile_id));
+        }
+
+        // Otherwise, see if any profile matches the active credential
+        for profile_id in &profiles_in_dir {
+            if let Ok(profile_credential) = self.load_profile_credential(*profile_id) {
+                if crate::CredentialStore::digest(&profile_credential) == active_digest {
+                    // We found a match! Ensure config is in sync.
+                    let current_active = self.config.read().active_profile_id;
+                    if current_active != Some(*profile_id) {
+                        self.logger.info(
+                            None,
+                            "profile",
+                            format!("Auto-detected active profile matching Antigravity session: {profile_id}"),
+                        );
+                        let mut config = self.config.write();
+                        config.active_profile_id = Some(*profile_id);
+                        save_json(&self.paths.config, &*config)?;
+                    }
+                    return Ok(Some(*profile_id));
+                }
+            }
+        }
+
+        Ok(self.config.read().active_profile_id)
+    }
+
     pub(crate) fn list_profiles(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
+        let synced_active_id = self.sync_active_profile_on_read().unwrap_or(active_profile_id);
         let mut profiles = Vec::new();
         let active_credential = self.credentials.read_active().ok();
         let mut quotas = QuotaDecryptor::decrypt_all_quotas().unwrap_or_else(|e| {
@@ -341,7 +429,7 @@ impl SwitcherService {
             }
             match load_json::<ProfileMetadata>(&metadata_path) {
                 Ok(mut metadata) => {
-                    let is_active = active_profile_id == Some(metadata.profile_id);
+                    let is_active = synced_active_id == Some(metadata.profile_id);
                     let credential_bytes = if is_active {
                         active_credential.clone()
                     } else {
