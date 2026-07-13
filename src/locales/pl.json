@@ -193,5 +193,17 @@
   "recovery_step": "Krok techniczny",
   "recovery_copy": "Kopiuj diagnostykę",
   "recovery_copying": "Kopiowanie…",
-  "recovery_security": "Normalny dostęp pozostaje zablokowany, aby chronić dane profili."
+  "recovery_security": "Normalny dostęp pozostaje zablokowany, aby chronić dane profili.",
+  "maintenance_title": "Konserwacja aplikacji",
+  "maintenance_desc": "Zarządzaj czyszczeniem danych i odinstalowywaniem.",
+  "maintenance_wipe_title": "Wyczyść całą pamięć podręczną i konfigurację",
+  "maintenance_wipe_desc": "Usuwa wszystkie lokalne profile, ustawienia, dane logowania i pamięć podręczną WebView. Aplikacja zostanie uruchomiona ponownie z fabrycznymi ustawieniami.",
+  "maintenance_wipe_btn": "Wyczyść dane i zrestartuj",
+  "maintenance_uninstall_title": "Całkowite odinstalowanie aplikacji",
+  "maintenance_uninstall_desc": "Usuwa wszelkie ślady po aplikacji z tego komputera: dane profili, pamięć podręczną WebView, klucze rejestru Windows, a na koniec kasuje sam plik wykonywalny aplikacji.",
+  "maintenance_uninstall_btn": "Odinstaluj i usuń aplikację",
+  "maintenance_confirm_wipe_title": "Czy na pewno chcesz wyczyścić dane?",
+  "maintenance_confirm_wipe_desc": "Ta operacja spowoduje utratę wszystkich skonfigurowanych profili oraz ustawień. Aplikacja zrestartuje się jako pusta.",
+  "maintenance_confirm_uninstall_title": "Czy na pewno chcesz całkowicie odinstalować aplikację?",
+  "maintenance_confirm_uninstall_desc": "Aplikacja usunie wszystkie swoje profile, pamięć podręczną, wpisy w rejestrze Windows oraz sam plik wykonywalny. Aplikacja zostanie natychmiast zamknięta i skasowana."
 }

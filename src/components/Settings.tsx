@@ -3,6 +3,7 @@ import type { AppSettings, AppState } from "../types";
 import { Icon } from "./Icons";
 import { StatusPill, type StatusTone } from "./StatusPill";
 import { t, getLanguage, type Language } from "../i18n";
+import { Modal } from "./Modal";
 
 interface SettingsProps {
   state: AppState;
@@ -10,6 +11,8 @@ interface SettingsProps {
   onSave: (settings: AppSettings) => Promise<void>;
   onCopyDiagnostics: () => Promise<void>;
   onLanguageChange: (lang: Language) => void;
+  onWipeData: () => Promise<void>;
+  onUninstallApp: () => Promise<void>;
 }
 
 export function Settings({
@@ -18,9 +21,13 @@ export function Settings({
   onSave,
   onCopyDiagnostics,
   onLanguageChange,
+  onWipeData,
+  onUninstallApp,
 }: SettingsProps) {
   const [draft, setDraft] = useState<AppSettings>(state.settings);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showWipeModal, setShowWipeModal] = useState(false);
+  const [showUninstallModal, setShowUninstallModal] = useState(false);
 
   useEffect(() => setDraft(state.settings), [state.settings]);
 
@@ -257,7 +264,128 @@ export function Settings({
             {t("privacy_note")}
           </p>
         </section>
+
+        <section className="settings-card settings-card--maintenance" aria-labelledby="maintenance-heading">
+          <div className="settings-card__header settings-card__header--stackable">
+            <div className="settings-card__icon settings-card__icon--red" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444" }}>
+              <Icon name="trash" />
+            </div>
+            <div>
+              <h2 id="maintenance-heading">{t("maintenance_title")}</h2>
+              <p>{t("maintenance_desc")}</p>
+            </div>
+          </div>
+          <div className="settings-card__body settings-card__body--actions" style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
+            <div style={{ padding: "12px", borderRadius: "8px", border: "1px solid var(--border-color, #2d3139)", backgroundColor: "var(--background-secondary, #161920)" }}>
+              <h3 style={{ margin: "0 0 6px 0", fontSize: "14px", fontWeight: 600, color: "var(--text-primary, #fff)" }}>
+                {t("maintenance_wipe_title")}
+              </h3>
+              <p style={{ margin: "0 0 12px 0", fontSize: "12px", lineHeight: "1.4", color: "var(--text-secondary, #8e9297)" }}>
+                {t("maintenance_wipe_desc")}
+              </p>
+              <button
+                className="button button--secondary"
+                style={{ borderColor: "#ef4444", color: "#ef4444", width: "auto" }}
+                onClick={() => setShowWipeModal(true)}
+                type="button"
+                disabled={!!workingAction}
+              >
+                <Icon name="refresh" size={16} />
+                <span>{t("maintenance_wipe_btn")}</span>
+              </button>
+            </div>
+
+            <div style={{ padding: "12px", borderRadius: "8px", border: "1px solid var(--border-color, #2d3139)", backgroundColor: "var(--background-secondary, #161920)" }}>
+              <h3 style={{ margin: "0 0 6px 0", fontSize: "14px", fontWeight: 600, color: "var(--text-primary, #fff)" }}>
+                {t("maintenance_uninstall_title")}
+              </h3>
+              <p style={{ margin: "0 0 12px 0", fontSize: "12px", lineHeight: "1.4", color: "var(--text-secondary, #8e9297)" }}>
+                {t("maintenance_uninstall_desc")}
+              </p>
+              <button
+                className="button button--secondary"
+                style={{ borderColor: "#ef4444", color: "#ef4444", width: "auto" }}
+                onClick={() => setShowUninstallModal(true)}
+                type="button"
+                disabled={!!workingAction}
+              >
+                <Icon name="trash" size={16} />
+                <span>{t("maintenance_uninstall_btn")}</span>
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
+
+      {/* Wipe Confirmation Modal */}
+      <Modal
+        open={showWipeModal}
+        onClose={() => setShowWipeModal(false)}
+        title={t("maintenance_confirm_wipe_title")}
+        description={t("maintenance_confirm_wipe_desc")}
+        icon={<Icon name="refresh" style={{ color: "#ef4444" }} />}
+        footer={
+          <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", width: "100%" }}>
+            <button
+              className="button button--secondary"
+              onClick={() => setShowWipeModal(false)}
+              type="button"
+            >
+              {t("add_modal_cancel")}
+            </button>
+            <button
+              className="button button--primary"
+              style={{ backgroundColor: "#ef4444" }}
+              onClick={async () => {
+                setShowWipeModal(false);
+                await onWipeData();
+              }}
+              type="button"
+            >
+              {t("maintenance_wipe_btn")}
+            </button>
+          </div>
+        }
+      >
+        <div style={{ color: "var(--text-secondary, #8e9297)", fontSize: "14px", lineHeight: "1.5" }}>
+          {t("delete_modal_warning")}
+        </div>
+      </Modal>
+
+      {/* Uninstall Confirmation Modal */}
+      <Modal
+        open={showUninstallModal}
+        onClose={() => setShowUninstallModal(false)}
+        title={t("maintenance_confirm_uninstall_title")}
+        description={t("maintenance_confirm_uninstall_desc")}
+        icon={<Icon name="trash" style={{ color: "#ef4444" }} />}
+        footer={
+          <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", width: "100%" }}>
+            <button
+              className="button button--secondary"
+              onClick={() => setShowUninstallModal(false)}
+              type="button"
+            >
+              {t("add_modal_cancel")}
+            </button>
+            <button
+              className="button button--primary"
+              style={{ backgroundColor: "#ef4444" }}
+              onClick={async () => {
+                setShowUninstallModal(false);
+                await onUninstallApp();
+              }}
+              type="button"
+            >
+              {t("maintenance_uninstall_btn")}
+            </button>
+          </div>
+        }
+      >
+        <div style={{ color: "var(--text-secondary, #8e9297)", fontSize: "14px", lineHeight: "1.5" }}>
+          {t("delete_modal_warning")}
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -137,7 +137,7 @@ impl Default for PersistentConfig {
     fn default() -> Self {
         Self {
             schema_version: 1,
-            http_port: 48731,
+            http_port: if cfg!(debug_assertions) { 48732 } else { 48731 },
             api_secret: Uuid::new_v4().simple().to_string() + &Uuid::new_v4().simple().to_string(),
             installation_path: None,
             active_profile_id: None,

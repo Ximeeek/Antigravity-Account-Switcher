@@ -170,3 +170,13 @@ pub fn resize_mini_window(app_handle: AppHandle, height: f64) -> Result<(), Stri
     }
     Ok(())
 }
+
+#[tauri::command]
+pub fn wipe_app_data() -> Result<(), String> {
+    switcher_windows::wipe_app_data_and_relaunch()
+}
+
+#[tauri::command]
+pub fn uninstall_app() -> Result<(), String> {
+    switcher_windows::uninstall_app_and_self_delete()
+}

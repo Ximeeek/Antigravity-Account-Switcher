@@ -193,5 +193,17 @@
   "recovery_step": "Technical step",
   "recovery_copy": "Copy diagnostics",
   "recovery_copying": "Copying…",
-  "recovery_security": "Normal access remains blocked to protect profile data."
+  "recovery_security": "Normal access remains blocked to protect profile data.",
+  "maintenance_title": "App Maintenance",
+  "maintenance_desc": "Manage data wiping and uninstallation.",
+  "maintenance_wipe_title": "Wipe all cache and configuration",
+  "maintenance_wipe_desc": "Removes all local profiles, settings, credentials, and WebView cache. The application will restart as a fresh installation.",
+  "maintenance_wipe_btn": "Wipe Data and Relaunch",
+  "maintenance_uninstall_title": "Complete application uninstall",
+  "maintenance_uninstall_desc": "Removes all traces of the application from this machine: profile data, WebView cache, Windows registry keys, and deletes the application executable itself.",
+  "maintenance_uninstall_btn": "Uninstall and Delete App",
+  "maintenance_confirm_wipe_title": "Are you sure you want to wipe data?",
+  "maintenance_confirm_wipe_desc": "This operation will delete all configured profiles and settings. The application will restart empty.",
+  "maintenance_confirm_uninstall_title": "Are you sure you want to completely uninstall the app?",
+  "maintenance_confirm_uninstall_desc": "The application will delete all its profiles, cache, Windows registry entries, and the executable itself. The application will immediately close and be deleted."
 }

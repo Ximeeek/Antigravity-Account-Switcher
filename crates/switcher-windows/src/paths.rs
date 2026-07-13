@@ -28,7 +28,12 @@ pub struct SwitcherPaths {
 impl SwitcherPaths {
     pub fn discover() -> Result<Self> {
         let local = env_path("LOCALAPPDATA")?;
-        Self::from_root(local.join("AntigravitySwitcher"))
+        let root_name = if cfg!(debug_assertions) {
+            "AntigravitySwitcherDev"
+        } else {
+            "AntigravitySwitcher"
+        };
+        Self::from_root(local.join(root_name))
     }
 
     pub fn from_root(root: PathBuf) -> Result<Self> {

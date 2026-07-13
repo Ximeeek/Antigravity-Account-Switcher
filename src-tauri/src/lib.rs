@@ -116,7 +116,9 @@ pub fn run() {
             commands::cancel_oauth_login,
             commands::show_mini_window,
             commands::hide_mini_window,
-            commands::resize_mini_window
+            commands::resize_mini_window,
+            commands::wipe_app_data,
+            commands::uninstall_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

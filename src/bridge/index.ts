@@ -133,6 +133,12 @@ export const recoveryResume = (): Promise<AppState> =>
 export const recoveryRollback = (): Promise<AppState> =>
   commandThenState("recovery_rollback");
 
+export const wipeAppData = (): Promise<void> =>
+  call<void>("wipe_app_data");
+
+export const uninstallApp = (): Promise<void> =>
+  call<void>("uninstall_app");
+
 export const setDemoScenario = (scenario: DemoScenario): AppState => {
   const state = setDemoStateScenario(scenario);
   return state;

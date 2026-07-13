@@ -7,7 +7,6 @@ import {
   copyDiagnostics,
   deleteProfile,
   getAppState,
-
   isDemoMode,
   recoveryResume,
   recoveryRollback,
@@ -17,6 +16,8 @@ import {
   startOauthLogin,
   cancelOauthLogin,
   showMiniWindow,
+  wipeAppData,
+  uninstallApp,
 } from "./bridge";
 
 import MiniApp from "./components/MiniApp";
@@ -337,6 +338,36 @@ export default function App() {
     }
   };
 
+  const handleWipeData = async () => {
+    setWorkingAction("wipe");
+    try {
+      console.log("Starting full data wipe...");
+      await wipeAppData();
+      console.log("Wipe command sent successfully.");
+    } catch (error) {
+      console.error("Failed to wipe application data:", error);
+      if (mounted.current) {
+        setNotice({ tone: "danger", message: errorMessage(error) });
+        setWorkingAction(null);
+      }
+    }
+  };
+
+  const handleUninstallApp = async () => {
+    setWorkingAction("uninstall");
+    try {
+      console.log("Starting application uninstallation...");
+      await uninstallApp();
+      console.log("Uninstall command sent successfully.");
+    } catch (error) {
+      console.error("Failed to uninstall application:", error);
+      if (mounted.current) {
+        setNotice({ tone: "danger", message: errorMessage(error) });
+        setWorkingAction(null);
+      }
+    }
+  };
+
   const handleRecoveryResume = async () => {
     await performStateAction(
       "recovery-resume",
@@ -473,6 +504,8 @@ export default function App() {
               onCopyDiagnostics={handleCopyDiagnostics}
               onSave={handleSaveSettings}
               onLanguageChange={handleLanguageChange}
+              onWipeData={handleWipeData}
+              onUninstallApp={handleUninstallApp}
               state={state}
               workingAction={workingAction}
             />

@@ -230,6 +230,16 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
       console.log("Demo: Resize mini window to", args.height);
       return;
 
+    case "wipe_app_data":
+      console.log("Demo: Wipe app data");
+      demoState = makeDemoState();
+      return clone(demoState);
+
+    case "uninstall_app":
+      console.log("Demo: Uninstall app");
+      demoState = makeDemoState();
+      return clone(demoState);
+
     default:
       throw new Error(`Nieznana komenda demonstracyjna: ${command}`);
   }
