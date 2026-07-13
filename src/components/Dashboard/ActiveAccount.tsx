@@ -11,17 +11,24 @@ import { Icon } from "../Icons";
 import { StatusPill } from "../StatusPill";
 import { t } from "../../i18n";
 import QuotaSection from "./QuotaSection";
+import SwitchLevelSelector from "./SwitchLevelSelector";
 
 interface ActiveAccountProps {
   profile: ProfileSummary;
   smartSwitchEnabled: boolean;
   onToggleSmartSwitch: () => void;
+  switchLevel: number;
+  onSwitchLevelChange: (level: number) => void;
+  busy?: boolean;
 }
 
 export default function ActiveAccount({
   profile,
   smartSwitchEnabled,
   onToggleSmartSwitch,
+  switchLevel,
+  onSwitchLevelChange,
+  busy = false,
 }: ActiveAccountProps) {
   const token = getTokenPresentation(profile);
   const cardRef = useRef<HTMLElement>(null);
@@ -144,7 +151,9 @@ export default function ActiveAccount({
 
   return (
     <section ref={cardRef} aria-labelledby="active-account-title" className="active-account-card">
-      <div ref={glowRef} className="active-account-card__glow" aria-hidden="true" />
+      <div className="active-account-card__glow-container" aria-hidden="true">
+        <div ref={glowRef} className="active-account-card__glow" />
+      </div>
       <div className="active-account-card__content">
         <div className="active-account-card__identity">
           <div
@@ -157,31 +166,42 @@ export default function ActiveAccount({
             </div>
 
             <div
-              style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              className="smart-switch-quick-toggle"
+              style={{ display: "flex", alignItems: "center", gap: "16px" }}
+              className="active-account-controls"
             >
-              <span
-                style={{
-                  fontSize: "11px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                  color: smartSwitchEnabled
-                    ? "var(--accent-blue, #4a8cf7)"
-                    : "var(--text-secondary, #8e9297)",
-                  fontWeight: 600,
-                  transition: "color 250ms ease-out",
-                }}
+              <SwitchLevelSelector
+                value={switchLevel}
+                onChange={onSwitchLevelChange}
+                busy={busy}
+              />
+
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                className="smart-switch-quick-toggle"
               >
-                Smart Switch
-              </span>
-              <button
-                type="button"
-                onClick={onToggleSmartSwitch}
-                className={`smart-switch-toggle ${smartSwitchEnabled ? "smart-switch-toggle--active" : ""}`}
-                title={t("smart_switch_hint")}
-              >
-                <div className="smart-switch-toggle__thumb" />
-              </button>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    color: smartSwitchEnabled
+                      ? "var(--accent-blue, #4a8cf7)"
+                      : "var(--text-secondary, #8e9297)",
+                    fontWeight: 600,
+                    transition: "color 250ms ease-out",
+                  }}
+                >
+                  Smart Switch
+                </span>
+                <button
+                  type="button"
+                  onClick={onToggleSmartSwitch}
+                  className={`smart-switch-toggle ${smartSwitchEnabled ? "smart-switch-toggle--active" : ""}`}
+                  title={t("smart_switch_hint")}
+                >
+                  <div className="smart-switch-toggle__thumb" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="profile-identity profile-identity--hero">

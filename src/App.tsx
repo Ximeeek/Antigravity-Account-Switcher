@@ -310,7 +310,6 @@ export default function App() {
     await performStateAction(
       "settings",
       () => updateSettings(settings),
-      t("settings_saved"),
     );
   };
 
@@ -319,6 +318,14 @@ export default function App() {
     await handleSaveSettings({
       ...state.settings,
       smart_switch_enabled: !state.settings.smart_switch_enabled,
+    });
+  };
+
+  const handleSwitchLevelChange = async (level: number) => {
+    if (!state) return;
+    await handleSaveSettings({
+      ...state.settings,
+      switch_level: level,
     });
   };
 
@@ -496,6 +503,7 @@ export default function App() {
               onDelete={setDeleteTarget}
               state={state}
               onToggleSmartSwitch={handleToggleSmartSwitch}
+              onSwitchLevelChange={handleSwitchLevelChange}
             />
           </div>
         ) : (
