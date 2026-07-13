@@ -47,6 +47,21 @@ body {
   font-size: 14px;
   line-height: 1.45;
   overflow-x: hidden;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background: 
+    radial-gradient(circle at 15% 20%, rgba(112, 92, 246, 0.04) 0%, transparent 60%),
+    radial-gradient(circle at 85% 80%, rgba(13, 181, 218, 0.035) 0%, transparent 55%);
+  pointer-events: none;
 }
 
 body,
@@ -217,7 +232,7 @@ summary {
 }
 
 .button:not(:disabled):active {
-  transform: translateY(1px);
+  transform: scale(0.96);
 }
 
 .button:disabled {
@@ -492,11 +507,15 @@ button.brand:focus-visible {
   background: transparent;
   font-size: 12px;
   font-weight: 590;
-  transition: color 150ms ease-out, background 150ms ease-out, border-color 150ms ease-out;
+  transition: color 150ms ease-out, background 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;
 }
 
 .nav-button:hover {
   color: var(--text-secondary);
+}
+
+.nav-button:not(:disabled):active {
+  transform: scale(0.95);
 }
 
 .nav-button--active {
@@ -580,15 +599,64 @@ button.brand:focus-visible {
 .active-account-card__glow {
   position: absolute;
   z-index: 1;
-  top: -145px;
-  left: 7%;
+  top: 0;
+  left: 0;
   width: 440px;
   height: 260px;
+  margin-left: -220px;
+  margin-top: -130px;
   border-radius: 50%;
-  opacity: 0.34;
-  background: radial-gradient(circle, rgba(13, 181, 218, 0.33), transparent 70%);
+  opacity: 0.28;
+  background: radial-gradient(circle, rgba(125, 231, 246, 0.35) 0%, rgba(111, 92, 246, 0.2) 50%, transparent 80%);
   filter: blur(14px);
   pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Smart Switch Custom Toggle styling */
+.smart-switch-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background-color: #2d3139;
+  border: none;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding: 0;
+}
+.smart-switch-toggle--active {
+  background-color: var(--accent-blue, #4a8cf7) !important;
+}
+.smart-switch-toggle__thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #fff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: left 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.smart-switch-toggle--active .smart-switch-toggle__thumb {
+  left: 19px;
+}
+
+/* Page switch transition */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-in-slide {
+  animation: fadeInUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .active-account-card__content {
@@ -847,7 +915,10 @@ button.brand:focus-visible {
     linear-gradient(155deg, rgba(18, 25, 42, 0.97), rgba(10, 14, 26, 0.98)),
     var(--surface-1);
   box-shadow: 0 13px 36px rgba(0, 3, 14, 0.15), inset 0 1px rgba(255, 255, 255, 0.022);
-  transition: border-color 170ms ease-out, background 170ms ease-out, transform 170ms ease-out, box-shadow 170ms ease-out;
+  transition: border-color 250ms cubic-bezier(0.2, 0.8, 0.2, 1), 
+              background 250ms cubic-bezier(0.2, 0.8, 0.2, 1), 
+              transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1), 
+              box-shadow 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .account-card::after {
@@ -859,14 +930,14 @@ button.brand:focus-visible {
   content: "";
   opacity: 0;
   background: linear-gradient(90deg, transparent, rgba(112, 214, 246, 0.5), transparent);
-  transition: opacity 170ms ease-out;
+  transition: opacity 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .account-card:hover {
-  border-color: var(--border-hover);
-  background: linear-gradient(155deg, rgba(21, 31, 51, 0.98), rgba(11, 16, 29, 0.98));
-  box-shadow: 0 17px 42px rgba(0, 4, 18, 0.22), inset 0 1px rgba(255, 255, 255, 0.03);
-  transform: translateY(-1px);
+  border-color: rgba(126, 183, 255, 0.4);
+  background: linear-gradient(155deg, rgba(25, 38, 64, 0.98), rgba(12, 19, 35, 0.98));
+  box-shadow: 0 20px 48px rgba(0, 4, 18, 0.28), inset 0 1px rgba(255, 255, 255, 0.04);
+  transform: translateY(-4px) scale(1.015);
 }
 
 .account-card:hover::after {
@@ -931,14 +1002,17 @@ button.brand:focus-visible {
   gap: 7px;
   color: var(--text-secondary);
   background: rgba(10, 15, 28, 0.53);
-  transition: border-color 170ms ease-out, background 170ms ease-out, color 170ms ease-out, transform 170ms ease-out;
+  transition: border-color 250ms cubic-bezier(0.2, 0.8, 0.2, 1), 
+              background 250ms cubic-bezier(0.2, 0.8, 0.2, 1), 
+              color 250ms cubic-bezier(0.2, 0.8, 0.2, 1), 
+              transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .add-account-card:not(:disabled):hover {
   color: var(--text-primary);
-  border-color: rgba(112, 221, 244, 0.46);
-  background: rgba(16, 27, 44, 0.72);
-  transform: translateY(-1px);
+  border-color: rgba(112, 221, 244, 0.58);
+  background: rgba(18, 30, 50, 0.72);
+  transform: translateY(-4px) scale(1.015);
 }
 
 .add-account-card__icon {
@@ -951,6 +1025,12 @@ button.brand:focus-visible {
   place-items: center;
   color: #77ccf2;
   background: rgba(83, 163, 239, 0.08);
+  transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.add-account-card:not(:disabled):hover .add-account-card__icon {
+  transform: scale(1.1) rotate(90deg);
+  background-color: rgba(83, 163, 239, 0.18);
 }
 
 .add-account-card strong {
@@ -1259,9 +1339,9 @@ button.brand:focus-visible {
 }
 
 .field input:focus {
-  border-color: rgba(85, 179, 244, 0.72);
+  border-color: rgba(125, 231, 244, 0.72);
   background: rgba(7, 12, 23, 0.9);
-  box-shadow: 0 0 0 3px rgba(85, 179, 244, 0.1), inset 0 1px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 0 3px rgba(125, 231, 244, 0.16), inset 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .field-hint {
@@ -1434,6 +1514,25 @@ button.brand:focus-visible {
   background: rgba(255, 107, 122, 0.065);
 }
 
+@keyframes modalBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes modalPanelScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 .modal-backdrop {
   position: fixed;
   z-index: 20000;
@@ -1444,6 +1543,7 @@ button.brand:focus-visible {
   overflow-y: auto;
   background: rgba(2, 4, 11, 0.76);
   backdrop-filter: blur(7px) saturate(118%);
+  animation: modalBackdropFadeIn 220ms ease-out both;
 }
 
 .modal-panel {
@@ -1458,6 +1558,7 @@ button.brand:focus-visible {
     radial-gradient(440px 190px at 12% -8%, rgba(37, 140, 197, 0.12), transparent 70%),
     linear-gradient(155deg, #111827, #090d18 72%);
   box-shadow: 0 32px 100px rgba(0, 0, 0, 0.48), inset 0 1px rgba(255, 255, 255, 0.035);
+  animation: modalPanelScaleIn 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .modal-panel::before {

@@ -4,6 +4,7 @@
  * Main exports: ActiveAccount
  */
 
+import { useEffect, useRef } from "react";
 import type { ProfileSummary } from "../../types";
 import { getTokenPresentation, getInitials, formatDateTime } from "../../utils";
 import { Icon } from "../Icons";
@@ -23,10 +24,101 @@ export default function ActiveAccount({
   onToggleSmartSwitch,
 }: ActiveAccountProps) {
   const token = getTokenPresentation(profile);
+  const cardRef = useRef<HTMLElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    const glow = glowRef.current;
+    if (!card || !glow) return;
+
+    let currentX = 0;
+    let currentY = 0;
+    let currentScale = 0.9;
+    let currentOpacity = 0.28;
+
+    let targetX = 0;
+    let targetY = 0;
+    let targetScale = 0.9;
+    let targetOpacity = 0.28;
+
+    let mouseX = -9999;
+    let mouseY = -9999;
+    let isNear = false;
+    let theta = 0;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    };
+
+    const handleMouseLeave = () => {
+      mouseX = -9999;
+      mouseY = -9999;
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseleave", handleMouseLeave);
+
+    let animationFrameId: number;
+
+    const tick = (timestamp: number) => {
+      const rect = card.getBoundingClientRect();
+
+      if (mouseX !== -9999 && mouseY !== -9999) {
+        const dx = Math.max(rect.left - mouseX, 0, mouseX - rect.right);
+        const dy = Math.max(rect.top - mouseY, 0, mouseY - rect.bottom);
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        isNear = distance < 200;
+      } else {
+        isNear = false;
+      }
+
+      let lerpFactor = 0.035;
+
+      if (isNear) {
+        targetX = mouseX - rect.left;
+        targetY = mouseY - rect.top;
+        targetScale = 1.15;
+        targetOpacity = 0.48;
+        lerpFactor = 0.12;
+      } else {
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rx = rect.width / 2 + 50;
+        const ry = rect.height / 2 + 30;
+
+        theta = (timestamp / 1000) * 0.5;
+
+        targetX = centerX + rx * Math.cos(theta);
+        targetY = centerY + ry * Math.sin(theta);
+        targetScale = 0.9;
+        targetOpacity = 0.28;
+      }
+
+      currentX += (targetX - currentX) * lerpFactor;
+      currentY += (targetY - currentY) * lerpFactor;
+      currentScale += (targetScale - currentScale) * 0.1;
+      currentOpacity += (targetOpacity - currentOpacity) * 0.1;
+
+      glow.style.transform = `translate3d(${currentX.toFixed(1)}px, ${currentY.toFixed(1)}px, 0) scale(${currentScale.toFixed(2)})`;
+      glow.style.opacity = currentOpacity.toFixed(3);
+
+      animationFrameId = requestAnimationFrame(tick);
+    };
+
+    animationFrameId = requestAnimationFrame(tick);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseleave", handleMouseLeave);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   return (
-    <section aria-labelledby="active-account-title" className="active-account-card">
-      <div className="active-account-card__glow" aria-hidden="true" />
+    <section ref={cardRef} aria-labelledby="active-account-title" className="active-account-card">
+      <div ref={glowRef} className="active-account-card__glow" aria-hidden="true" />
       <div className="active-account-card__content">
         <div className="active-account-card__identity">
           <div
@@ -48,9 +140,10 @@ export default function ActiveAccount({
                   textTransform: "uppercase",
                   letterSpacing: "0.5px",
                   color: smartSwitchEnabled
-                    ? "var(--accent-color, #5865f2)"
+                    ? "var(--accent-blue, #4a8cf7)"
                     : "var(--text-secondary, #8e9297)",
                   fontWeight: 600,
+                  transition: "color 250ms ease-out",
                 }}
               >
                 Smart Switch
@@ -58,31 +151,10 @@ export default function ActiveAccount({
               <button
                 type="button"
                 onClick={onToggleSmartSwitch}
-                style={{
-                  width: "36px",
-                  height: "20px",
-                  borderRadius: "10px",
-                  backgroundColor: smartSwitchEnabled ? "var(--accent-color, #5865f2)" : "#2d3139",
-                  border: "none",
-                  position: "relative",
-                  cursor: "pointer",
-                  transition: "background-color 0.2s",
-                  padding: 0,
-                }}
+                className={`smart-switch-toggle ${smartSwitchEnabled ? "smart-switch-toggle--active" : ""}`}
                 title={t("smart_switch_hint")}
               >
-                <div
-                  style={{
-                    width: "14px",
-                    height: "14px",
-                    borderRadius: "50%",
-                    backgroundColor: "#fff",
-                    position: "absolute",
-                    top: "3px",
-                    left: smartSwitchEnabled ? "19px" : "3px",
-                    transition: "left 0.2s",
-                  }}
-                />
+                <div className="smart-switch-toggle__thumb" />
               </button>
             </div>
           </div>

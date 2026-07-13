@@ -441,7 +441,7 @@ export default function App() {
         ) : null}
 
         {view === "dashboard" ? (
-          <>
+          <div className="fade-in-slide" key="dashboard">
             {!state.settings.antigravity_path.trim() ? (
               <div className="inline-notice inline-notice--warning" role="alert" style={{ marginBottom: "20px" }}>
                 <Icon name="alert" size={19} />
@@ -466,15 +466,17 @@ export default function App() {
               state={state}
               onToggleSmartSwitch={handleToggleSmartSwitch}
             />
-          </>
+          </div>
         ) : (
-          <Settings
-            onCopyDiagnostics={handleCopyDiagnostics}
-            onSave={handleSaveSettings}
-            onLanguageChange={handleLanguageChange}
-            state={state}
-            workingAction={workingAction}
-          />
+          <div className="fade-in-slide" key="settings">
+            <Settings
+              onCopyDiagnostics={handleCopyDiagnostics}
+              onSave={handleSaveSettings}
+              onLanguageChange={handleLanguageChange}
+              state={state}
+              workingAction={workingAction}
+            />
+          </div>
         )}
       </main>
 
