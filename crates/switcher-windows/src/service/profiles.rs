@@ -21,6 +21,20 @@ use super::helpers::{
     read_antigravity_version, windows_version, try_parse_email_from_credential,
 };
 use super::manifest::path_summary;
+use std::sync::OnceLock;
+use std::sync::Mutex as StdMutex;
+use std::collections::HashSet;
+use switcher_core::ProfileQuotaView;
+
+fn global_quota_cache() -> &'static StdMutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>> {
+    static CACHE: OnceLock<StdMutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>>> = OnceLock::new();
+    CACHE.get_or_init(|| StdMutex::new(HashMap::new()))
+}
+
+fn quota_fetching() -> &'static StdMutex<HashSet<String>> {
+    static FETCHING: OnceLock<StdMutex<HashSet<String>>> = OnceLock::new();
+    FETCHING.get_or_init(|| StdMutex::new(HashSet::new()))
+}
 
 impl SwitcherService {
     pub(crate) fn ensure_installation_path_resolved(&self) -> Option<PathBuf> {
@@ -546,15 +560,6 @@ impl SwitcherService {
     }
 
     pub async fn list_profiles_live(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
-        use std::sync::OnceLock;
-        use std::sync::Mutex as StdMutex;
-        use std::collections::HashSet;
-
-        fn quota_fetching() -> &'static StdMutex<HashSet<String>> {
-            static FETCHING: OnceLock<StdMutex<HashSet<String>>> = OnceLock::new();
-            FETCHING.get_or_init(|| StdMutex::new(HashSet::new()))
-        }
-
         let mut profiles = self.list_profiles(active_profile_id)?;
 
         for profile in &mut profiles {
@@ -568,7 +573,7 @@ impl SwitcherService {
                 if let Some(ref bytes) = credential_bytes {
                     if let Some(ref refresh_token) = parse_refresh_token(bytes) {
                         let (has_valid_cache, cached_val) = {
-                            let cache = self.quota_cache.lock();
+                            let cache = global_quota_cache().lock().unwrap();
                             let now = std::time::Instant::now();
                             // Cache quota for 15 minutes (900 seconds)
                             let cache_duration = std::time::Duration::from_secs(900);
@@ -596,25 +601,29 @@ impl SwitcherService {
                             };
 
                             if should_fetch {
-                                match QuotaDecryptor::fetch_live_quota(refresh_token).await {
-                                    Ok(live_quota) => {
-                                        let mut cache = self.quota_cache.lock();
-                                        cache.insert(email.clone(), (live_quota.clone(), std::time::Instant::now()));
-                                        profile.quota = Some(live_quota);
+                                let email_clone = email.clone();
+                                let refresh_token_clone = refresh_token.clone();
+                                let logger_clone = self.logger.clone();
+
+                                tokio::spawn(async move {
+                                    match QuotaDecryptor::fetch_live_quota(&refresh_token_clone).await {
+                                        Ok(live_quota) => {
+                                            let mut cache = global_quota_cache().lock().unwrap();
+                                            cache.insert(email_clone.clone(), (live_quota, std::time::Instant::now()));
+                                        }
+                                        Err(err) => {
+                                            logger_clone.warn(
+                                                None,
+                                                "quota",
+                                                format!(
+                                                    "Failed to fetch quotas on the fly in background for {}: {}",
+                                                    email_clone, err
+                                                ),
+                                            );
+                                        }
                                     }
-                                    Err(err) => {
-                                        self.logger.warn(
-                                            None,
-                                            "quota",
-                                            format!(
-                                                "Failed to fetch quotas on the fly for {}: {}",
-                                                profile.metadata.display_name, err
-                                            ),
-                                        );
-                                    }
-                                }
-                                // Remove from fetching set
-                                quota_fetching().lock().unwrap().remove(email);
+                                    quota_fetching().lock().unwrap().remove(&email_clone);
+                                });
                             }
                         }
                     }
@@ -718,7 +727,7 @@ impl SwitcherService {
         }
 
         if !fetched_quotas.is_empty() {
-            let mut cache = self.quota_cache.lock();
+            let mut cache = global_quota_cache().lock().unwrap();
             let now = std::time::Instant::now();
             for (email, quota) in fetched_quotas {
                 cache.insert(email, (quota, now));

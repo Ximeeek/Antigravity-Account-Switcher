@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 use crate::{AuditLogger, CredentialStore, SwitcherPaths};
 use switcher_core::{
-    JournalStore, OperationProgress, PersistentConfig, ProfileQuotaView, Result,
+    JournalStore, OperationProgress, PersistentConfig, Result,
 };
 
 #[derive(Debug, Clone)]
@@ -51,7 +51,6 @@ pub struct SwitcherService {
     pub(crate) progress: RwLock<Option<OperationProgress>>,
     pub(crate) operation_lock: Mutex<()>,
     pub(crate) active_oauth_cancellation: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
-    pub(crate) quota_cache: Mutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>>,
     pub(crate) last_switches: Mutex<Vec<std::time::Instant>>,
 }
 
@@ -80,7 +79,6 @@ impl SwitcherService {
             progress: RwLock::new(None),
             operation_lock: Mutex::new(()),
             active_oauth_cancellation: Mutex::new(None),
-            quota_cache: Mutex::new(HashMap::new()),
             last_switches: Mutex::new(Vec::new()),
             paths,
         });
