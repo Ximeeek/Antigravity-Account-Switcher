@@ -2796,7 +2796,7 @@
                         return (
                           <div key={idx} className={`progress-step-item ${status}`}>
                             <div className="progress-step-circle">
-                              {status === 'completed' ? '✓' : idx + 1}
+                              {status === 'completed' ? <Icon name="check" size={10} /> : idx + 1}
                             </div>
                             <span>{getSwitchStepLabel(idx)}</span>
                           </div>
@@ -2894,7 +2894,7 @@
                 className={`sim-btn ${lang === 'pl' ? 'active-sim' : ''}`}
                 onClick={() => setLang(prev => prev === 'en' ? 'pl' : 'en')}
               >
-                🌐 Język / Language: {lang === 'en' ? 'EN' : 'PL'}
+                Language / Język: {lang === 'en' ? 'EN' : 'PL'}
               </button>
               
               <button 
@@ -2909,7 +2909,7 @@
                 className="sim-btn" 
                 onClick={triggerRecoverySimulation}
               >
-                ⚠️ Trigger Recovery state
+                Trigger Recovery state
               </button>
 
               <button 
@@ -2922,7 +2922,7 @@
                   showToast("Quota limit forced below 10%", "danger");
                 }}
               >
-                🔋 Deplete Quota (Trigger Smart Switch check)
+                Deplete Quota (Trigger Smart Switch check)
               </button>
 
               <button 
@@ -2930,7 +2930,7 @@
                 style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'var(--text-primary)' }}
                 onClick={resetDemo}
               >
-                🔄 Reset Demo
+                Reset Demo
               </button>
             </div>
           </div>

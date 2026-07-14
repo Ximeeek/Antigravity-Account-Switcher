@@ -8,7 +8,7 @@
 
 ---
 
-### 🚀 Try the Live Interactive Demo (No Install Required!)
+### Try the Live Interactive Demo (No Install Required!)
 
 You can preview and test the complete application interface, settings, mini switcher, progress animations, and recovery workflows directly in your web browser:
 
