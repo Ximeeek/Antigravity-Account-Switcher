@@ -10,6 +10,7 @@ interface SwitchLevelSelectorProps {
 export default function SwitchLevelSelector({
   value,
   onChange,
+  busy = false,
 }: SwitchLevelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localValue, setLocalValue] = useState(value);
@@ -71,7 +72,7 @@ export default function SwitchLevelSelector({
       >
         <span className="switch-mode-trigger__text">{t("switch_mode")}</span>
         <span className="switch-mode-trigger__badge">
-          {value === 1 ? "Lvl 1" : (value === 2 ? "Lvl 2" : "Lvl 2+")}
+          {localValue === 1 ? "Lvl 1" : (localValue === 2 ? "Lvl 2" : "Lvl 2+")}
         </span>
       </button>
 
@@ -89,7 +90,7 @@ export default function SwitchLevelSelector({
           </div>
 
           {/* Compact Slider Track */}
-          <div className="compact-slider-track-container">
+          <div className={`compact-slider-track-container ${busy ? "compact-slider-track-container--busy" : ""}`}>
             <div className="compact-slider-track-bg">
               {/* Glowing Active Track Fill */}
               <div
@@ -117,6 +118,7 @@ export default function SwitchLevelSelector({
               step="1"
               value={localValue}
               onChange={handleSliderChange}
+              disabled={busy}
               className="compact-slider-native-input"
               aria-valuemin={1}
               aria-valuemax={3}
