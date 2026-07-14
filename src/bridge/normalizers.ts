@@ -235,6 +235,15 @@ export const normalizeAppState = (value: unknown): AppState => {
           pick(source, "patch_cooldown_ms", "patchCooldownMs"),
         100,
       ),
+      sqlite_db_path: asString(
+        pick(settingsSource, "sqlite_db_path", "sqliteDbPath"),
+      ),
+      data_dir: asString(
+        pick(settingsSource, "data_dir", "dataDir"),
+      ),
+      logs_file: asString(
+        pick(settingsSource, "logs_file", "logsFile"),
+      ),
     },
     app_version: asNullableString(pick(source, "app_version", "appVersion", "version")),
     antigravity_version: asNullableString(

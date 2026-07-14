@@ -290,9 +290,9 @@ export function AboutModal({ open, state, onClose, defaultTab }: AboutModalProps
       rustEdition: "2024",
       httpPort: state?.settings?.http_port,
       antigravityPath: state?.settings?.antigravity_path || "Unknown",
-      sqliteDbPath: "%APPDATA%\\Antigravity\\User\\globalStorage\\state.vscdb",
-      dataDir: "%LOCALAPPDATA%\\AntigravitySwitcher",
-      logsFile: "%LOCALAPPDATA%\\AntigravitySwitcher\\logs\\switcher.log",
+      sqliteDbPath: state?.settings?.sqlite_db_path || "%APPDATA%\\Antigravity\\User\\globalStorage\\state.vscdb",
+      dataDir: state?.settings?.data_dir || "%LOCALAPPDATA%\\AntigravitySwitcher",
+      logsFile: state?.settings?.logs_file || "%LOCALAPPDATA%\\AntigravitySwitcher\\logs\\switcher.log",
       userAgent: navigator.userAgent
     }, null, 2);
     
@@ -625,19 +625,19 @@ export function AboutModal({ open, state, onClose, defaultTab }: AboutModalProps
           <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
             <strong>{t("dev_sqlite_db")}:</strong>
             <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
-              %APPDATA%\Antigravity\User\globalStorage\state.vscdb
+              {state?.settings?.sqlite_db_path || "%APPDATA%\\Antigravity\\User\\globalStorage\\state.vscdb"}
             </code>
           </div>
           <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
             <strong>{t("dev_data_dir")}:</strong>
             <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
-              %LOCALAPPDATA%\AntigravitySwitcher
+              {state?.settings?.data_dir || "%LOCALAPPDATA%\\AntigravitySwitcher"}
             </code>
           </div>
           <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
             <strong>{t("dev_logs_file")}:</strong>
             <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
-              %LOCALAPPDATA%\AntigravitySwitcher\logs\switcher.log
+              {state?.settings?.logs_file || "%LOCALAPPDATA%\\AntigravitySwitcher\\logs\\switcher.log"}
             </code>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>

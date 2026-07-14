@@ -78,6 +78,9 @@ export interface AppSettings {
   smart_switch_enabled: boolean;
   switch_level: number;
   patch_cooldown_ms: number;
+  sqlite_db_path?: string;
+  data_dir?: string;
+  logs_file?: string;
 }
 
 

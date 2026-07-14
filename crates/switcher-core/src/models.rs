@@ -126,6 +126,9 @@ pub struct SettingsView {
     pub smart_switch_enabled: bool,
     pub switch_level: u8,
     pub patch_cooldown_ms: u32,
+    pub sqlite_db_path: String,
+    pub data_dir: String,
+    pub logs_file: String,
 }
 
 fn default_switch_level() -> u8 {

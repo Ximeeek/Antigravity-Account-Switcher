@@ -39,6 +39,16 @@ impl SwitcherPaths {
     pub fn from_root(root: PathBuf) -> Result<Self> {
         let roaming = env_path("APPDATA")?;
         let home = env_path("USERPROFILE")?;
+        let app_name = if cfg!(debug_assertions) {
+            "AntigravityDev"
+        } else {
+            "Antigravity"
+        };
+        let gemini_sub = if cfg!(debug_assertions) {
+            "antigravity_dev"
+        } else {
+            "antigravity"
+        };
         Ok(Self {
             profiles: root.join("profiles"),
             logs: root.join("logs"),
@@ -46,13 +56,13 @@ impl SwitcherPaths {
             config: root.join("config.json"),
             lock: root.join("switcher.lock"),
             state_db: roaming
-                .join("Antigravity")
+                .join(app_name)
                 .join("User")
                 .join("globalStorage")
                 .join("state.vscdb"),
-            gemini_root: home.join(".gemini").join("antigravity"),
+            gemini_root: home.join(".gemini").join(gemini_sub),
             workspace_storage: roaming
-                .join("Antigravity")
+                .join(app_name)
                 .join("User")
                 .join("workspaceStorage"),
             root,
