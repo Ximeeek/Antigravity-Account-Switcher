@@ -15,6 +15,18 @@ use switcher_windows::SwitcherService;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    {
+        // Enforce single instance lock
+        switcher_windows::check_single_instance();
+
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+        if let Err(e) = rt.block_on(switcher_windows::check_and_install_webview2()) {
+            eprintln!("Failed to check or install WebView2: {}", e);
+            std::process::exit(1);
+        }
+    }
+
     tauri::Builder::default()
         .setup(|app| {
             if cfg!(debug_assertions) {
