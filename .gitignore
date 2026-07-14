@@ -3,10 +3,9 @@ dist/
 target/
 src-tauri/target/
 target_test/
-extension/out/
-extension/node_modules/
 *.log
 *.vsix
+*.zip
 .DS_Store
 .idea/
 .vscode/

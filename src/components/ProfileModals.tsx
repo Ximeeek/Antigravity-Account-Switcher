@@ -225,9 +225,9 @@ export function GeekSpecsModal({ open, state, onClose }: GeekSpecsModalProps) {
       rustEdition: "2024",
       httpPort: state?.settings?.http_port,
       antigravityPath: state?.settings?.antigravity_path || "Unknown",
-      sqliteDbPath: "%USERPROFILE%\\.antigravity-agent\\cloud_accounts.db",
-      dataDir: "%APPDATA%\\Antigravity Manager",
-      logsFile: "%APPDATA%\\Antigravity Manager\\logs\\switcher.log",
+      sqliteDbPath: "%APPDATA%\\Antigravity\\User\\globalStorage\\state.vscdb",
+      dataDir: "%LOCALAPPDATA%\\AntigravitySwitcher",
+      logsFile: "%LOCALAPPDATA%\\AntigravitySwitcher\\logs\\switcher.log",
       userAgent: navigator.userAgent
     }, null, 2);
     
@@ -299,19 +299,19 @@ export function GeekSpecsModal({ open, state, onClose }: GeekSpecsModalProps) {
         <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
           <strong>{t("dev_sqlite_db")}:</strong>
           <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
-            %USERPROFILE%\.antigravity-agent\cloud_accounts.db
+            %APPDATA%\Antigravity\User\globalStorage\state.vscdb
           </code>
         </div>
         <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
           <strong>{t("dev_data_dir")}:</strong>
           <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
-            %APPDATA%\Antigravity Manager
+            %LOCALAPPDATA%\AntigravitySwitcher
           </code>
         </div>
         <div style={{ display: "flex", flexDirection: "column", borderBottom: "1px solid var(--border)", paddingBottom: "8px", gap: "4px" }}>
           <strong>{t("dev_logs_file")}:</strong>
           <code style={{ background: "var(--surface-inset)", padding: "4px 8px", borderRadius: "6px", wordBreak: "break-all" }}>
-            %APPDATA%\Antigravity Manager\logs\switcher.log
+            %LOCALAPPDATA%\AntigravitySwitcher\logs\switcher.log
           </code>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
