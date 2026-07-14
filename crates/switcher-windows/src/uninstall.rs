@@ -58,6 +58,8 @@ pub fn wipe_app_data_and_relaunch() -> Result<(), String> {
          Remove-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          cmd.exe /c \"cmdkey /delete:gemini:antigravity\"; \
          cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity\"; \
+         cmd.exe /c \"cmdkey /delete:gemini:antigravity_dev\"; \
+         cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity_dev\"; \
          $folders = @( \
              \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\", \
              \"$env:LOCALAPPDATA\\AntigravitySwitcher\", \
@@ -126,6 +128,8 @@ pub fn uninstall_app_and_self_delete() -> Result<(), String> {
          Remove-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\com.ximeeek.antigravity-account-switcher' -Recurse -ErrorAction SilentlyContinue; \
          cmd.exe /c \"cmdkey /delete:gemini:antigravity\"; \
          cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity\"; \
+         cmd.exe /c \"cmdkey /delete:gemini:antigravity_dev\"; \
+         cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity_dev\"; \
          $folders = @( \
              \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\", \
              \"$env:LOCALAPPDATA\\AntigravitySwitcher\", \
