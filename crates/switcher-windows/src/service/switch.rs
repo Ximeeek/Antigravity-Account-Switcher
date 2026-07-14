@@ -81,7 +81,7 @@ impl SwitcherService {
         self.check_cooldown()?;
         
         let operation_id = Uuid::new_v4();
-        let requires_confirmation = if config.switch_level == 2 {
+        let requires_confirmation = if config.switch_level == 2 || config.switch_level == 3 {
             false
         } else {
             self.process_manager()?.is_running()

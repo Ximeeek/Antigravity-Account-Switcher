@@ -93,12 +93,13 @@ export function SwitchProgressModal({ state, operation }: SwitchProgressModalPro
   const targetName = profileName(state.profiles, operation?.to_profile_id);
   const open = operation?.status === "in_progress";
 
+  const isFast = state.settings.switch_level === 2 || state.settings.switch_level === 3;
   const userSteps = [
     t("step_preparing"),
-    t("step_closing"),
+    isFast ? t("step_closing_fast") : t("step_closing"),
     t("step_saving"),
     t("step_loading"),
-    t("step_finishing"),
+    isFast ? t("step_finishing_fast") : t("step_finishing"),
   ];
 
   return (
@@ -114,7 +115,7 @@ export function SwitchProgressModal({ state, operation }: SwitchProgressModalPro
     >
       <div aria-atomic="true" aria-live="polite" className="operation-live-status">
         <Icon name="loader" size={17} />
-        <span>{getSwitchStepLabel(operation?.current_step ?? 0)}…</span>
+        <span>{getSwitchStepLabel(operation?.current_step ?? 0, state.settings.switch_level)}…</span>
       </div>
 
       <div className="indeterminate-progress" aria-hidden="true">
@@ -208,7 +209,7 @@ export function RecoveryScreen({
           <StatusPill tone="warning">{t("recovery_required")}</StatusPill>
           <h1 id="recovery-title">{t("recovery_title")}</h1>
           <p className="recovery-card__lead">
-            {t("recovery_desc", { step: getSwitchStepLabel(recovery.current_step) })}
+            {t("recovery_desc", { step: getSwitchStepLabel(recovery.current_step, state.settings.switch_level) })}
           </p>
 
           {recovery.reason ? (

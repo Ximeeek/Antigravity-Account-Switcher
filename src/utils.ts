@@ -114,13 +114,14 @@ export const getSwitchStage = (step: number): number => {
   return 4;
 };
 
-export const getSwitchStepLabel = (step: number): string => {
+export const getSwitchStepLabel = (step: number, switchLevel?: number): string => {
+  const isFast = switchLevel === 2 || switchLevel === 3;
   const keys: TranslationKey[] = [
     "step_preparing",
-    "step_closing",
+    isFast ? "step_closing_fast" : "step_closing",
     "step_saving",
     "step_loading",
-    "step_finishing",
+    isFast ? "step_finishing_fast" : "step_finishing",
   ];
   const key = keys[getSwitchStage(step)] ?? keys[0];
   return t(key);

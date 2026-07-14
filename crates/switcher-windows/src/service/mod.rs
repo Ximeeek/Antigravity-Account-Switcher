@@ -124,10 +124,28 @@ impl SwitcherService {
     }
 
     pub(crate) fn set_progress(&self, lock: &switcher_core::SwitchLock, warning: Option<String>) {
+        let is_fast = {
+            let config = self.config.read();
+            config.switch_level == 2 || config.switch_level == 3
+        };
+        let label = if is_fast {
+            match lock.current_step {
+                switcher_core::SwitchStep::CloseProcesses | switcher_core::SwitchStep::VerifyUnlocked => {
+                    "Restarting background services"
+                }
+                switcher_core::SwitchStep::RemoveLock | switcher_core::SwitchStep::Relaunch => {
+                    "Completing switch"
+                }
+                _ => lock.current_step.user_label(),
+            }
+        } else {
+            lock.current_step.user_label()
+        };
+
         *self.progress.write() = Some(OperationProgress {
             operation_id: lock.operation_id,
             current_step: lock.current_step,
-            label: lock.current_step.user_label().to_owned(),
+            label: label.to_owned(),
             target_profile_id: lock.to_profile_id,
             warning,
         });
