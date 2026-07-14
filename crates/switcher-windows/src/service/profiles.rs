@@ -299,7 +299,7 @@ impl SwitcherService {
                 "Only unprivileged ports are allowed (>= 1024)".to_owned(),
             ));
         }
-        if switch_level != 1 && switch_level != 2 && switch_level != 3 {
+        if switch_level != 1 && switch_level != 2 && switch_level != 3 && switch_level != 4 {
             return Err(SwitcherError::InvalidConfiguration(
                 "Invalid account switching level".to_owned(),
             ));

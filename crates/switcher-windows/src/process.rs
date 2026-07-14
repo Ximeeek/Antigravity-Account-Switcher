@@ -116,6 +116,95 @@ impl ProcessManager {
         }
     }
 
+    pub fn close_all_optimized(&self, operation_id: Uuid) -> Result<()> {
+        let processes = self.enumerate()?;
+        if processes.is_empty() {
+            self.logger.info(
+                Some(operation_id),
+                "process",
+                "No running Antigravity processes (optimized)",
+            );
+            return Ok(());
+        }
+
+        // 1. Separate main processes (Antigravity.exe) and background ones (language_server.exe, conhost.exe, etc.)
+        let mut main_processes = Vec::new();
+        let mut background_processes = Vec::new();
+
+        for proc in &processes {
+            let name_lower = proc.name.to_lowercase();
+            if name_lower == "antigravity.exe" {
+                main_processes.push(proc.clone());
+            } else {
+                background_processes.push(proc.clone());
+            }
+        }
+
+        // 2. Kill background processes immediately to release file locks
+        for proc in &background_processes {
+            self.logger.info(
+                Some(operation_id),
+                "process",
+                format!("Killing background process immediately pid={} name={}", proc.pid, proc.name),
+            );
+            #[cfg(windows)]
+            if let Err(e) = terminate_process(proc.pid) {
+                self.logger.warn(
+                    Some(operation_id),
+                    "process",
+                    format!("Failed to kill background process pid={}: {}", proc.pid, e),
+                );
+            }
+        }
+
+        // 3. Gracefully close main GUI processes (Antigravity.exe)
+        if !main_processes.is_empty() {
+            for proc in &main_processes {
+                self.logger.info(
+                    Some(operation_id),
+                    "process",
+                    format!("Closing GUI process gracefully pid={} name={}", proc.pid, proc.name),
+                );
+            }
+            #[cfg(windows)]
+            request_graceful_close(&main_processes);
+
+            // 4. Wait up to 1.5 seconds for GUI processes to exit
+            let deadline = Instant::now() + Duration::from_millis(1500);
+            while Instant::now() < deadline {
+                let remaining = self.enumerate()?;
+                let gui_remaining = remaining.iter().any(|p| p.name.to_lowercase() == "antigravity.exe");
+                if !gui_remaining {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+        }
+
+        // 5. Force-kill anything that remains (GUI or background)
+        let remaining = self.enumerate()?;
+        if !remaining.is_empty() {
+            for proc in &remaining {
+                self.logger.warn(
+                    Some(operation_id),
+                    "process",
+                    format!("Process pid={} name={} failed to exit gracefully, force-killing", proc.pid, proc.name),
+                );
+                #[cfg(windows)]
+                let _ = terminate_process(proc.pid);
+            }
+            thread::sleep(Duration::from_millis(150));
+        }
+
+        if self.enumerate()?.is_empty() {
+            Ok(())
+        } else {
+            Err(SwitcherError::ProcessShutdown(
+                "some processes remained active after optimized force-kill".to_owned(),
+            ))
+        }
+    }
+
     pub fn wait_until_unlocked(&self, paths: &SwitcherPaths, operation_id: Uuid) -> Result<()> {
         let checks: Vec<PathBuf> = paths
             .artifacts()

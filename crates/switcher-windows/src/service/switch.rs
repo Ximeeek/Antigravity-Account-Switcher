@@ -147,7 +147,11 @@ impl SwitcherService {
         })?;
         let process = self.process_manager()?;
         if process.is_running() {
-            process.close_all(lock.operation_id)?;
+            if self.config.read().switch_level == 4 {
+                process.close_all_optimized(lock.operation_id)?;
+            } else {
+                process.close_all(lock.operation_id)?;
+            }
             process.wait_until_unlocked(&self.paths, lock.operation_id)?;
         }
         self.rollback_to_source(&mut lock)?;
@@ -174,7 +178,11 @@ impl SwitcherService {
             })?;
             let process = self.process_manager()?;
             if process.is_running() {
-                process.close_all(lock.operation_id)?;
+                if self.config.read().switch_level == 4 {
+                    process.close_all_optimized(lock.operation_id)?;
+                } else {
+                    process.close_all(lock.operation_id)?;
+                }
                 process.wait_until_unlocked(&self.paths, lock.operation_id)?;
             }
             self.rollback_to_source(&mut lock)?;
@@ -236,7 +244,13 @@ impl SwitcherService {
         lock.current_step = SwitchStep::CloseProcesses;
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
-        if let Err(error) = process.close_all(operation_id) {
+        let is_level1_plus = config.switch_level == 4;
+        let close_result = if is_level1_plus {
+            process.close_all_optimized(operation_id)
+        } else {
+            process.close_all(operation_id)
+        };
+        if let Err(error) = close_result {
             lock.status = LockStatus::FailedAtStep2;
             self.journal().write(&lock)?;
             self.progress.write().take();
@@ -260,7 +274,10 @@ impl SwitcherService {
         if let Err(error) = (|| -> Result<()> {
             self.repair_active_state_database_if_needed(operation_id)?;
             self.preflight_active()?;
-            self.merge_legacy_profile_artifacts(operation_id)
+            if !is_level1_plus {
+                self.merge_legacy_profile_artifacts(operation_id)?;
+            }
+            Ok(())
         })() {
             self.logger.error(
                 Some(operation_id),

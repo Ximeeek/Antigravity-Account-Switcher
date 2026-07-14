@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { t } from "../../i18n";
 
 interface SwitchLevelSelectorProps {
-  value: number; // 1, 2, or 3
+  value: number; // 1, 2, 3, or 4 (1=Lvl1, 4=Lvl1+, 2=Lvl2, 3=Lvl2+)
   onChange: (value: number) => void;
   busy?: boolean; // Kept in interface for props compatibility
 }
@@ -12,10 +12,31 @@ export default function SwitchLevelSelector({
   onChange,
 }: SwitchLevelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [localValue, setLocalValue] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const pendingValue = useRef<number | null>(null);
+  // Mappers between backend value and slider value (1=Lvl1, 2=Lvl1+, 3=Lvl2, 4=Lvl2+)
+  const backendToSlider = (val: number): number => {
+    switch (val) {
+      case 1: return 1; // Level 1 (Full)
+      case 4: return 2; // Level 1+ (Optimized Full)
+      case 2: return 3; // Level 2 (Fast)
+      case 3: return 4; // Level 2+ / 3 (Patched Fast)
+      default: return 1;
+    }
+  };
+
+  const sliderToBackend = (val: number): number => {
+    switch (val) {
+      case 1: return 1;
+      case 2: return 4;
+      case 3: return 2;
+      case 4: return 3;
+      default: return 1;
+    }
+  };
+
+  const [localSliderValue, setLocalSliderValue] = useState(() => backendToSlider(value));
+  const pendingSliderValue = useRef<number | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Flush any pending optimistic save immediately
@@ -25,26 +46,28 @@ export default function SwitchLevelSelector({
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
     }
-    if (pendingValue.current !== null) {
-      onChange(pendingValue.current);
+    if (pendingSliderValue.current !== null) {
+      onChange(sliderToBackend(pendingSliderValue.current));
+      pendingSliderValue.current = null;
     }
   };
 
   // Optimistic update: sync local value when backend value updates,
   // but ONLY if we do not have a pending local change in flight!
   useEffect(() => {
-    if (pendingValue.current === value) {
-      pendingValue.current = null;
+    const expectedSliderVal = backendToSlider(value);
+    if (pendingSliderValue.current === expectedSliderVal) {
+      pendingSliderValue.current = null;
     }
-    if (pendingValue.current === null) {
-      setLocalValue(value);
+    if (pendingSliderValue.current === null) {
+      setLocalSliderValue(expectedSliderVal);
     }
   }, [value]);
 
   // Flush pending changes on unmount
   useEffect(() => {
     return () => {
-      if (pendingValue.current !== null) {
+      if (pendingSliderValue.current !== null) {
         flushChange.current();
       }
     };
@@ -73,8 +96,8 @@ export default function SwitchLevelSelector({
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseInt(e.target.value, 10);
-    setLocalValue(newValue); // Instant optimistic update on frontend!
-    pendingValue.current = newValue;
+    setLocalSliderValue(newValue); // Instant optimistic update on frontend!
+    pendingSliderValue.current = newValue;
 
     // Debounce the Tauri IPC call by 150ms to allow smooth sliding/dragging
     if (debounceRef.current) {
@@ -82,8 +105,8 @@ export default function SwitchLevelSelector({
     }
     debounceRef.current = setTimeout(() => {
       debounceRef.current = null;
-      if (pendingValue.current !== null) {
-        onChange(pendingValue.current);
+      if (pendingSliderValue.current !== null) {
+        onChange(sliderToBackend(pendingSliderValue.current));
       }
     }, 150);
 
@@ -101,9 +124,9 @@ export default function SwitchLevelSelector({
     setIsOpen((prev) => !prev);
   };
 
-  const snapPoints = ["11px", "50%", "calc(100% - 11px)"];
-  const thumbLeft = localValue === 1 ? snapPoints[0] : (localValue === 2 ? snapPoints[1] : snapPoints[2]);
-  const activePercentage = localValue === 1 ? "0%" : (localValue === 2 ? "50%" : "100%");
+  const snapPoints = ["11px", "33.3%", "66.6%", "calc(100% - 11px)"];
+  const thumbLeft = localSliderValue === 1 ? snapPoints[0] : (localSliderValue === 2 ? snapPoints[1] : (localSliderValue === 3 ? snapPoints[2] : snapPoints[3]));
+  const activePercentage = localSliderValue === 1 ? "0%" : (localSliderValue === 2 ? "33.3%" : (localSliderValue === 3 ? "66.6%" : "100%"));
 
   return (
     <div className="switch-mode-popover-container" ref={containerRef}>
@@ -117,7 +140,9 @@ export default function SwitchLevelSelector({
       >
         <span className="switch-mode-trigger__text">{t("switch_mode")}</span>
         <span className="switch-mode-trigger__badge">
-          {localValue === 1 ? "Lvl 1" : (localValue === 2 ? "Lvl 2" : <>Lvl 2<span className="epic-plus">+</span></>)}
+          {localSliderValue === 1 ? "Lvl 1" : 
+           (localSliderValue === 2 ? <>Lvl 1<span className="epic-plus">+</span></> : 
+           (localSliderValue === 3 ? "Lvl 2" : <>Lvl 2<span className="epic-plus">+</span></>))}
         </span>
       </button>
 
@@ -127,10 +152,14 @@ export default function SwitchLevelSelector({
           {/* Popover Header showing: Restart Type (Left) & Speed Multiplier (Right) */}
           <div className="switch-mode-popover-header">
             <span className="popover-header-left">
-              {localValue === 1 ? t("switch_level_1_short") : (localValue === 2 ? t("switch_level_2_short") : t("switch_level_3_short"))}
+              {localSliderValue === 1 ? t("switch_level_1_short") : 
+               (localSliderValue === 2 ? t("switch_level_4_short") : 
+               (localSliderValue === 3 ? t("switch_level_2_short") : t("switch_level_3_short")))}
             </span>
-            <span className={`popover-header-right ${localValue > 1 ? "speed-highlight" : "slow-highlight"}`}>
-              {localValue === 1 ? t("slower") : (localValue === 2 ? t("switch_level_faster") : t("switch_level_blazing"))}
+            <span className={`popover-header-right ${localSliderValue > 1 ? "speed-highlight" : "slow-highlight"}`}>
+              {localSliderValue === 1 ? t("slower") : 
+               (localSliderValue === 2 ? t("switch_level_optimized") : 
+               (localSliderValue === 3 ? t("switch_level_faster") : t("switch_level_blazing")))}
             </span>
           </div>
 
@@ -145,9 +174,10 @@ export default function SwitchLevelSelector({
             </div>
 
             {/* Snapping Dots */}
-            <div className={`compact-slider-dot ${localValue >= 1 ? "compact-slider-dot--active" : ""}`} style={{ left: "11px" }} />
-            <div className={`compact-slider-dot ${localValue >= 2 ? "compact-slider-dot--active" : ""}`} style={{ left: "50%" }} />
-            <div className={`compact-slider-dot ${localValue >= 3 ? "compact-slider-dot--active" : ""}`} style={{ left: "calc(100% - 11px)" }} />
+            <div className={`compact-slider-dot ${localSliderValue >= 1 ? "compact-slider-dot--active" : ""}`} style={{ left: "11px" }} />
+            <div className={`compact-slider-dot ${localSliderValue >= 2 ? "compact-slider-dot--active" : ""}`} style={{ left: "33.3%" }} />
+            <div className={`compact-slider-dot ${localSliderValue >= 3 ? "compact-slider-dot--active" : ""}`} style={{ left: "66.6%" }} />
+            <div className={`compact-slider-dot ${localSliderValue >= 4 ? "compact-slider-dot--active" : ""}`} style={{ left: "calc(100% - 11px)" }} />
 
             {/* Custom Sliding Thumb */}
             <div
@@ -159,15 +189,19 @@ export default function SwitchLevelSelector({
             <input
               type="range"
               min="1"
-              max="3"
+              max="4"
               step="1"
-              value={localValue}
+              value={localSliderValue}
               onChange={handleSliderChange}
               className="compact-slider-native-input"
               aria-valuemin={1}
-              aria-valuemax={3}
-              aria-valuenow={localValue}
-              aria-valuetext={localValue === 1 ? t("switch_level_1") : (localValue === 2 ? t("switch_level_2") : t("switch_level_3"))}
+              aria-valuemax={4}
+              aria-valuenow={localSliderValue}
+              aria-valuetext={
+                localSliderValue === 1 ? t("switch_level_1") : 
+                (localSliderValue === 2 ? t("switch_level_4") : 
+                (localSliderValue === 3 ? t("switch_level_2") : t("switch_level_3")))
+              }
             />
           </div>
         </div>
