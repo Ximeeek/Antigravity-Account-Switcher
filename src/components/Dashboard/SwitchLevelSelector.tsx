@@ -116,7 +116,7 @@ export default function SwitchLevelSelector({
         aria-expanded={isOpen}
       >
         <span className="switch-mode-trigger__text">{t("switch_mode")}</span>
-        <span className={`switch-mode-trigger__badge ${localValue === 3 ? "switch-mode-trigger__badge--epic" : ""}`}>
+        <span className="switch-mode-trigger__badge">
           {localValue === 1 ? "Lvl 1" : (localValue === 2 ? "Lvl 2" : <>Lvl 2<span className="epic-plus">+</span></>)}
         </span>
       </button>
@@ -139,7 +139,7 @@ export default function SwitchLevelSelector({
             <div className="compact-slider-track-bg">
               {/* Glowing Active Track Fill */}
               <div
-                className={`compact-slider-track-fill ${localValue === 3 ? "compact-slider-track-fill--epic" : ""}`}
+                className="compact-slider-track-fill"
                 style={{ width: activePercentage }}
               />
             </div>
@@ -151,7 +151,7 @@ export default function SwitchLevelSelector({
 
             {/* Custom Sliding Thumb */}
             <div
-              className={`compact-slider-thumb ${localValue === 3 ? "compact-slider-thumb--epic" : ""}`}
+              className="compact-slider-thumb"
               style={{ left: thumbLeft }}
             />
 

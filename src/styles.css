@@ -3866,75 +3866,24 @@ body.mini-window-body {
   font-size: 0.75rem;
 }
 
-/* Epic level holographic and golden glow styles */
-@keyframes epic-shimmer {
+/* Epic plus symbol golden glow styling */
+@keyframes gold-glow-pulse {
   0% {
-    background-position: 0% 50%;
-    text-shadow: 0 0 4px rgba(255, 215, 0, 0.6), 0 0 12px rgba(255, 105, 180, 0.4);
+    text-shadow: 0 0 3px rgba(255, 215, 0, 0.6), 0 0 6px rgba(255, 165, 0, 0.4);
   }
   50% {
-    background-position: 100% 50%;
-    text-shadow: 0 0 8px rgba(255, 215, 0, 0.9), 0 0 20px rgba(0, 229, 255, 0.7);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.95), 0 0 22px rgba(255, 140, 0, 0.7);
   }
   100% {
-    background-position: 0% 50%;
-    text-shadow: 0 0 4px rgba(255, 215, 0, 0.6), 0 0 12px rgba(255, 105, 180, 0.4);
+    text-shadow: 0 0 3px rgba(255, 215, 0, 0.6), 0 0 6px rgba(255, 165, 0, 0.4);
   }
 }
 
 .epic-plus {
   display: inline-block;
+  color: #ffd700;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffd700, #ff8c00, #ff007f, #00e5ff);
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: epic-shimmer 3s ease infinite;
+  animation: gold-glow-pulse 1.8s ease-in-out infinite;
   margin-left: 2px;
-  filter: drop-shadow(0 0 1px rgba(255, 215, 0, 0.5));
-}
-
-@keyframes epic-glow-pulse {
-  0% {
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45), 0 0 8px rgba(255, 215, 0, 0.5), 0 0 16px rgba(255, 0, 128, 0.3);
-  }
-  50% {
-    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4), 0 0 18px rgba(255, 215, 0, 0.85), 0 0 30px rgba(0, 229, 255, 0.6);
-  }
-  100% {
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45), 0 0 8px rgba(255, 215, 0, 0.5), 0 0 16px rgba(255, 0, 128, 0.3);
-  }
-}
-
-.compact-slider-thumb--epic {
-  border: 1.5px solid rgba(255, 215, 0, 0.95) !important;
-  animation: epic-glow-pulse 2s ease infinite !important;
-  background: radial-gradient(circle at center, #ffffff 30%, #fff7d0 100%) !important;
-}
-
-.compact-slider-track-fill--epic {
-  background: linear-gradient(90deg, #00b0ff, #ffd700, #ff5500) !important;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5) !important;
-}
-
-@keyframes badge-epic-border {
-  0% {
-    border-color: rgba(255, 215, 0, 0.4);
-    box-shadow: 0 0 4px rgba(255, 215, 0, 0.2);
-  }
-  50% {
-    border-color: rgba(255, 215, 0, 0.95);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 4px rgba(0, 229, 255, 0.3);
-  }
-  100% {
-    border-color: rgba(255, 215, 0, 0.4);
-    box-shadow: 0 0 4px rgba(255, 215, 0, 0.2);
-  }
-}
-
-.switch-mode-trigger__badge--epic {
-  animation: badge-epic-border 2s ease infinite !important;
-  background: rgba(255, 215, 0, 0.1) !important;
-  color: #ffd700 !important;
 }
 
