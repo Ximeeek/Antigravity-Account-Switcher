@@ -1,23 +1,23 @@
-# ADR-0005: dynamiczna identyfikacja drzewa procesów
+# ADR-0005: Dynamic Process Tree Management
 
-- Status: Zaakceptowana
-- Data: 2026-07-11
+- Status: Accepted
+- Date: 2026-07-11
 
-## Kontekst
+## Context
 
-Antigravity/Electron uruchamia proces główny, renderery, extension hosty i backend językowy. Lista nazw oraz struktura rodzic–dziecko mogą zmieniać się między wersjami. Zabijanie wszystkich procesów o nazwie `Antigravity.exe` lub `language_server.exe` może zakończyć niezwiązany proces, a statyczna lista może pozostawić uchwyt blokujący dane.
+Google Antigravity 2.0 launches a main process, renderers, helper processes, and a background language server. The list of process names and the parent-child hierarchy can change between versions. Terminating all processes named `Antigravity.exe` or `language_server.exe` indiscriminately could kill unrelated applications, whereas a static checklist might leave zombie processes holding file locks on our profile databases.
 
-## Decyzja
+## Decision
 
-Process Manager wykrywa kanoniczną ścieżkę zweryfikowanej instalacji i dynamicznie enumeruje proces główny oraz jego potomków na podstawie snapshotu procesów i relacji PID/parent PID. Snapshot jest odświeżany podczas zamykania, ponieważ proces może utworzyć kolejnego potomka.
+The Process Manager resolves the canonical installation path of the active application. It dynamically enumerates the root process and its child processes by taking a process snapshot and walking the PID/Parent PID relationship tree. The snapshot is updated during the shutdown process, as active processes could spawn new sub-processes.
 
-Procesy odłączone od drzewa, w tym backend językowy, mogą zostać dołączone do zestawu tylko wtedy, gdy jednocześnie pasują do kanonicznej ścieżki tej samej instalacji, użytkownika Windows i sesji. Sama nazwa pliku nigdy nie wystarcza.
+Processes detached from the main process tree (including background language servers) are only included in the termination target set if they match the canonical path of the installation, belong to the current Windows user, and belong to the same Windows session. File name matching alone is never sufficient.
 
-Najpierw wysyłane jest grzeczne zamknięcie do odpowiednich okien procesu głównego. Po kontrolowanym oczekiwaniu wszystkie zidentyfikowane procesy są ponownie sprawdzane. Force-kill dotyczy wyłącznie pozostałych procesów ze zweryfikowanego zestawu i jest logowany per PID bez pełnych linii poleceń mogących zawierać dane użytkownika.
+First, a graceful window-close command is sent to the root process windows. After a controlled waiting period, all resolved processes are re-evaluated. A forceful termination (`TerminateProcess`) is applied only to the remaining processes within the verified set. The action is logged per PID without logging full command-line arguments to prevent leakage of user data.
 
-## Konsekwencje
+## Consequences
 
-- Dokładne nazwy zaobserwowanych procesów pozostają fixture'em/testem kompatybilności, a nie podstawą algorytmu.
-- Przed każdą wersją Antigravity potrzebny jest test integracyjny drzewa i zachowania graceful shutdown.
-- Brak dostępu do ścieżki, właściciela lub sesji procesu oznacza bezpieczne przerwanie, a nie szeroki kill po nazwie.
-- Argumenty potrzebne do odtworzenia workspace są przechwytywane wyłącznie w pamięci i nie trafiają do zwykłych logów.
+- The specific process names are treated as compatibility test fixtures, not as hardcoded assumptions in the logic.
+- Integration tests of the process tree and graceful shutdown behaviors must run before each major release.
+- Lack of access to process path, owner, or session details triggers a safe abort rather than falling back to a generic process-name kill.
+- Workspace recovery arguments are captured only in memory and never written to regular application logs.

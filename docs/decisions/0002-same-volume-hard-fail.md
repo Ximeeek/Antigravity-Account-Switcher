@@ -1,21 +1,21 @@
-# ADR-0002: twardy błąd dla różnych woluminów
+# ADR-0002: Same-Volume Constraint and Hard Fail
 
-- Status: Zaakceptowana
-- Data: 2026-07-11
+- Status: Accepted
+- Date: 2026-07-11
 
-## Kontekst
+## Context
 
-Gwarancje rollbacku opierają się na szybkim `rename/move` w obrębie jednego woluminu. Windows może realizować przeniesienie między woluminami jako kopiowanie i usunięcie, co jest wolne, nieatomowe oraz podatne na przerwanie. `%LOCALAPPDATA%`, `%APPDATA%` i `%USERPROFILE%` mogą być przekierowane na różne dyski.
+Rollback guarantees rely on fast, atomic `rename/move` operations within a single volume. Windows may execute moves between different volumes as a copy-and-delete sequence, which is slow, non-atomic, and highly susceptible to interruption. Directories like `%LOCALAPPDATA%`, `%APPDATA%`, and `%USERPROFILE%` can be redirected to different physical or logical drives.
 
-## Decyzja
+## Decision
 
-Przed zapisaniem journala i przed każdą mutacją aplikacja ustala rzeczywisty wolumin magazynu profili oraz wszystkich aktywnych źródeł i celów. Porównanie wykorzystuje tożsamość woluminu systemu Windows, a nie tylko literę dysku lub tekst ścieżki.
+Before writing the transaction journal and initiating any mutation, the application determines the actual volume identifier for the profile storage, active sources, and targets. This comparison resolves the Windows volume identity (e.g., volume serial number or volume path name) rather than relying solely on drive letters or path strings.
 
-Jeżeli wszystkie uczestniczące ścieżki nie leżą na jednym woluminie, operacja kończy się twardym, czytelnym błędem przed zmianą danych. MVP nie wykonuje automatycznego fallbacku `copy + delete`, nie przenosi samodzielnie magazynu i nie próbuje kontynuować części operacji.
+If all participating paths do not reside on the same drive volume, the operation terminates with a hard, explicit error before modifying any data. The implementation does not fall back to `copy + delete` automatically, does not migrate the storage autonomously, and does not attempt partial execution.
 
-## Konsekwencje
+## Consequences
 
-- Nietypowe konfiguracje z przekierowanymi katalogami mogą być nieobsługiwane.
-- UI diagnostyczny pokazuje wykryte korzenie i woluminy bez ujawniania danych konta.
-- Testy obejmują junctions, ścieżki UNC, brakujące ścieżki i różne woluminy.
-- Ewentualny bezpieczny protokół cross-volume wymaga osobnego ADR i pełnego projektu stage/copy/fsync/verify/delete/recovery.
+- Non-standard Windows configurations with redirected AppData directories will be unsupported.
+- The diagnostic UI displays detected volume roots and properties without exposing account details.
+- Testing must cover directory junctions, UNC paths, missing paths, and multi-volume setups.
+- Any future cross-volume protocol will require a separate ADR and a complete design for a staged write (stage/copy/fsync/verify/delete/recovery).

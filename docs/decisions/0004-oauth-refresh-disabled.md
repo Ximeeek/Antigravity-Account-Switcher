@@ -1,30 +1,30 @@
-# ADR-0004: odświeżanie OAuth wyłączone do weryfikacji
+# ADR-0004: OAuth Refresh Engine Disabled (Superseded by ADR-0006)
 
-- Status: Zaakceptowana, tymczasowa
-- Data: 2026-07-11
+- Status: Superseded
+- Date: 2026-07-11
 
-## Kontekst
+## Context
 
-Silnik odświeżania nieaktywnych profili wymaga dokładnych parametrów i zachowania klienta OAuth używanego przez Antigravity. `client_id`, sposób użycia `client_secret`, obsługa rotacji refresh tokenu i wymagane pola żądania nie zostały jeszcze potwierdzone na podstawie autoryzowanego przechwycenia rzeczywistego przepływu.
+The token refresh engine for inactive profiles requires exact parameters and behaviors of the OAuth client used by Antigravity. The client ID, client secret usage, support for refresh token rotation, and required request payload fields had not been verified based on authorized captures of the actual flow.
 
-Zgadywanie wartości albo użycie przypadkowego klienta może unieważnić profil, ujawnić sekret lub naruszyć oczekiwany przepływ logowania.
+Guessing these values or using an arbitrary client could invalidate profiles, leak secrets, or disrupt the expected user authentication experience.
 
-## Decyzja
+## Decision
 
-Background Token Refresh Engine pozostaje wyłączony. Aplikacja nie wysyła żądań do `oauth2.googleapis.com/token`, nie zawiera przykładowych identyfikatorów klienta i nie próbuje pozyskiwać ich z niezweryfikowanego źródła.
+The Background Token Refresh Engine will remain disabled. The application will not send requests to `oauth2.googleapis.com/token`, will not include mock client identifiers, and will not attempt to fetch them from unverified sources.
 
-Do czasu zastąpienia tego ADR aplikacja może jedynie pokazać zapisany czas wygaśnięcia i poprosić użytkownika o ręczne ponowne logowanie zgodnie z zatwierdzonym onboardingiem.
+Until this ADR is replaced, the application can only display the stored token expiration time and prompt the user to manually log in again when necessary.
 
-Włączenie wymaga łącznie:
+Enabling this feature requires:
 
-1. potwierdzenia parametrów na kontrolowanym koncie i udokumentowania źródła,
-2. testu sukcesu, błędnego/wycofanego refresh tokenu i ewentualnej rotacji,
-3. bezpiecznego, transakcyjnego zapisu nowego poświadczenia,
-4. przeglądu logów potwierdzającego brak tokenów i pełnych e-maili,
-5. nowego ADR zastępującego tę decyzję.
+1. Confirming the client parameters on a controlled account and documenting their source.
+2. Testing successful refreshes, handling expired/revoked refresh tokens, and managing rotation.
+3. Writing a secure, transactional mechanism to update credentials on disk.
+4. Reviewing logs to ensure no tokens or plaintext email addresses are leaked.
+5. Drafting a new ADR to supersede this decision.
 
-## Konsekwencje
+## Consequences
 
-- Długo nieużywany profil może wymagać ponownego logowania.
-- Brak refreshu jest stanem oczekiwanym, a nie powodem automatycznego przełączenia konta.
-- Repozytorium, przykłady konfiguracji, fixture'y i logi nie mogą zawierać realnych ID ani sekretów OAuth.
+- Inactive profiles left unused for extended periods may require browser re-authentication.
+- The absence of background refresh is expected behavior and will not trigger automatic account switches.
+- The codebase, configuration examples, fixtures, and logs must not contain real OAuth client IDs or secrets.

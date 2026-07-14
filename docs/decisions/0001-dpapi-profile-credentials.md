@@ -1,23 +1,23 @@
-# ADR-0001: DPAPI dla poświadczeń profili
+# ADR-0001: DPAPI for Profile Credentials
 
-- Status: Zaakceptowana
-- Data: 2026-07-11
+- Status: Accepted
+- Date: 2026-07-11
 
-## Kontekst
+## Context
 
-Nieaktywne profile potrzebują kopii danych OAuth, ale tokeny nie mogą być zapisane jako plaintext. Aplikacja działa wyłącznie na Windows i nie ma wymagania przenoszenia profili między użytkownikami ani komputerami. Sam AES-256-GCM nie rozwiązuje problemu bezpiecznego przechowywania klucza głównego.
+Inactive profiles need a copy of OAuth credentials, but tokens must not be stored as plaintext. The application operates exclusively on Windows, and there is no requirement to transfer profiles between users or computers. AES-256-GCM alone does not solve the problem of secure master key storage.
 
-## Decyzja
+## Decision
 
-Zserializowane poświadczenie profilu chronimy przez Windows DPAPI (`CryptProtectData`) w zakresie bieżącego użytkownika i zapisujemy jako wersjonowaną kopertę `credentials.enc`. Odszyfrowanie używa `CryptUnprotectData` w tym samym kontekście użytkownika.
+We protect the serialized profile credentials using Windows Data Protection API (DPAPI) via `CryptProtectData` in the current user context, saving it as a versioned envelope in `credentials.enc`. Decryption utilizes `CryptUnprotectData` in the same user context.
 
-Koperta zawiera wyłącznie wersję formatu, identyfikator mechanizmu ochrony i ciphertext. Nigdy nie zawiera alternatywnej kopii plaintext ani klucza. Bufory plaintext mają możliwie krótki czas życia i są zerowane po użyciu. Błąd DPAPI przerywa operację; nie ma słabszego fallbacku.
+The envelope contains only the format version, the protection mechanism identifier, and the ciphertext. It never contains an alternative copy of the plaintext or the key. Plaintext buffers have the shortest possible lifespan and are zeroed out after use. Any DPAPI error aborts the operation; there is no weaker fallback mechanism.
 
-Aktywny token nadal jest zapisywany przez Windows Credential Manager zgodnie z formatem wymaganym przez Antigravity. DPAPI chroni magazyn profili, nie zastępuje aktywnego wpisu edytora.
+The active token is still stored in the Windows Credential Manager according to the format required by Antigravity. DPAPI protects the profile storage; it does not replace the active editor credential entry.
 
-## Konsekwencje
+## Consequences
 
-- Profil jest związany z użytkownikiem Windows i zwykle nie może być skopiowany na inne konto lub komputer.
-- Reset profilu Windows/DPAPI może uniemożliwić odzyskanie zapisanych tokenów; UI powinien wtedy wymagać ponownego logowania.
-- Testy platformowe muszą używać syntetycznych sekretów i usuwać artefakty po zakończeniu.
-- Logi mogą zawierać `profile_id` i informację `credential_present=true`, ale żadnych bajtów tokenu, ciphertextu ani sekretu API.
+- A profile is tied to the Windows user and typically cannot be copied to another account or computer.
+- A Windows/DPAPI profile reset may prevent the recovery of stored tokens; the UI must then require the user to log in again.
+- Platform tests must use synthetic secrets and remove artifacts upon completion.
+- Logs may contain the `profile_id` and the flag `credential_present=true`, but never any bytes of the token, ciphertext, or API secrets.
