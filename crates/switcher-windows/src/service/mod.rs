@@ -67,6 +67,9 @@ impl SwitcherService {
         } else {
             PersistentConfig::default()
         };
+        // Force switch_level to 1 since Level 2 (Fast switch) is not supported in Antigravity 2.0.
+        // Antigravity 2.0 (Google agentic app) must be restarted to load new credentials.
+        config.switch_level = 1;
         if config.installation_path.is_none() {
             config.installation_path = crate::detect_installations().into_iter().next();
         }

@@ -11,7 +11,6 @@ import { Icon } from "../Icons";
 import { StatusPill } from "../StatusPill";
 import { t } from "../../i18n";
 import QuotaSection from "./QuotaSection";
-import SwitchLevelSelector from "./SwitchLevelSelector";
 
 interface ActiveAccountProps {
   profile: ProfileSummary;
@@ -169,11 +168,6 @@ export default function ActiveAccount({
               style={{ display: "flex", alignItems: "center", gap: "16px" }}
               className="active-account-controls"
             >
-              <SwitchLevelSelector
-                value={switchLevel}
-                onChange={onSwitchLevelChange}
-                busy={busy}
-              />
 
               <div
                 style={{ display: "flex", alignItems: "center", gap: "8px" }}

@@ -285,12 +285,15 @@ impl SwitcherService {
                 "Nieprawidłowy poziom przełączania kont".to_owned(),
             ));
         }
+        // Force switch_level to 1 since Level 2 (Fast switch) is not supported in Antigravity 2.0.
+        // Antigravity 2.0 (Google agentic app) must be restarted to load new credentials.
+        let target_switch_level = 1;
         {
             let mut config = self.config.write();
             config.http_port = http_port;
             config.installation_path = path;
             config.smart_switch_enabled = smart_switch_enabled;
-            config.switch_level = switch_level;
+            config.switch_level = target_switch_level;
             save_json(&self.paths.config, &*config)?;
         }
         let state = self.app_state(env!("CARGO_PKG_VERSION"))?;
