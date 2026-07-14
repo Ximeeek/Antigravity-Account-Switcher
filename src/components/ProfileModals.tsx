@@ -654,3 +654,219 @@ export function AboutModal({ open, state, onClose, defaultTab }: AboutModalProps
   );
 }
 
+interface LockProfileModalProps {
+  profile: ProfileSummary | null;
+  working?: boolean;
+  onClose: () => void;
+  onConfirm: (profile: ProfileSummary, password: string) => Promise<void>;
+}
+
+export function LockProfileModal({
+  profile,
+  working = false,
+  onClose,
+  onConfirm,
+}: LockProfileModalProps) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    setPassword("");
+    setConfirmPassword("");
+    setError(null);
+  }, [profile]);
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (password.length < 4) {
+      setError(t("lock_modal_validation_len"));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t("lock_modal_validation_match"));
+      return;
+    }
+    setError(null);
+    if (profile) {
+      await onConfirm(profile, password);
+    }
+  };
+
+  const rawFormId = useId();
+  const formId = `lock-profile-${rawFormId.replaceAll(":", "")}`;
+
+  return (
+    <Modal
+      dismissible={!working}
+      footer={
+        <>
+          <button
+            className="button button--ghost"
+            disabled={working}
+            onClick={onClose}
+            type="button"
+          >
+            {t("lock_modal_cancel")}
+          </button>
+          <button
+            className="button button--primary"
+            disabled={working || !profile}
+            form={formId}
+            type="submit"
+          >
+            <Icon name={working ? "loader" : "lock"} size={16} />
+            <span>{working ? t("lock_modal_submitting") : t("lock_modal_submit")}</span>
+          </button>
+        </>
+      }
+      icon={<Icon name="lock" size={21} />}
+      onClose={onClose}
+      open={Boolean(profile)}
+      title={t("lock_modal_title")}
+      description={profile ? t("lock_modal_desc", { name: profile.display_name }) : undefined}
+    >
+      <form className="modal-form" id={formId} onSubmit={submit}>
+        <div className="compact-alert compact-alert--warning" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <Icon name="shield" size={17} />
+            <strong>{t("lock_modal_warning_title")}</strong>
+          </div>
+
+          <span style={{ fontSize: "0.85em", lineHeight: "1.4" }}>
+            {t("lock_modal_warning")}
+          </span>
+        </div>
+
+        <label className="field" htmlFor={`${formId}-pwd`}>
+          <span className="field__label">{t("lock_modal_pwd_label")}</span>
+          <input
+            disabled={working}
+            id={`${formId}-pwd`}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            type="password"
+            value={password}
+          />
+        </label>
+
+        <label className="field" htmlFor={`${formId}-confirm`}>
+          <span className="field__label">{t("lock_modal_confirm_label")}</span>
+          <input
+            disabled={working}
+            id={`${formId}-confirm`}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            type="password"
+            value={confirmPassword}
+          />
+        </label>
+
+        {error && (
+          <p className="field-error" role="alert">
+            <Icon name="error" size={16} />
+            {error}
+          </p>
+        )}
+      </form>
+    </Modal>
+  );
+}
+
+interface UnlockProfileModalProps {
+  profile: ProfileSummary | null;
+  working?: boolean;
+  mode: "unlock" | "remove_lock" | "activate";
+  onClose: () => void;
+  onConfirm: (profile: ProfileSummary, password: string) => Promise<void>;
+}
+
+export function UnlockProfileModal({
+  profile,
+  working = false,
+  mode,
+  onClose,
+  onConfirm,
+}: UnlockProfileModalProps) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    setPassword("");
+    setError(null);
+  }, [profile]);
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    if (profile) {
+      try {
+        await onConfirm(profile, password);
+      } catch (err: any) {
+        setError(err.message || String(err));
+      }
+    }
+  };
+
+  const rawFormId = useId();
+  const formId = `unlock-profile-${rawFormId.replaceAll(":", "")}`;
+
+  const title = mode === "remove_lock" ? t("unlock_remove_title") : t("unlock_modal_title");
+  const desc = profile ? (mode === "remove_lock" ? t("unlock_remove_desc", { name: profile.display_name }) : t("unlock_modal_desc", { name: profile.display_name })) : undefined;
+
+  return (
+    <Modal
+      dismissible={!working}
+      footer={
+        <>
+          <button
+            className="button button--ghost"
+            disabled={working}
+            onClick={onClose}
+            type="button"
+          >
+            {t("unlock_modal_cancel")}
+          </button>
+          <button
+            className="button button--primary"
+            disabled={working || !profile}
+            form={formId}
+            type="submit"
+          >
+            <Icon name={working ? "loader" : "unlock"} size={16} />
+            <span>{working ? t("unlock_modal_submitting") : t("unlock_modal_submit")}</span>
+          </button>
+        </>
+      }
+      icon={<Icon name="unlock" size={21} />}
+      onClose={onClose}
+      open={Boolean(profile)}
+      title={title}
+      description={desc}
+    >
+      <form className="modal-form" id={formId} onSubmit={submit}>
+        <label className="field" htmlFor={`${formId}-pwd`}>
+          <span className="field__label">{t("unlock_modal_pwd_label")}</span>
+          <input
+            disabled={working}
+            id={`${formId}-pwd`}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            type="password"
+            value={password}
+          />
+        </label>
+
+        {error && (
+          <p className="field-error" role="alert">
+            <Icon name="error" size={16} />
+            {error}
+          </p>
+        )}
+      </form>
+    </Modal>
+  );
+}
+

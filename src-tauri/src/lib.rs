@@ -131,8 +131,12 @@ pub fn run() {
             commands::resize_mini_window,
             commands::wipe_app_data,
             commands::uninstall_app,
-            commands::force_smart_switch
+            commands::force_smart_switch,
+            commands::lock_profile,
+            commands::unlock_profile,
+            commands::remove_profile_lock
         ])
+
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -45,8 +45,11 @@ export interface ProfileSummary {
   token_expiry?: string | null;
   token_status: TokenStatus;
   has_refresh_token?: boolean;
+  is_locked?: boolean;
+  is_unlocked?: boolean;
   quota?: ProfileQuotaSummary | null;
 }
+
 
 export interface SwitchOperation {
   operation_id: string;

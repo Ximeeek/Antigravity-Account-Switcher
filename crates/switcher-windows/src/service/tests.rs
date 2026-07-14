@@ -177,3 +177,4 @@ mod tests {
         assert_eq!(get_fraction(&quota, "gemini-nonexistent"), None);
     }
 }
+

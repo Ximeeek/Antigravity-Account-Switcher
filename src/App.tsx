@@ -18,7 +18,11 @@ import {
   showMiniWindow,
   wipeAppData,
   uninstallApp,
+  lockProfile,
+  unlockProfile,
+  removeProfileLock,
 } from "./bridge";
+
 
 import MiniApp from "./components/MiniApp";
 
@@ -30,7 +34,10 @@ import {
   AddProfileModal,
   DeleteProfileModal,
   AboutModal,
+  LockProfileModal,
+  UnlockProfileModal,
 } from "./components/ProfileModals";
+
 import { Settings } from "./components/Settings";
 import { DevTools } from "./components/DevTools";
 import { t, getLanguage, setLanguage, type Language } from "./i18n";
@@ -148,6 +155,10 @@ export default function App() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [aboutTab, setAboutTab] = useState<"about" | "specs" | "guide">("about");
   const [deleteTarget, setDeleteTarget] = useState<ProfileSummary | null>(null);
+  const [lockTarget, setLockTarget] = useState<ProfileSummary | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<ProfileSummary | null>(null);
+  const [unlockMode, setUnlockMode] = useState<"unlock" | "remove_lock" | "activate">("unlock");
+
 
   const handleOpenAbout = (tab: "about" | "specs" | "guide" = "about") => {
     setAboutTab(tab);
@@ -263,10 +274,16 @@ export default function App() {
     [],
   );
 
-  const handleActivate = async (profile: ProfileSummary) => {
+  const handleActivate = async (profile: ProfileSummary, password?: string) => {
+    if (profile.is_locked && !profile.is_unlocked && !password) {
+      setUnlockTarget(profile);
+      setUnlockMode("activate");
+      return;
+    }
     setWorkingAction("request-switch");
     try {
-      const requested = await requestSwitch(profile.profile_id);
+      const requested = await requestSwitch(profile.profile_id, password);
+
       if (!mounted.current) return;
       const operation = requested.operation;
       if (!operation) {
@@ -301,6 +318,46 @@ export default function App() {
       if (mounted.current) setWorkingAction(null);
     }
   };
+
+  const handleLockConfirm = async (profile: ProfileSummary, password: string) => {
+    setWorkingAction("lock-profile");
+    try {
+      const updated = await lockProfile(profile.profile_id, password);
+      setState(updated);
+      setLockTarget(null);
+      setNotice({ tone: "success", message: t("notice_profile_locked") });
+    } catch (error) {
+      setNotice({ tone: "danger", message: errorMessage(error) });
+    } finally {
+      setWorkingAction(null);
+    }
+  };
+
+  const handleUnlockConfirm = async (profile: ProfileSummary, password: string) => {
+    setWorkingAction("unlock-profile");
+    try {
+      if (unlockMode === "activate") {
+        setUnlockTarget(null);
+        await handleActivate(profile, password);
+      } else if (unlockMode === "remove_lock") {
+        const updated = await removeProfileLock(profile.profile_id, password);
+        setState(updated);
+        setUnlockTarget(null);
+        setNotice({ tone: "success", message: t("notice_lock_removed") });
+      } else {
+        const updated = await unlockProfile(profile.profile_id, password);
+        setState(updated);
+        setUnlockTarget(null);
+        setNotice({ tone: "success", message: t("notice_profile_unlocked") });
+      }
+    } catch (error) {
+      throw error;
+
+    } finally {
+      setWorkingAction(null);
+    }
+  };
+
 
   const handleConfirmSwitch = async () => {
     const operationId = pendingSwitch?.operation_id ?? state?.operation?.operation_id;
@@ -511,6 +568,10 @@ export default function App() {
   }
 
   const switchBusy = Boolean(workingAction) || state.engine_status === "busy";
+  const activeProfile = state.profiles.find(
+    (p) => p.profile_id === state.active_profile_id
+  );
+  const isAppLocked = activeProfile && activeProfile.is_locked && !activeProfile.is_unlocked;
 
   return (
     <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -529,7 +590,105 @@ export default function App() {
       />
 
       <main className="app-main" id="main-content">
-        {state.last_error ? (
+        {isAppLocked ? (
+          <div className="lock-screen-container" style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            flex: 1,
+            padding: "40px 20px",
+            animation: "fadeIn 0.3s ease",
+          }}>
+            <div className="lock-screen-card" style={{
+              background: "var(--surface-overlay)",
+              border: "1px solid var(--border)",
+              borderRadius: "16px",
+              padding: "32px",
+              maxWidth: "400px",
+              width: "100%",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+              backdropFilter: "blur(8px)",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+            }}>
+              <div style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "rgba(234, 67, 53, 0.1)",
+                color: "var(--danger)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto",
+              }}>
+                <Icon name="lock" size={32} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "8px" }}>
+                  {t("app_locked_title")}
+                </h2>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: "1.4" }}>
+                  {t("app_locked_desc", { name: activeProfile.display_name })}
+                </p>
+
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const pwdInput = form.elements.namedItem("pwd") as HTMLInputElement;
+                const errorEl = form.querySelector(".field-error") as HTMLParagraphElement;
+                const errorSpan = errorEl?.querySelector("span");
+                if (errorSpan) errorSpan.textContent = "";
+                if (errorEl) errorEl.style.display = "none";
+                setWorkingAction("unlock-active");
+                try {
+                  const updated = await unlockProfile(activeProfile.profile_id, pwdInput.value);
+                  setState(updated);
+                } catch (err: any) {
+                  if (errorEl && errorSpan) {
+                    errorSpan.textContent = err.message || String(err);
+                    errorEl.style.display = "flex";
+                  }
+                } finally {
+                  setWorkingAction(null);
+                }
+              }} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <label className="field" style={{ textAlign: "left" }}>
+                  <span className="field__label">{t("unlock_modal_pwd_label")}</span>
+                  <input
+                    disabled={workingAction === "unlock-active"}
+                    name="pwd"
+                    required
+                    type="password"
+                    autoFocus
+                  />
+                </label>
+
+                <p className="field-error" style={{ display: "none", alignItems: "center", gap: "6px", margin: 0 }} role="alert">
+                  <Icon name="error" size={16} />
+                  <span></span>
+                </p>
+
+                <button
+                  className="button button--primary button--full"
+                  disabled={workingAction === "unlock-active"}
+                  type="submit"
+                >
+                  <Icon name={workingAction === "unlock-active" ? "loader" : "unlock"} size={16} />
+                  <span>{workingAction === "unlock-active" ? t("unlock_modal_submitting") : t("unlock_modal_submit")}</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <>
+            {state.last_error ? (
+
           <div className="inline-notice inline-notice--danger" role="alert">
             <Icon name="error" size={19} />
             <div>
@@ -575,7 +734,17 @@ export default function App() {
               onToggleSmartSwitch={handleToggleSmartSwitch}
               onSwitchLevelChange={handleSwitchLevelChange}
               onOpenGuide={() => handleOpenAbout("guide")}
+              onLock={setLockTarget}
+              onUnlock={(profile) => {
+                setUnlockTarget(profile);
+                setUnlockMode("unlock");
+              }}
+              onRemoveLock={(profile) => {
+                setUnlockTarget(profile);
+                setUnlockMode("remove_lock");
+              }}
             />
+
           </div>
         ) : view === "settings" ? (
           <div className="fade-in-slide" key="settings">
@@ -594,7 +763,10 @@ export default function App() {
             <DevTools state={state} onSetNotice={setNotice} />
           </div>
         ) : null}
+          </>
+        )}
       </main>
+
 
       <SwitchConfirmModal
         onCancel={() => void handleCancelSwitch()}
@@ -623,8 +795,22 @@ export default function App() {
         onClose={() => setAboutOpen(false)}
         defaultTab={aboutTab}
       />
+      <LockProfileModal
+        onClose={() => setLockTarget(null)}
+        onConfirm={handleLockConfirm}
+        profile={lockTarget}
+        working={workingAction === "lock-profile"}
+      />
+      <UnlockProfileModal
+        mode={unlockMode}
+        onClose={() => setUnlockTarget(null)}
+        onConfirm={handleUnlockConfirm}
+        profile={unlockTarget}
+        working={workingAction === "unlock-profile"}
+      />
 
       {notice ? <Toast notice={notice} onClose={() => setNotice(null)} /> : null}
+
     </div>
   );
 }

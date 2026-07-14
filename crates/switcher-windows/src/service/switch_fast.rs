@@ -14,7 +14,7 @@ use switcher_core::{
 };
 
 impl SwitcherService {
-    pub(crate) fn perform_fast_switch(&self, operation_id: Uuid, target_profile_id: Uuid) -> Result<SwitchOutcome> {
+    pub(crate) fn perform_fast_switch(&self, operation_id: Uuid, target_profile_id: Uuid, password: Option<&str>) -> Result<SwitchOutcome> {
         self.paths.validate_same_volume()?;
         self.preflight_target_identity(target_profile_id)?;
         
@@ -35,7 +35,8 @@ impl SwitcherService {
         } else {
             self.credentials.protect(&active_credential)?
         };
-        let target_credential = self.load_profile_credential(target_profile_id)?;
+        let target_credential = self.load_profile_credential(target_profile_id, password)?;
+
         
         let started = Instant::now();
         let mut lock = SwitchLock::new(from_profile_id, target_profile_id);

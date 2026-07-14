@@ -11,8 +11,9 @@ use uuid::Uuid;
 use crate::{SwitcherService, SwitchOutcome, PendingSwitch};
 use switcher_core::{
     Result, SwitcherError, SwitchLock, SwitchStep, LockStatus, SwitchRequestResult,
-    atomic_write, save_json,
+    atomic_write, save_json, ProfileMetadata, load_json,
 };
+
 use super::database::validate_state_database;
 
 impl SwitcherService {
@@ -53,7 +54,7 @@ impl SwitcherService {
         Ok(())
     }
 
-    pub fn request_switch(&self, target_profile_id: Uuid) -> Result<SwitchRequestResult> {
+    pub fn request_switch(&self, target_profile_id: Uuid, password: Option<String>) -> Result<SwitchRequestResult> {
         if self.journal().exists() {
             return Err(SwitcherError::RecoveryRequired);
         }
@@ -65,7 +66,13 @@ impl SwitcherService {
         if active == target_profile_id {
             return Err(SwitcherError::ProfileAlreadyActive);
         }
-        self.require_profile(target_profile_id)?;
+        let metadata = self.require_profile(target_profile_id)?;
+        if metadata.is_locked {
+            let has_key = password.is_some() || self.decrypted_profiles.read().contains_key(&target_profile_id);
+            if !has_key {
+                return Err(SwitcherError::Message("Profile is locked and requires a password".to_owned()));
+            }
+        }
         self.preflight_target_identity(target_profile_id)?;
         
         // Cooldown check
@@ -83,6 +90,7 @@ impl SwitcherService {
                 operation_id,
                 target_profile_id,
                 requires_confirmation,
+                password,
             },
         );
         self.logger.info(
@@ -98,6 +106,7 @@ impl SwitcherService {
             target_profile_id,
         })
     }
+
 
     pub fn cancel_switch(&self, operation_id: Option<Uuid>) -> Result<()> {
         let mut pending = self.pending.lock();
@@ -118,8 +127,9 @@ impl SwitcherService {
         let pending = self.pending.lock().remove(&operation_id).ok_or_else(|| {
             SwitcherError::Message("Switch request expired or was cancelled".to_owned())
         })?;
-        match self.perform_switch(pending.operation_id, pending.target_profile_id) {
+        match self.perform_switch(pending.operation_id, pending.target_profile_id, pending.password.as_deref()) {
             Ok(outcome) => Ok(outcome),
+
             Err(error) => {
                 self.logger.error(
                     Some(operation_id),
@@ -190,10 +200,10 @@ impl SwitcherService {
             "recovery",
             "Durable journal normalized; replaying interrupted switch",
         );
-        self.perform_switch(operation_id, target_profile_id)
+        self.perform_switch(operation_id, target_profile_id, None)
     }
 
-    pub(crate) fn perform_switch(&self, operation_id: Uuid, target_profile_id: Uuid) -> Result<SwitchOutcome> {
+    pub(crate) fn perform_switch(&self, operation_id: Uuid, target_profile_id: Uuid, password: Option<&str>) -> Result<SwitchOutcome> {
         let _guard = self.operation_lock.lock();
         if self.journal().exists() {
             return Err(SwitcherError::RecoveryRequired);
@@ -201,8 +211,9 @@ impl SwitcherService {
         
         let config = self.config.read().clone();
         if config.switch_level == 2 || config.switch_level == 3 {
-            return self.perform_fast_switch(operation_id, target_profile_id);
+            return self.perform_fast_switch(operation_id, target_profile_id, password);
         }
+
         
         self.paths.validate_same_volume()?;
         let from_profile_id = self
@@ -224,7 +235,8 @@ impl SwitcherService {
         } else {
             self.credentials.protect(&active_credential)?
         };
-        let target_credential = self.load_profile_credential(target_profile_id)?;
+        let target_credential = self.load_profile_credential(target_profile_id, password)?;
+
         let started = Instant::now();
         let mut lock = SwitchLock::new(from_profile_id, target_profile_id);
         lock.operation_id = operation_id;
@@ -393,11 +405,35 @@ impl SwitcherService {
         let profile_dir = self.paths.profile_dir(lock.from_profile_id);
         fs::create_dir_all(&profile_dir)
             .map_err(|source| SwitcherError::io(&profile_dir, source))?;
-        atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
+
+        let path = profile_dir.join("metadata.json");
+        let is_locked = if path.is_file() {
+            if let Ok(metadata) = load_json::<ProfileMetadata>(&path) {
+                metadata.is_locked
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if is_locked {
+            let key = self.decrypted_profiles.read().get(&lock.from_profile_id).map(|p| p.key);
+
+            if let Some(derived_key) = key {
+                let encrypted = switcher_core::crypto::encrypt_with_key(active_credential, &derived_key)?;
+                atomic_write(&profile_dir.join("credentials.enc"), &encrypted)?;
+            } else {
+                return Err(SwitcherError::Message("Cannot backup active profile: key not found in cache".to_owned()));
+            }
+        } else {
+            atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
+        }
         lock.credential_backup_written = true;
         let manifest = self.capture_active_manifest(active_credential)?;
         save_json(&profile_dir.join("manifest.json"), &manifest)?;
         self.journal().write(lock)?;
+
         self.logger.info(
             Some(lock.operation_id),
             "profile",
@@ -473,12 +509,12 @@ impl SwitcherService {
             }
         }
         if lock.credential_backup_written {
-            let protected = self.load_protected_credential(lock.from_profile_id)?;
-            let credential = self.credentials.unprotect(&protected)?;
+            let credential = self.load_profile_credential(lock.from_profile_id, None)?;
             self.credentials.write_active(&credential)?;
             lock.target_credential_written = false;
             self.journal().write(lock)?;
         }
+
         Ok(())
     }
 

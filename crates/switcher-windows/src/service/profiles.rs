@@ -233,7 +233,11 @@ impl SwitcherService {
             last_activated_at: now,
             token_expiry: parse_token_expiry(&credential),
             snapshot_initialized: true,
+            is_locked: false,
+            salt: None,
+            encrypted_data: None,
         };
+
         save_json(&profile_dir.join("metadata.json"), &metadata)?;
         let manifest = self.capture_active_manifest(&credential)?;
         save_json(&profile_dir.join("manifest.json"), &manifest)?;
@@ -263,8 +267,10 @@ impl SwitcherService {
             metadata,
             is_active: true,
             has_refresh_token,
+            is_unlocked: true,
             quota,
         })
+
     }
 
     pub fn delete_profile(&self, profile_id: Uuid) -> Result<()> {
@@ -358,10 +364,45 @@ impl SwitcherService {
         load_json(&path)
     }
 
-    pub(crate) fn load_profile_credential(&self, profile_id: Uuid) -> Result<Vec<u8>> {
-        let protected = self.load_protected_credential(profile_id)?;
-        self.credentials.unprotect(&protected)
+    pub(crate) fn load_profile_credential(&self, profile_id: Uuid, password: Option<&str>) -> Result<Vec<u8>> {
+        let path = self.paths.profile_dir(profile_id).join("metadata.json");
+        let is_locked = if path.is_file() {
+            if let Ok(metadata) = load_json::<ProfileMetadata>(&path) {
+                metadata.is_locked
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if is_locked {
+            let metadata = load_json::<ProfileMetadata>(&path)?;
+            let key = if let Some(pwd) = password {
+                let salt_bytes = if let Some(ref salt_b64) = metadata.salt {
+                    base64::Engine::decode(&base64::prelude::BASE64_STANDARD, salt_b64)
+                        .map_err(|e| SwitcherError::Message(format!("Invalid salt encoding: {e}")))?
+                } else {
+                    return Err(SwitcherError::Message("Missing salt for locked profile".to_owned()));
+                };
+                Some(switcher_core::crypto::derive_key(pwd, &salt_bytes))
+            } else {
+                self.decrypted_profiles.read().get(&profile_id).map(|p| p.key)
+            };
+
+            if let Some(derived_key) = key {
+                let cred_path = self.paths.profile_dir(profile_id).join("credentials.enc");
+                let bytes = fs::read(&cred_path).map_err(|source| SwitcherError::io(&cred_path, source))?;
+                switcher_core::crypto::decrypt_with_key(&bytes, &derived_key)
+            } else {
+                Err(SwitcherError::DecryptionFailed)
+            }
+        } else {
+            let protected = self.load_protected_credential(profile_id)?;
+            self.credentials.unprotect(&protected)
+        }
     }
+
 
     pub(crate) fn load_protected_credential(&self, profile_id: Uuid) -> Result<ProtectedCredential> {
         let path = self.paths.profile_dir(profile_id).join("credentials.enc");
@@ -426,7 +467,11 @@ impl SwitcherService {
                 last_activated_at: now,
                 token_expiry: parse_token_expiry(&active_credential),
                 snapshot_initialized: true,
+                is_locked: false,
+                salt: None,
+                encrypted_data: None,
             };
+
             save_json(&profile_dir.join("metadata.json"), &metadata)?;
             let manifest = self.capture_active_manifest(&active_credential)?;
             save_json(&profile_dir.join("manifest.json"), &manifest)?;
@@ -467,7 +512,8 @@ impl SwitcherService {
 
         // 2. Otherwise, see if any profile matches by credential digest
         for profile_id in &profiles_in_dir {
-            if let Ok(profile_credential) = self.load_profile_credential(*profile_id) {
+            if let Ok(profile_credential) = self.load_profile_credential(*profile_id, None) {
+
                 if crate::CredentialStore::digest(&profile_credential) == active_digest {
                     // We found a match! Ensure config is in sync.
                     let current_active = self.config.read().active_profile_id;
@@ -506,13 +552,21 @@ impl SwitcherService {
             if !metadata_path.is_file() {
                 continue;
             }
-            match load_json::<ProfileMetadata>(&metadata_path) {
+             match load_json::<ProfileMetadata>(&metadata_path) {
                 Ok(mut metadata) => {
+                    let is_unlocked = !metadata.is_locked || self.decrypted_profiles.read().contains_key(&metadata.profile_id);
+                    if metadata.is_locked {
+                        if let Some(decrypted) = self.decrypted_profiles.read().get(&metadata.profile_id) {
+                            metadata.display_name = decrypted.display_name.clone();
+                            metadata.account_email = decrypted.account_email.clone();
+                        }
+                    }
+
                     let is_active = synced_active_id == Some(metadata.profile_id);
                     let credential_bytes = if is_active {
                         active_credential.clone()
                     } else {
-                        self.load_profile_credential(metadata.profile_id).ok()
+                        self.load_profile_credential(metadata.profile_id, None).ok()
                     };
 
                     let has_refresh_token = credential_bytes
@@ -538,9 +592,11 @@ impl SwitcherService {
                         is_active,
                         metadata,
                         has_refresh_token,
+                        is_unlocked,
                         quota,
                     });
                 }
+
                 Err(error) => self.logger.warn(
                     None,
                     "profile",
@@ -567,8 +623,9 @@ impl SwitcherService {
                 let credential_bytes = if profile.is_active {
                     self.credentials.read_active().ok()
                 } else {
-                    self.load_profile_credential(profile.metadata.profile_id).ok()
+                    self.load_profile_credential(profile.metadata.profile_id, None).ok()
                 };
+
 
                 if let Some(ref bytes) = credential_bytes {
                     if let Some(ref refresh_token) = parse_refresh_token(bytes) {
@@ -687,8 +744,9 @@ impl SwitcherService {
                     let credential_bytes = if is_active {
                         active_credential.clone()
                     } else {
-                        self.load_profile_credential(metadata.profile_id).ok()
+                        self.load_profile_credential(metadata.profile_id, None).ok()
                     };
+
 
                     if let Some(bytes) = credential_bytes {
                         if let Some(refresh_token) = parse_refresh_token(&bytes) {
@@ -737,4 +795,182 @@ impl SwitcherService {
         self.logger.info(None, "quota", "Startup background quota prefetching completed.");
         Ok(())
     }
+
+    pub fn lock_profile(&self, profile_id: Uuid, password: &str) -> Result<ProfileView> {
+        let _guard = self.operation_lock.lock();
+        let path = self.paths.profile_dir(profile_id).join("metadata.json");
+        let mut metadata = load_json::<ProfileMetadata>(&path)?;
+        if metadata.is_locked {
+            return Err(SwitcherError::Message("Profile is already locked".to_owned()));
+        }
+
+        let raw_cred = {
+            let protected = self.load_protected_credential(profile_id)?;
+            self.credentials.unprotect(&protected)?
+        };
+
+        let salt_bytes = switcher_core::crypto::generate_salt();
+        let salt_b64 = base64::Engine::encode(&base64::prelude::BASE64_STANDARD, &salt_bytes);
+
+        // Build inner JSON to encrypt
+        let inner_data = serde_json::json!({
+            "displayName": metadata.display_name,
+            "accountEmail": metadata.account_email,
+        });
+        let inner_bytes = serde_json::to_vec(&inner_data).map_err(|e| SwitcherError::Message(e.to_string()))?;
+        let encrypted_inner = switcher_core::crypto::encrypt_bytes(&inner_bytes, password, &salt_bytes)?;
+        let encrypted_inner_b64 = base64::Engine::encode(&base64::prelude::BASE64_STANDARD, &encrypted_inner);
+
+        // Encrypt credentials
+        let encrypted_cred = switcher_core::crypto::encrypt_bytes(&raw_cred, password, &salt_bytes)?;
+        let cred_path = self.paths.profile_dir(profile_id).join("credentials.enc");
+        atomic_write(&cred_path, &encrypted_cred)?;
+
+        // Update metadata
+        // Mask the plaintext details
+        let masked_name = format!("Locked Profile ({})", &profile_id.to_string()[..4]);
+        let masked_email = metadata.account_email.as_ref().map(|email| {
+            if let Some(pos) = email.find('@') {
+                let (first, domain) = email.split_at(pos);
+                if first.len() > 1 {
+                    format!("{}***{}", &first[..1], domain)
+                } else {
+                    format!("*{}", domain)
+                }
+            } else {
+                "***".to_owned()
+            }
+        });
+
+        let real_name = metadata.display_name.clone();
+        let real_email = metadata.account_email.clone();
+
+        metadata.is_locked = true;
+        metadata.salt = Some(salt_b64);
+        metadata.encrypted_data = Some(encrypted_inner_b64);
+        metadata.display_name = masked_name;
+        metadata.account_email = masked_email;
+
+        save_json(&path, &metadata)?;
+
+        // Cache the decrypted values in memory so it remains unlocked in the current session
+        let derived_key = switcher_core::crypto::derive_key(password, &salt_bytes);
+        self.decrypted_profiles.write().insert(profile_id, super::DecryptedProfileInternal {
+            display_name: real_name,
+            account_email: real_email,
+            key: derived_key,
+        });
+
+        // Return profile view
+        let active_profile_id = self.config.read().active_profile_id;
+        let profiles = self.list_profiles(active_profile_id)?;
+        profiles.into_iter().find(|p| p.metadata.profile_id == profile_id)
+            .ok_or_else(|| SwitcherError::Message("Profile view not found after locking".to_owned()))
+    }
+
+    pub fn unlock_profile(&self, profile_id: Uuid, password: &str) -> Result<ProfileView> {
+        let path = self.paths.profile_dir(profile_id).join("metadata.json");
+        let metadata = load_json::<ProfileMetadata>(&path)?;
+        if !metadata.is_locked {
+            return Err(SwitcherError::Message("Profile is not locked".to_owned()));
+        }
+
+        let salt_bytes = if let Some(ref salt_b64) = metadata.salt {
+            base64::Engine::decode(&base64::prelude::BASE64_STANDARD, salt_b64)
+                .map_err(|e| SwitcherError::Message(format!("Invalid salt encoding: {e}")))?
+        } else {
+            return Err(SwitcherError::Message("Missing salt for locked profile".to_owned()));
+        };
+
+        let encrypted_inner = if let Some(ref enc_b64) = metadata.encrypted_data {
+            base64::Engine::decode(&base64::prelude::BASE64_STANDARD, enc_b64)
+                .map_err(|e| SwitcherError::Message(format!("Invalid data encoding: {e}")))?
+        } else {
+            return Err(SwitcherError::Message("Missing encrypted data for locked profile".to_owned()));
+        };
+
+        // Decrypt metadata.json inner data
+        let decrypted_inner = switcher_core::crypto::decrypt_bytes(&encrypted_inner, password, &salt_bytes)?;
+        let inner_val: serde_json::Value = serde_json::from_slice(&decrypted_inner)
+            .map_err(|e| SwitcherError::Message(format!("Failed to parse decrypted data: {e}")))?;
+
+        let real_name = inner_val["displayName"].as_str()
+            .ok_or_else(|| SwitcherError::Message("Invalid decrypted display name".to_owned()))?.to_owned();
+        let real_email = inner_val["accountEmail"].as_str().map(|s| s.to_owned());
+
+        let derived_key = switcher_core::crypto::derive_key(password, &salt_bytes);
+
+        // Store in cache
+        self.decrypted_profiles.write().insert(profile_id, super::DecryptedProfileInternal {
+            display_name: real_name,
+            account_email: real_email,
+            key: derived_key,
+        });
+
+        // Return updated profile view
+        let active_profile_id = self.config.read().active_profile_id;
+        let profiles = self.list_profiles(active_profile_id)?;
+        profiles.into_iter().find(|p| p.metadata.profile_id == profile_id)
+            .ok_or_else(|| SwitcherError::Message("Profile view not found after unlocking".to_owned()))
+    }
+
+    pub fn remove_profile_lock(&self, profile_id: Uuid, password: &str) -> Result<ProfileView> {
+        let _guard = self.operation_lock.lock();
+        let path = self.paths.profile_dir(profile_id).join("metadata.json");
+        let mut metadata = load_json::<ProfileMetadata>(&path)?;
+        if !metadata.is_locked {
+            return Err(SwitcherError::Message("Profile is not locked".to_owned()));
+        }
+
+        let salt_bytes = if let Some(ref salt_b64) = metadata.salt {
+            base64::Engine::decode(&base64::prelude::BASE64_STANDARD, salt_b64)
+                .map_err(|e| SwitcherError::Message(format!("Invalid salt encoding: {e}")))?
+        } else {
+            return Err(SwitcherError::Message("Missing salt for locked profile".to_owned()));
+        };
+
+        let encrypted_inner = if let Some(ref enc_b64) = metadata.encrypted_data {
+            base64::Engine::decode(&base64::prelude::BASE64_STANDARD, enc_b64)
+                .map_err(|e| SwitcherError::Message(format!("Invalid data encoding: {e}")))?
+        } else {
+            return Err(SwitcherError::Message("Missing encrypted data for locked profile".to_owned()));
+        };
+
+        // Decrypt metadata.json inner data
+        let decrypted_inner = switcher_core::crypto::decrypt_bytes(&encrypted_inner, password, &salt_bytes)?;
+        let inner_val: serde_json::Value = serde_json::from_slice(&decrypted_inner)
+            .map_err(|e| SwitcherError::Message(format!("Failed to parse decrypted data: {e}")))?;
+
+        let real_name = inner_val["displayName"].as_str()
+            .ok_or_else(|| SwitcherError::Message("Invalid decrypted display name".to_owned()))?.to_owned();
+        let real_email = inner_val["accountEmail"].as_str().map(|s| s.to_owned());
+
+        // Decrypt credentials.enc
+        let cred_path = self.paths.profile_dir(profile_id).join("credentials.enc");
+        let encrypted_cred = fs::read(&cred_path).map_err(|source| SwitcherError::io(&cred_path, source))?;
+        let raw_cred = switcher_core::crypto::decrypt_bytes(&encrypted_cred, password, &salt_bytes)?;
+
+        // Re-protect credentials using DPAPI and write
+        let protected = self.credentials.protect(&raw_cred)?;
+        atomic_write(&cred_path, &protected.0)?;
+
+        // Update metadata.json
+        metadata.is_locked = false;
+        metadata.salt = None;
+        metadata.encrypted_data = None;
+        metadata.display_name = real_name;
+        metadata.account_email = real_email;
+
+        save_json(&path, &metadata)?;
+
+        // Remove from cache
+        self.decrypted_profiles.write().remove(&profile_id);
+
+        // Return updated profile view
+        let active_profile_id = self.config.read().active_profile_id;
+        let profiles = self.list_profiles(active_profile_id)?;
+        profiles.into_iter().find(|p| p.metadata.profile_id == profile_id)
+            .ok_or_else(|| SwitcherError::Message("Profile view not found after removing lock".to_owned()))
+    }
 }
+

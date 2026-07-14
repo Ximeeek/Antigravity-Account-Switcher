@@ -49,8 +49,9 @@ const commandThenState = async (
 export const getAppState = async (): Promise<AppState> =>
   normalizeAppState(await call<unknown>("get_app_state"));
 
-export const requestSwitch = async (targetProfileId: string): Promise<AppState> => {
-  const result = await call<unknown>("request_switch", { targetProfileId });
+export const requestSwitch = async (targetProfileId: string, password?: string): Promise<AppState> => {
+  const result = await call<unknown>("request_switch", { targetProfileId, password });
+
   if (isRecord(result) && ("profiles" in result || "accounts" in result)) {
     const state = normalizeAppState(result);
     if (!state.operation) {
@@ -138,6 +139,16 @@ export const wipeAppData = (): Promise<void> =>
 
 export const uninstallApp = (): Promise<void> =>
   call<void>("uninstall_app");
+
+export const lockProfile = (profileId: string, password: string): Promise<AppState> =>
+  commandThenState("lock_profile", { profileId, password });
+
+export const unlockProfile = (profileId: string, password: string): Promise<AppState> =>
+  commandThenState("unlock_profile", { profileId, password });
+
+export const removeProfileLock = (profileId: string, password: string): Promise<AppState> =>
+  commandThenState("remove_profile_lock", { profileId, password });
+
 
 export const setDemoScenario = (scenario: DemoScenario): AppState => {
   const state = setDemoStateScenario(scenario);

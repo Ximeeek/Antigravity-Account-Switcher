@@ -9,7 +9,11 @@ interface AccountCardProps {
   busy?: boolean;
   onActivate: (profile: ProfileSummary) => void;
   onDelete: (profile: ProfileSummary) => void;
+  onLock?: (profile: ProfileSummary) => void;
+  onUnlock?: (profile: ProfileSummary) => void;
+  onRemoveLock?: (profile: ProfileSummary) => void;
 }
+
 
 function MiniQuotaBadges({ quota }: { quota?: ProfileSummary["quota"] }) {
   if (!quota || !quota.quota_groups || quota.quota_groups.length === 0) return null;
@@ -60,6 +64,9 @@ export function AccountCard({
   busy = false,
   onActivate,
   onDelete,
+  onLock,
+  onUnlock,
+  onRemoveLock,
 }: AccountCardProps) {
   const token = getTokenPresentation(profile);
 
@@ -71,7 +78,17 @@ export function AccountCard({
             {getInitials(profile.display_name)}
           </div>
           <div className="profile-identity__copy">
-            <h3>{profile.display_name}</h3>
+            <h3 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {profile.display_name}
+              {profile.is_locked && (
+                <Icon 
+                  name={profile.is_unlocked ? "unlock" : "lock"} 
+                  size={15} 
+                  style={{ color: profile.is_unlocked ? "var(--success)" : "var(--warning)" }} 
+                  title={profile.is_unlocked ? t("card_unlocked_hint") : t("card_locked_hint")}
+                />
+              )}
+            </h3>
             {profile.account_email ? (
               <p className="profile-email" title={profile.account_email}>
                 {profile.account_email}
@@ -81,16 +98,54 @@ export function AccountCard({
             )}
           </div>
         </div>
-        <button
-          aria-label={t("card_delete_aria", { name: profile.display_name })}
-          className="icon-button icon-button--danger"
-          disabled={busy}
-          onClick={() => onDelete(profile)}
-          title={t("card_delete_title")}
-          type="button"
-        >
-          <Icon name="trash" size={17} />
-        </button>
+        <div style={{ display: "flex", gap: "6px" }}>
+          {profile.is_locked ? (
+            profile.is_unlocked ? (
+              <button
+                className="icon-button"
+                disabled={busy}
+                onClick={() => onRemoveLock?.(profile)}
+                title={t("card_unlock_remove_title")}
+                type="button"
+                style={{ color: "var(--warning)" }}
+              >
+                <Icon name="unlock" size={17} />
+              </button>
+            ) : (
+              <button
+                className="icon-button"
+                disabled={busy}
+                onClick={() => onUnlock?.(profile)}
+                title={t("card_unlock_title")}
+                type="button"
+                style={{ color: "var(--primary)" }}
+              >
+                <Icon name="lock" size={17} />
+              </button>
+            )
+          ) : (
+            <button
+              className="icon-button"
+              disabled={busy}
+              onClick={() => onLock?.(profile)}
+              title={t("card_lock_title")}
+              type="button"
+              style={{ opacity: 0.6 }}
+            >
+              <Icon name="unlock" size={17} />
+            </button>
+          )}
+          <button
+            aria-label={t("card_delete_aria", { name: profile.display_name })}
+            className="icon-button icon-button--danger"
+            disabled={busy}
+            onClick={() => onDelete(profile)}
+            title={t("card_delete_title")}
+            type="button"
+          >
+            <Icon name="trash" size={17} />
+          </button>
+        </div>
       </div>
 
       <div className="account-card__status">
@@ -111,8 +166,13 @@ export function AccountCard({
         type="button"
       >
         {busy ? <Icon name="loader" size={16} /> : null}
-        <span>{t("card_activate")}</span>
+        <span>
+          {profile.is_locked && !profile.is_unlocked 
+            ? t("card_unlock_activate") 
+            : t("card_activate")}
+        </span>
       </button>
     </article>
   );
 }
+

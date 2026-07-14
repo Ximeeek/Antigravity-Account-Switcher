@@ -81,8 +81,9 @@ fn handle_client(
         if path.len() > prefix.len() + suffix.len() {
             let profile_id_str = &path[prefix.len()..path.len() - suffix.len()];
             match Uuid::parse_str(profile_id_str) {
-                Ok(target_profile_id) => match service.request_switch(target_profile_id) {
+                Ok(target_profile_id) => match service.request_switch(target_profile_id, None) {
                     Ok(res) => {
+
                         let service_clone = service.clone();
                         let operation_id = res.operation_id;
                         std::thread::spawn(move || {

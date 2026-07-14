@@ -15,6 +15,8 @@ export type IconName =
   | "info"
   | "key"
   | "loader"
+  | "lock"
+  | "unlock"
   | "mail"
   | "minus"
   | "mini"
@@ -28,10 +30,13 @@ export type IconName =
   | "user"
   | "zap";
 
+
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, "name"> {
   name: IconName;
   size?: number;
+  title?: string;
 }
+
 
 const paths: Record<IconName, ReactNode> = {
   accounts: (
@@ -93,7 +98,20 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M3 12a9 9 0 0 1 9-9" opacity=".55" />
     </>
   ),
+  lock: (
+    <>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </>
+  ),
+  unlock: (
+    <>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+    </>
+  ),
   mail: (
+
     <>
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="m4 7 8 6 8-6" />
@@ -148,7 +166,7 @@ const paths: Record<IconName, ReactNode> = {
   zap: <path d="M13 2 3 14h9l-1 8 10-12h-9z" />,
 };
 
-export function Icon({ name, size = 18, className, ...props }: IconProps) {
+export function Icon({ name, size = 18, className, title, ...props }: IconProps) {
   const classes = ["icon", name === "loader" ? "icon--spin" : "", className]
     .filter(Boolean)
     .join(" ");
@@ -167,10 +185,12 @@ export function Icon({ name, size = 18, className, ...props }: IconProps) {
       strokeWidth="1.75"
       {...props}
     >
+      {title ? <title>{title}</title> : null}
       {paths[name]}
     </svg>
   );
 }
+
 
 export function AppMark({ size = 30 }: { size?: number }) {
   return (

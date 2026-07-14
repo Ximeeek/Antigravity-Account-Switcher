@@ -24,6 +24,9 @@ interface DashboardProps {
   onToggleSmartSwitch: () => void;
   onSwitchLevelChange: (level: number) => void;
   onOpenGuide?: () => void;
+  onLock?: (profile: ProfileSummary) => void;
+  onUnlock?: (profile: ProfileSummary) => void;
+  onRemoveLock?: (profile: ProfileSummary) => void;
 }
 
 export function Dashboard({
@@ -35,7 +38,11 @@ export function Dashboard({
   onToggleSmartSwitch,
   onSwitchLevelChange,
   onOpenGuide,
+  onLock,
+  onUnlock,
+  onRemoveLock,
 }: DashboardProps) {
+
   const disclaimer = getDisclaimerText();
   const isEmpty = state.profiles.length === 0;
 
@@ -122,8 +129,12 @@ export function Dashboard({
                   key={profile.profile_id}
                   onActivate={onActivate}
                   onDelete={onDelete}
+                  onLock={onLock}
+                  onUnlock={onUnlock}
+                  onRemoveLock={onRemoveLock}
                   profile={profile}
                 />
+
               ))}
               <button className="add-account-card" onClick={onAdd} type="button">
                 <span className="add-account-card__icon">

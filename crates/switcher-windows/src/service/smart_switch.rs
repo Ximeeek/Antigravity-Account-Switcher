@@ -113,8 +113,9 @@ impl SwitcherService {
                     cand_5h * 100.0
                 ),
             );
-            match self.request_switch(target_id) {
+            match self.request_switch(target_id, None) {
                 Ok(req) => {
+
                     if let Err(e) = self.confirm_switch(req.operation_id) {
                         self.logger.error(None, "smart_switch", format!("Smart switch confirm failed: {}", e));
                     }
@@ -178,8 +179,9 @@ impl SwitcherService {
             format!("Forcing smart switch to profile {} (bypassing quota checks)", target_id),
         );
 
-        match self.request_switch(target_id) {
+        match self.request_switch(target_id, None) {
             Ok(req) => {
+
                 let op_id = req.operation_id;
                 if let Err(e) = self.confirm_switch(op_id) {
                     self.logger.error(None, "smart_switch", format!("Smart switch confirm failed: {}", e));

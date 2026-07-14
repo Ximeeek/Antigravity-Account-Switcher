@@ -46,9 +46,12 @@ pub enum SwitcherError {
     },
     #[error("Windows system error: {0}")]
     Windows(String),
+    #[error("Decryption failed: incorrect password or corrupted data")]
+    DecryptionFailed,
     #[error("{0}")]
     Message(String),
 }
+
 
 pub type Result<T> = std::result::Result<T, SwitcherError>;
 

@@ -23,12 +23,14 @@ pub async fn get_app_state(service: State<'_, Arc<SwitcherService>>) -> Result<A
 pub fn request_switch(
     service: State<'_, Arc<SwitcherService>>,
     target_profile_id: String,
+    password: Option<String>,
 ) -> Result<SwitchRequestResult, String> {
     let target_uuid = Uuid::parse_str(&target_profile_id).map_err(|e| e.to_string())?;
     service
-        .request_switch(target_uuid)
+        .request_switch(target_uuid, password)
         .map_err(|e| e.to_string())
 }
+
 
 #[tauri::command]
 pub async fn confirm_switch(
@@ -204,3 +206,40 @@ pub async fn force_smart_switch(
         Err("Not available in release build".to_string())
     }
 }
+
+#[tauri::command]
+pub fn lock_profile(
+    service: State<'_, Arc<SwitcherService>>,
+    profile_id: String,
+    password: String,
+) -> Result<ProfileView, String> {
+    let uuid = Uuid::parse_str(&profile_id).map_err(|e| e.to_string())?;
+    service
+        .lock_profile(uuid, &password)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn unlock_profile(
+    service: State<'_, Arc<SwitcherService>>,
+    profile_id: String,
+    password: String,
+) -> Result<ProfileView, String> {
+    let uuid = Uuid::parse_str(&profile_id).map_err(|e| e.to_string())?;
+    service
+        .unlock_profile(uuid, &password)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn remove_profile_lock(
+    service: State<'_, Arc<SwitcherService>>,
+    profile_id: String,
+    password: String,
+) -> Result<ProfileView, String> {
+    let uuid = Uuid::parse_str(&profile_id).map_err(|e| e.to_string())?;
+    service
+        .remove_profile_lock(uuid, &password)
+        .map_err(|e| e.to_string())
+}
+

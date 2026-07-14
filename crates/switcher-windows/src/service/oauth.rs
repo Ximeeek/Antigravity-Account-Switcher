@@ -280,7 +280,11 @@ impl SwitcherService {
             last_activated_at: now,
             token_expiry: Some(token_expiry),
             snapshot_initialized: true,
+            is_locked: false,
+            salt: None,
+            encrypted_data: None,
         };
+
         save_json(&profile_dir.join("metadata.json"), &metadata)?;
 
         self.logger.info(
@@ -301,8 +305,9 @@ impl SwitcherService {
                 format!("No active profile set. Auto-activating newly created profile {}", new_profile_id),
             );
             let switch_res = tokio::task::block_in_place(|| {
-                self.perform_switch(operation_id, new_profile_id)
+                self.perform_switch(operation_id, new_profile_id, None)
             });
+
             match switch_res {
                 Ok(_) => {
                     auto_activated = true;
@@ -332,8 +337,10 @@ impl SwitcherService {
             is_active: auto_activated,
             metadata,
             has_refresh_token: true,
+            is_unlocked: true,
             quota,
         })
+
     }
 
     pub fn cancel_oauth_login(&self) -> Result<()> {
