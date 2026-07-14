@@ -147,6 +147,10 @@ impl SwitcherService {
             self.last_switches.lock().push(Instant::now());
             
             self.journal().remove()?;
+            
+            // Let the editor GUI reload and settle before completing the switch
+            thread::sleep(Duration::from_millis(1500));
+            
             self.progress.write().take();
             
             Ok(SwitchOutcome {
