@@ -988,32 +988,32 @@ impl SwitcherService {
         let logger_clone = self.logger.clone();
         
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            let result = handle.block_on(async move {
-                crate::quota::QuotaDecryptor::fetch_live_quota(&refresh_token_clone).await
+            handle.spawn(async move {
+                let result = crate::quota::QuotaDecryptor::fetch_live_quota(&refresh_token_clone).await;
+                match result {
+                    Ok(live_quota) => {
+                        let mut cache = global_quota_cache().lock().unwrap();
+                        cache.insert(email_clone, (live_quota, std::time::Instant::now()));
+                        logger_clone.info(
+                            None,
+                            "quota",
+                            format!("Target quota fetched and cached successfully in background"),
+                        );
+                    }
+                    Err(err) => {
+                        logger_clone.warn(
+                            None,
+                            "quota",
+                            format!("Failed to fetch target quota in background: {}", err),
+                        );
+                    }
+                }
             });
-            match result {
-                Ok(live_quota) => {
-                    let mut cache = global_quota_cache().lock().unwrap();
-                    cache.insert(email_clone, (live_quota, std::time::Instant::now()));
-                    logger_clone.info(
-                        None,
-                        "quota",
-                        format!("Target quota fetched and cached successfully during switch"),
-                    );
-                }
-                Err(err) => {
-                    logger_clone.warn(
-                        None,
-                        "quota",
-                        format!("Failed to fetch target quota synchronously: {}", err),
-                    );
-                }
-            }
         } else {
             logger_clone.warn(
                 None,
                 "quota",
-                "No Tokio runtime handle found; skipping synchronous quota fetch",
+                "No Tokio runtime handle found; skipping background quota fetch",
             );
         }
     }
