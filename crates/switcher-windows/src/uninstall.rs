@@ -25,6 +25,12 @@ pub fn wipe_app_data_and_relaunch() -> Result<(), String> {
         format!("Start-Process -FilePath '{}';", exe_path)
     };
 
+    let switcher_folder = if cfg!(debug_assertions) {
+        "AntigravitySwitcherDev"
+    } else {
+        "AntigravitySwitcher"
+    };
+
     let script = format!(
         "$parentPid = {}; \
          $targetDir = \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\"; \
@@ -62,8 +68,7 @@ pub fn wipe_app_data_and_relaunch() -> Result<(), String> {
          cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity_dev\"; \
          $folders = @( \
              \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\", \
-             \"$env:LOCALAPPDATA\\AntigravitySwitcher\", \
-             \"$env:LOCALAPPDATA\\AntigravitySwitcherDev\" \
+             \"$env:LOCALAPPDATA\\{}\" \
          ); \
          foreach ($folder in $folders) {{ \
              if (Test-Path $folder) {{ \
@@ -75,7 +80,7 @@ pub fn wipe_app_data_and_relaunch() -> Result<(), String> {
              }} \
          }} \
          {}",
-        current_pid, relaunch_cmd
+        current_pid, switcher_folder, relaunch_cmd
     );
 
     Command::new("powershell.exe")
@@ -95,6 +100,12 @@ pub fn uninstall_app_and_self_delete() -> Result<(), String> {
     let exe_path = current_exe.to_string_lossy().to_string();
     let current_pid = std::process::id();
 
+    let switcher_folder = if cfg!(debug_assertions) {
+        "AntigravitySwitcherDev"
+    } else {
+        "AntigravitySwitcher"
+    };
+
     let script = format!(
         "$parentPid = {}; \
          $targetDir = \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\"; \
@@ -132,8 +143,7 @@ pub fn uninstall_app_and_self_delete() -> Result<(), String> {
          cmd.exe /c \"cmdkey /delete:LegacyGeneric:target=gemini:antigravity_dev\"; \
          $folders = @( \
              \"$env:LOCALAPPDATA\\com.ximeeek.antigravity-account-switcher\", \
-             \"$env:LOCALAPPDATA\\AntigravitySwitcher\", \
-             \"$env:LOCALAPPDATA\\AntigravitySwitcherDev\" \
+             \"$env:LOCALAPPDATA\\{}\" \
          ); \
          foreach ($folder in $folders) {{ \
              if (Test-Path $folder) {{ \
@@ -150,7 +160,7 @@ pub fn uninstall_app_and_self_delete() -> Result<(), String> {
              if (-not (Test-Path $exePath)) {{ break; }} \
              Start-Sleep -Milliseconds 500; \
          }}",
-        current_pid, exe_path
+        current_pid, switcher_folder, exe_path
     );
 
     Command::new("powershell.exe")
