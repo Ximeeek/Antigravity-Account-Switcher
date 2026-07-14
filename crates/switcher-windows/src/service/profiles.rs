@@ -417,6 +417,7 @@ impl SwitcherService {
 
 
     pub(crate) fn sync_active_profile_on_read(&self) -> Result<Option<Uuid>> {
+        let _guard = self.operation_lock.lock();
         let active_credential = match self.credentials.read_active() {
             Ok(bytes) => bytes,
             Err(_) => {
@@ -443,7 +444,7 @@ impl SwitcherService {
         // If profiles list is empty, auto-import the current session!
         if profiles_in_dir.is_empty() {
             let email = try_parse_email_from_credential(&active_credential);
-            let display_name = email.clone().unwrap_or_else(|| "Sesja Antigravity".to_owned());
+            let display_name = email.clone().unwrap_or_else(|| "Active Session (Imported)".to_owned());
             
             self.logger.info(
                 None,
