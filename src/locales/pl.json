@@ -350,7 +350,11 @@
   "security_widget_unsecured_desc": "Pliki lokalne są niezabezpieczone. Ustaw hasło główne, aby je zaszyfrować.",
   "security_widget_lock_btn": "Zablokuj teraz",
   "security_widget_setup_btn": "Zabezpiecz program",
-  "security_widget_dismiss_hint": "Ukryj powiadomienie"
+  "security_widget_dismiss_hint": "Ukryj powiadomienie",
+  "security_widget_secure_short": "Bezpieczne szyfrowanie",
+  "security_widget_unsecured_short": "Szyfrowanie wyłączone",
+  "security_widget_expand": "Rozwiń",
+  "security_widget_collapse": "Zwiń"
 }
 
 

@@ -40,16 +40,17 @@ export function Dashboard({
   onLockProfile,
 }: DashboardProps) {
 
-  const [bannerDismissed, setBannerDismissed] = useState(() => {
+  const [bannerCollapsed, setBannerCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("switcher_security_banner_dismissed") === "true";
+      return localStorage.getItem("switcher_security_banner_collapsed") === "true";
     }
     return false;
   });
 
-  const handleDismissBanner = () => {
-    localStorage.setItem("switcher_security_banner_dismissed", "true");
-    setBannerDismissed(true);
+  const handleToggleBanner = () => {
+    const next = !bannerCollapsed;
+    localStorage.setItem("switcher_security_banner_collapsed", String(next));
+    setBannerCollapsed(next);
   };
 
   const disclaimer = getDisclaimerText();
@@ -81,9 +82,59 @@ export function Dashboard({
         <EmptyState onAdd={onAdd} />
       ) : (
         <>
-          <GlobalQuotaSummary profiles={state.profiles} />
-          
-          {!bannerDismissed && (
+          {bannerCollapsed ? (
+            <div 
+              className="security-status-widget minimized"
+              onClick={handleToggleBanner}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                background: "var(--background-secondary, #161920)",
+                border: "1px solid var(--border-color, #2d3139)",
+                borderLeft: state.hasMasterPassword 
+                  ? "4px solid #23a55a" 
+                  : "4px solid #f0b232",
+                cursor: "pointer",
+                marginBottom: "20px",
+                animation: "slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Icon 
+                  name="shield" 
+                  size={14} 
+                  style={{ color: state.hasMasterPassword ? "#23a55a" : "#f0b232" }} 
+                />
+                <strong style={{ fontSize: "12px", color: "var(--text-primary)" }}>
+                  {state.hasMasterPassword 
+                    ? t("security_widget_secure_short") 
+                    : t("security_widget_unsecured_short")}
+                </strong>
+                {state.hasMasterPassword && (
+                  <span style={{ 
+                    fontSize: "8px", 
+                    padding: "0 4px", 
+                    borderRadius: "3px", 
+                    background: "rgba(35, 165, 90, 0.12)", 
+                    color: "#23a55a", 
+                    fontWeight: 700 
+                  }}>
+                    AES-256
+                  </span>
+                )}
+              </div>
+              
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 500 }}>
+                  {t("security_widget_expand")}
+                </span>
+                <Icon name="chevron-down" size={14} style={{ color: "var(--text-muted)" }} />
+              </div>
+            </div>
+          ) : (
             <div 
               className="security-status-widget"
               style={{
@@ -151,6 +202,7 @@ export function Dashboard({
                   <button
                     className="quick-lock-button"
                     onClick={async (e) => {
+                      e.stopPropagation();
                       e.currentTarget.classList.add("clicking");
                       try {
                         const { invoke } = await import("@tauri-apps/api/core");
@@ -181,7 +233,10 @@ export function Dashboard({
                 ) : (
                   <button
                     className="quick-lock-button setup"
-                    onClick={onLockProfile}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onLockProfile?.();
+                    }}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -203,7 +258,10 @@ export function Dashboard({
                 )}
 
                 <button
-                  onClick={handleDismissBanner}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleBanner();
+                  }}
                   style={{
                     background: "none",
                     border: "none",
@@ -224,13 +282,14 @@ export function Dashboard({
                     e.currentTarget.style.color = "var(--text-muted)";
                     e.currentTarget.style.background = "none";
                   }}
-                  title={t("security_widget_dismiss_hint")}
+                  title={t("security_widget_collapse")}
                 >
-                  <Icon name="close" size={14} />
+                  <Icon name="chevron-down" size={14} style={{ transform: "rotate(180deg)" }} />
                 </button>
               </div>
             </div>
           )}
+          <GlobalQuotaSummary profiles={state.profiles} />
 
           {active ? (
             <ActiveAccount

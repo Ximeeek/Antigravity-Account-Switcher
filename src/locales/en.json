@@ -350,7 +350,11 @@
   "security_widget_unsecured_desc": "Local files are unsecured. Set a master password to encrypt.",
   "security_widget_lock_btn": "Lock Now",
   "security_widget_setup_btn": "Secure Switcher",
-  "security_widget_dismiss_hint": "Hide notification"
+  "security_widget_dismiss_hint": "Hide notification",
+  "security_widget_secure_short": "Secure Storage",
+  "security_widget_unsecured_short": "Unsecured Storage",
+  "security_widget_expand": "Expand",
+  "security_widget_collapse": "Collapse"
 }
 
 
