@@ -4,6 +4,7 @@
  * Main exports: Dashboard
  */
 
+import { useState } from "react";
 import type { AppState, ProfileSummary } from "../../types";
 import { getDisclaimerText } from "../../utils";
 import { AccountCard } from "../AccountCard";
@@ -39,6 +40,18 @@ export function Dashboard({
   onLockProfile,
 }: DashboardProps) {
 
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("switcher_security_banner_dismissed") === "true";
+    }
+    return false;
+  });
+
+  const handleDismissBanner = () => {
+    localStorage.setItem("switcher_security_banner_dismissed", "true");
+    setBannerDismissed(true);
+  };
+
   const disclaimer = getDisclaimerText();
   const isEmpty = state.profiles.length === 0;
 
@@ -70,143 +83,154 @@ export function Dashboard({
         <>
           <GlobalQuotaSummary profiles={state.profiles} />
           
-          <div 
-            className="security-status-widget"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "14px 20px",
-              borderRadius: "12px",
-              background: state.hasMasterPassword 
-                ? "linear-gradient(135deg, rgba(35, 165, 90, 0.05) 0%, rgba(12, 16, 26, 0.7) 100%)"
-                : "linear-gradient(135deg, rgba(240, 178, 50, 0.05) 0%, rgba(16, 12, 22, 0.7) 100%)",
-              border: state.hasMasterPassword
-                ? "1px solid rgba(35, 165, 90, 0.2)"
-                : "1px solid rgba(240, 178, 50, 0.2)",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-              marginBottom: "20px",
-              backdropFilter: "blur(10px)",
-              position: "relative",
-              overflow: "hidden",
-              animation: "slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
-            }}
-          >
+          {!bannerDismissed && (
             <div 
+              className="security-status-widget"
               style={{
-                position: "absolute",
-                top: "-50%",
-                right: "-20%",
-                width: "150px",
-                height: "150px",
-                borderRadius: "50%",
-                background: state.hasMasterPassword 
-                  ? "radial-gradient(circle, rgba(35, 165, 90, 0.1) 0%, transparent 70%)"
-                  : "radial-gradient(circle, rgba(240, 178, 50, 0.1) 0%, transparent 70%)",
-                pointerEvents: "none"
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                background: "var(--background-secondary, #161920)",
+                border: "1px solid var(--border-color, #2d3139)",
+                borderLeft: state.hasMasterPassword 
+                  ? "4px solid #23a55a" 
+                  : "4px solid #f0b232",
+                boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",
+                marginBottom: "20px",
+                position: "relative",
+                animation: "slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
               }}
-            />
-
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              <div 
-                className={state.hasMasterPassword ? "shield-glow-success" : "shield-glow-warning"}
-                style={{
-                  width: "42px",
-                  height: "42px",
-                  borderRadius: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: state.hasMasterPassword ? "rgba(35, 165, 90, 0.12)" : "rgba(240, 178, 50, 0.12)",
-                  color: state.hasMasterPassword ? "#23a55a" : "#f0b232",
-                  transition: "all 0.3s ease"
-                }}
-              >
-                <Icon name="shield" size={20} />
-              </div>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
-                    {state.hasMasterPassword ? t("security_widget_secure") : t("security_widget_unsecured")}
-                  </span>
-                  {state.hasMasterPassword && (
-                    <span style={{ 
-                      fontSize: "9px", 
-                      padding: "1px 5px", 
-                      borderRadius: "6px", 
-                      background: "rgba(35, 165, 90, 0.15)", 
-                      color: "#23a55a", 
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px"
-                    }}>
-                      AES-256
-                    </span>
-                  )}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+                <div 
+                  className={state.hasMasterPassword ? "shield-glow-success" : "shield-glow-warning"}
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: state.hasMasterPassword ? "rgba(35, 165, 90, 0.1)" : "rgba(240, 178, 50, 0.1)",
+                    color: state.hasMasterPassword ? "#23a55a" : "#f0b232",
+                    flexShrink: 0
+                  }}
+                >
+                  <Icon name="shield" size={18} />
                 </div>
-                <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                  {state.hasMasterPassword 
-                    ? t("security_widget_secure_desc")
-                    : t("security_widget_unsecured_desc")}
-                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>
+                      {state.hasMasterPassword ? t("security_widget_secure") : t("security_widget_unsecured")}
+                    </strong>
+                    {state.hasMasterPassword && (
+                      <span style={{ 
+                        fontSize: "9px", 
+                        padding: "1px 5px", 
+                        borderRadius: "4px", 
+                        background: "rgba(35, 165, 90, 0.12)", 
+                        color: "#23a55a", 
+                        fontWeight: 700
+                      }}>
+                        AES-256
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                    {state.hasMasterPassword 
+                      ? t("security_widget_secure_desc")
+                      : t("security_widget_unsecured_desc")}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                {state.hasMasterPassword ? (
+                  <button
+                    className="quick-lock-button"
+                    onClick={async (e) => {
+                      e.currentTarget.classList.add("clicking");
+                      try {
+                        const { invoke } = await import("@tauri-apps/api/core");
+                        await invoke("close_app_lock");
+                        window.location.reload();
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      border: "1px solid rgba(234, 67, 53, 0.3)",
+                      background: "rgba(234, 67, 53, 0.08)",
+                      color: "#ea4335",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <Icon name="lock" size={14} />
+                    <span>{t("security_widget_lock_btn")}</span>
+                  </button>
+                ) : (
+                  <button
+                    className="quick-lock-button setup"
+                    onClick={onLockProfile}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      border: "1px solid rgba(72, 137, 244, 0.3)",
+                      background: "rgba(72, 137, 244, 0.08)",
+                      color: "#4889f4",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <Icon name="shield" size={14} />
+                    <span>{t("security_widget_setup_btn")}</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleDismissBanner}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "4px",
+                    color: "var(--text-muted, #72767d)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "4px",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-primary)";
+                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-muted)";
+                    e.currentTarget.style.background = "none";
+                  }}
+                  title={t("security_widget_dismiss_hint")}
+                >
+                  <Icon name="close" size={14} />
+                </button>
               </div>
             </div>
-
-            <div>
-              {state.hasMasterPassword ? (
-                <button
-                  className="quick-lock-button"
-                  onClick={async (e) => {
-                    e.currentTarget.classList.add("clicking");
-                    try {
-                      const { invoke } = await import("@tauri-apps/api/core");
-                      await invoke("close_app_lock");
-                      window.location.reload();
-                    } catch (err) {
-                      console.error(err);
-                    }
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(234, 67, 53, 0.4)",
-                    background: "rgba(234, 67, 53, 0.1)",
-                    color: "#ea4335",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    cursor: "pointer"
-                  }}
-                >
-                  <Icon name="lock" size={15} />
-                  <span>{t("security_widget_lock_btn")}</span>
-                </button>
-              ) : (
-                <button
-                  className="quick-lock-button setup"
-                  onClick={onLockProfile}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(111, 92, 246, 0.4)",
-                    background: "rgba(111, 92, 246, 0.1)",
-                    color: "var(--accent-color, #5865f2)",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    cursor: "pointer"
-                  }}
-                >
-                  <Icon name="shield" size={15} />
-                  <span>{t("security_widget_setup_btn")}</span>
-                </button>
-              )}
-            </div>
-          </div>
+          )}
 
           {active ? (
             <ActiveAccount

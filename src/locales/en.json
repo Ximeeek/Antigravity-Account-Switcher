@@ -349,7 +349,8 @@
   "security_widget_secure_desc": "Zero-Knowledge master key protects all profiles at rest.",
   "security_widget_unsecured_desc": "Local files are unsecured. Set a master password to encrypt.",
   "security_widget_lock_btn": "Lock Now",
-  "security_widget_setup_btn": "Secure Switcher"
+  "security_widget_setup_btn": "Secure Switcher",
+  "security_widget_dismiss_hint": "Hide notification"
 }
 
 

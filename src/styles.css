@@ -3944,8 +3944,8 @@ body.mini-window-body {
 }
 
 .quick-lock-button.setup:hover {
-  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.25);
-  background: rgba(88, 101, 242, 0.16) !important;
+  box-shadow: 0 4px 12px rgba(72, 137, 244, 0.25);
+  background: rgba(72, 137, 244, 0.16) !important;
 }
 
 .quick-lock-button:active, .quick-lock-button.clicking {
