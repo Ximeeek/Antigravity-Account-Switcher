@@ -220,10 +220,11 @@ impl ProcessManager {
         }
     }
 
-    pub fn get_language_server_process(&self) -> Result<Option<AntigravityProcess>> {
+    pub fn get_language_server_processes(&self) -> Result<Vec<AntigravityProcess>> {
         let target_exe = self.installation_path.join("resources").join("bin").join("language_server.exe");
         let target_canonical = target_exe.canonicalize().unwrap_or(target_exe);
         
+        let mut results = Vec::new();
         let processes = self.enumerate()?;
         for proc in processes {
             if let Some(ref path) = proc.executable_path {
@@ -236,12 +237,12 @@ impl ProcessManager {
                 };
                 if match_canonical || match_plain {
                     if proc.name.to_lowercase() == "language_server.exe" {
-                        return Ok(Some(proc));
+                        results.push(proc);
                     }
                 }
             }
         }
-        Ok(None)
+        Ok(results)
     }
 }
 

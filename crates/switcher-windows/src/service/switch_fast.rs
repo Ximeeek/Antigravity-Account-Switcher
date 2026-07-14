@@ -47,12 +47,12 @@ impl SwitcherService {
         // 1. Cooldown check (handled in request_switch, but check again here for safety)
         self.check_cooldown()?;
         
-        // 2. Identify the language_server.exe process before writing credentials/killing
+        // 2. Identify all language_server.exe processes before writing credentials/killing
         let process = self.process_manager()?;
-        let ls_proc = process.get_language_server_process()?;
-        let old_pid = ls_proc.as_ref().map(|p| p.pid);
+        let ls_procs = process.get_language_server_processes()?;
+        let old_pids: std::collections::HashSet<u32> = ls_procs.iter().map(|p| p.pid).collect();
         
-        // 3. Write target credentials and kill language_server.exe immediately to prevent race conditions
+        // 3. Write target credentials and kill all language_server.exe processes immediately to prevent race conditions
         lock.current_step = SwitchStep::CloseProcesses;
         self.journal().write(&lock)?;
         
@@ -60,7 +60,7 @@ impl SwitcherService {
         lock.target_credential_written = true;
         self.journal().write(&lock)?;
         
-        if let Some(pid) = old_pid {
+        for &pid in &old_pids {
             self.logger.info(
                 Some(operation_id),
                 "process",
@@ -108,14 +108,14 @@ impl SwitcherService {
         // Poll for up to 5 seconds
         while poll_start.elapsed() < Duration::from_secs(5) {
             thread::sleep(Duration::from_millis(100));
-            if let Ok(Some(new_proc)) = process.get_language_server_process() {
-                if Some(new_proc.pid) != old_pid {
+            if let Ok(current_procs) = process.get_language_server_processes() {
+                if let Some(new_proc) = current_procs.iter().find(|p| !old_pids.contains(&p.pid)) {
                     // Found a new process!
                     new_pid = Some(new_proc.pid);
                     // Verify it stays alive for at least 150ms
                     thread::sleep(Duration::from_millis(150));
-                    if let Ok(Some(verify_proc)) = process.get_language_server_process() {
-                        if verify_proc.pid == new_proc.pid {
+                    if let Ok(verify_procs) = process.get_language_server_processes() {
+                        if verify_procs.iter().any(|p| p.pid == new_proc.pid) {
                             success = true;
                             break;
                         }
