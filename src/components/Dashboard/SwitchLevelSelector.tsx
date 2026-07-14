@@ -124,9 +124,9 @@ export default function SwitchLevelSelector({
     setIsOpen((prev) => !prev);
   };
 
-  const snapPoints = ["11px", "33.3%", "66.6%", "calc(100% - 11px)"];
+  const snapPoints = ["11px", "25%", "75%", "calc(100% - 11px)"];
   const thumbLeft = localSliderValue === 1 ? snapPoints[0] : (localSliderValue === 2 ? snapPoints[1] : (localSliderValue === 3 ? snapPoints[2] : snapPoints[3]));
-  const activePercentage = localSliderValue === 1 ? "0%" : (localSliderValue === 2 ? "33.3%" : (localSliderValue === 3 ? "66.6%" : "100%"));
+  const activePercentage = localSliderValue === 1 ? "0%" : (localSliderValue === 2 ? "25%" : (localSliderValue === 3 ? "75%" : "100%"));
 
   return (
     <div className="switch-mode-popover-container" ref={containerRef}>
@@ -175,8 +175,8 @@ export default function SwitchLevelSelector({
 
             {/* Snapping Dots */}
             <div className={`compact-slider-dot ${localSliderValue >= 1 ? "compact-slider-dot--active" : ""}`} style={{ left: "11px" }} />
-            <div className={`compact-slider-dot ${localSliderValue >= 2 ? "compact-slider-dot--active" : ""}`} style={{ left: "33.3%" }} />
-            <div className={`compact-slider-dot ${localSliderValue >= 3 ? "compact-slider-dot--active" : ""}`} style={{ left: "66.6%" }} />
+            <div className={`compact-slider-dot ${localSliderValue >= 2 ? "compact-slider-dot--active" : ""}`} style={{ left: "25%" }} />
+            <div className={`compact-slider-dot ${localSliderValue >= 3 ? "compact-slider-dot--active" : ""}`} style={{ left: "75%" }} />
             <div className={`compact-slider-dot ${localSliderValue >= 4 ? "compact-slider-dot--active" : ""}`} style={{ left: "calc(100% - 11px)" }} />
 
             {/* Custom Sliding Thumb */}
