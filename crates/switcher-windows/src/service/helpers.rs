@@ -180,15 +180,19 @@ pub(crate) fn read_antigravity_version(installation: &Path) -> Option<String> {
     }
 
     // Attempt to read via PowerShell (fast, native on Windows)
-    let output = std::process::Command::new("powershell")
-        .arg("-NoProfile")
-        .arg("-Command")
-        .arg(format!(
-            "(Get-Item '{}').VersionInfo.ProductVersion",
-            exe_path.to_string_lossy().replace('\'', "''")
-        ))
-        .output()
-        .ok()?;
+    let output = {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("powershell")
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+            .arg("-NoProfile")
+            .arg("-Command")
+            .arg(format!(
+                "(Get-Item '{}').VersionInfo.ProductVersion",
+                exe_path.to_string_lossy().replace('\'', "''")
+            ))
+            .output()
+            .ok()?
+    };
 
     if output.status.success() {
         let version = String::from_utf8_lossy(&output.stdout).trim().to_owned();

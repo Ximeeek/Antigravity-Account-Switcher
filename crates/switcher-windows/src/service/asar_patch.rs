@@ -136,9 +136,11 @@ impl SwitcherService {
         target_cooldown: u32, 
         op_id: Uuid
     ) -> Result<()> {
+        use std::os::windows::process::CommandExt;
         // Extract
         self.logger.info(Some(op_id), "patch", "Extracting app.asar archive...");
         let status = Command::new("cmd")
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .args(&["/C", "npx", "asar", "extract"])
             .arg(asar_path)
             .arg(temp_dir)
@@ -166,6 +168,7 @@ impl SwitcherService {
         // Pack
         self.logger.info(Some(op_id), "patch", "Packing patched app.asar archive...");
         let status = Command::new("cmd")
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .args(&["/C", "npx", "asar", "pack"])
             .arg(temp_dir)
             .arg(temp_patched_asar)
@@ -179,6 +182,7 @@ impl SwitcherService {
         // Verify structural validity by extracting to temp_val_dir
         self.logger.info(Some(op_id), "patch", "Validating patched app.asar structure...");
         let status = Command::new("cmd")
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .args(&["/C", "npx", "asar", "extract"])
             .arg(temp_patched_asar)
             .arg(temp_val_dir)

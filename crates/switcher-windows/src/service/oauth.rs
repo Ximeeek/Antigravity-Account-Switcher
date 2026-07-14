@@ -103,6 +103,7 @@ impl SwitcherService {
         let spawn_res = {
             use std::os::windows::process::CommandExt;
             std::process::Command::new("cmd")
+                .creation_flags(0x08000000) // CREATE_NO_WINDOW
                 .raw_arg(format!("/c start \"\" \"{}\"", auth_url))
                 .spawn()
         };
