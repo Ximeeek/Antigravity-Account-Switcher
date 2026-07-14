@@ -520,12 +520,15 @@ impl SwitcherService {
     }
 
     pub(crate) fn repair_active_state_database_if_needed(&self, operation_id: Uuid) -> Result<()> {
+        if !self.paths.state_db.exists() {
+            return Ok(());
+        }
         if validate_state_database(&self.paths.state_db).is_ok() {
             return Ok(());
         }
         let storage_json = self.paths.state_db.with_file_name("storage.json");
         if !storage_json.is_file() {
-            return validate_state_database(&self.paths.state_db);
+            return Ok(());
         }
         self.logger.warn(
             Some(operation_id),
