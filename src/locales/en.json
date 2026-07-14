@@ -330,6 +330,15 @@
   "app_locked_desc": "This profile is protected with a password. Please enter the password for {name} to unlock the application.",
   "notice_profile_locked": "Profile locked successfully.",
   "notice_lock_removed": "Lock removed successfully.",
-  "notice_profile_unlocked": "Profile unlocked successfully."
+  "notice_profile_unlocked": "Profile unlocked successfully.",
+  "settings_security_title": "Profile Security",
+  "settings_security_desc": "Manage password protection and encryption at rest for each profile.",
+  "settings_btn_unlock_remove": "Remove lock",
+  "settings_btn_unlock": "Unlock details",
+  "settings_btn_lock": "Secure profile",
+  "status_unlocked": "Unlocked",
+  "status_locked": "Locked",
+  "status_no_lock": "Plaintext"
 }
+
 

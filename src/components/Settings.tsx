@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import type { AppSettings, AppState } from "../types";
+import type { AppSettings, AppState, ProfileSummary } from "../types";
+
 import { Icon } from "./Icons";
 import { StatusPill, type StatusTone } from "./StatusPill";
 import { t, getLanguage, type Language } from "../i18n";
@@ -13,6 +14,9 @@ interface SettingsProps {
   onLanguageChange: (lang: Language) => void;
   onWipeData: () => Promise<void>;
   onUninstallApp: () => Promise<void>;
+  onLockProfile?: (profile: ProfileSummary) => void;
+  onUnlockProfile?: (profile: ProfileSummary) => void;
+  onRemoveProfileLock?: (profile: ProfileSummary) => void;
 }
 
 export function Settings({
@@ -23,7 +27,11 @@ export function Settings({
   onLanguageChange,
   onWipeData,
   onUninstallApp,
+  onLockProfile,
+  onUnlockProfile,
+  onRemoveProfileLock,
 }: SettingsProps) {
+
   const [draft, setDraft] = useState<AppSettings>(state.settings);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showWipeModal, setShowWipeModal] = useState(false);
@@ -239,7 +247,95 @@ export function Settings({
           </div>
         </section>
 
+        <section className="settings-card" aria-labelledby="security-heading">
+          <div className="settings-card__header settings-card__header--stackable">
+            <div className="settings-card__icon settings-card__icon--blue" style={{ backgroundColor: "rgba(111, 92, 246, 0.1)", color: "var(--accent-color, #5865f2)" }}>
+              <Icon name="lock" />
+            </div>
+            <div>
+              <h2 id="security-heading">{t("settings_security_title")}</h2>
+              <p>{t("settings_security_desc")}</p>
+            </div>
+          </div>
+          <div className="settings-card__body" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+            {state.profiles.map((profile) => (
+              <div 
+                key={profile.profile_id} 
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "space-between", 
+                  padding: "10px 12px", 
+                  borderRadius: "8px", 
+                  border: "1px solid var(--border-color, #2d3139)", 
+                  backgroundColor: "var(--background-secondary, #161920)",
+                  fontSize: "14px"
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <strong style={{ color: "var(--text-primary, #fff)" }}>{profile.display_name}</strong>
+                  <span style={{ fontSize: "11px", color: "var(--text-secondary, #8e9297)" }}>
+                    {profile.account_email || t("email_hidden")}
+                  </span>
+                </div>
+                
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {profile.is_locked ? (
+                    profile.is_unlocked ? (
+                      <>
+                        <span style={{ fontSize: "11px", color: "var(--success, #23a55a)", backgroundColor: "rgba(35, 165, 90, 0.1)", padding: "2px 6px", borderRadius: "4px" }}>
+                          {t("status_unlocked")}
+                        </span>
+                        <button
+                          className="button button--secondary button--small"
+                          onClick={() => onRemoveProfileLock?.(profile)}
+                          type="button"
+                          style={{ padding: "4px 8px", fontSize: "12px" }}
+                        >
+                          <Icon name="unlock" size={14} style={{ marginRight: "4px" }} />
+                          <span>{t("settings_btn_unlock_remove")}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: "11px", color: "var(--warning, #f0b232)", backgroundColor: "rgba(240, 178, 50, 0.1)", padding: "2px 6px", borderRadius: "4px" }}>
+                          {t("status_locked")}
+                        </span>
+                        <button
+                          className="button button--primary button--small"
+                          onClick={() => onUnlockProfile?.(profile)}
+                          type="button"
+                          style={{ padding: "4px 8px", fontSize: "12px" }}
+                        >
+                          <Icon name="lock" size={14} style={{ marginRight: "4px" }} />
+                          <span>{t("settings_btn_unlock")}</span>
+                        </button>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <span style={{ fontSize: "11px", color: "var(--text-secondary, #8e9297)", backgroundColor: "rgba(255, 255, 255, 0.05)", padding: "2px 6px", borderRadius: "4px" }}>
+                        {t("status_no_lock")}
+                      </span>
+                      <button
+                        className="button button--secondary button--small"
+                        onClick={() => onLockProfile?.(profile)}
+                        type="button"
+                        style={{ padding: "4px 8px", fontSize: "12px" }}
+                      >
+                        <Icon name="lock" size={14} style={{ marginRight: "4px" }} />
+                        <span>{t("settings_btn_lock")}</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="settings-card settings-card--privacy" aria-labelledby="privacy-heading">
+
           <div className="settings-card__header settings-card__header--stackable">
             <div className="settings-card__icon settings-card__icon--green">
               <Icon name="shield" />

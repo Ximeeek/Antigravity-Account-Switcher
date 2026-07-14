@@ -82,7 +82,11 @@ export function Dashboard({
               onSwitchLevelChange={onSwitchLevelChange}
               busy={busy}
               onOpenGuide={onOpenGuide}
+              onLock={onLock}
+              onUnlock={onUnlock}
+              onRemoveLock={onRemoveLock}
             />
+
           ) : (
             <section className="inline-notice inline-notice--warning" role="status">
               <Icon name="alert" size={19} />

@@ -330,6 +330,15 @@
   "app_locked_desc": "Ten profil jest chroniony hasłem. Wprowadź hasło dla konta {name}, aby odblokować aplikację.",
   "notice_profile_locked": "Profil został pomyślnie zablokowany.",
   "notice_lock_removed": "Blokada została pomyślnie usunięta.",
-  "notice_profile_unlocked": "Profil został pomyślnie odblokowany."
+  "notice_profile_unlocked": "Profil został pomyślnie odblokowany.",
+  "settings_security_title": "Bezpieczeństwo profili",
+  "settings_security_desc": "Zarządzaj blokadą hasłem i szyfrowaniem danych dla każdego profilu.",
+  "settings_btn_unlock_remove": "Usuń blokadę",
+  "settings_btn_unlock": "Odblokuj szczegóły",
+  "settings_btn_lock": "Zabezpiecz profil",
+  "status_unlocked": "Odblokowany",
+  "status_locked": "Zablokowany",
+  "status_no_lock": "Brak hasła"
 }
+
 

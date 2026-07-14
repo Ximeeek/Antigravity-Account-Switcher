@@ -756,7 +756,17 @@ export default function App() {
               onUninstallApp={handleUninstallApp}
               state={state}
               workingAction={workingAction}
+              onLockProfile={setLockTarget}
+              onUnlockProfile={(profile) => {
+                setUnlockTarget(profile);
+                setUnlockMode("unlock");
+              }}
+              onRemoveProfileLock={(profile) => {
+                setUnlockTarget(profile);
+                setUnlockMode("remove_lock");
+              }}
             />
+
           </div>
         ) : view === "devtools" && import.meta.env.DEV ? (
           <div className="fade-in-slide" key="devtools">
