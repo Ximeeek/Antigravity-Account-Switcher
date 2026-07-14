@@ -139,11 +139,31 @@ impl SwitcherService {
     }
 
     pub(crate) fn capture_active_manifest(&self, credential: &[u8]) -> Result<ProfileManifest> {
+        let state_digest = if self.paths.state_db.exists() {
+            hash_file(&self.paths.state_db)?
+        } else {
+            "".to_owned()
+        };
+
+        let brain_path = self.paths.gemini_root.join("brain");
+        let brain_marker = if brain_path.exists() {
+            hash_directory(&brain_path)?
+        } else {
+            "".to_owned()
+        };
+
+        let conversations_path = self.paths.gemini_root.join("conversations");
+        let conversations_marker = if conversations_path.exists() {
+            hash_directory(&conversations_path)?
+        } else {
+            "".to_owned()
+        };
+
         Ok(ProfileManifest {
             credential_digest: CredentialStore::digest(credential),
-            state_digest: hash_file(&self.paths.state_db)?,
-            brain_marker: hash_directory(&self.paths.gemini_root.join("brain"))?,
-            conversations_marker: hash_directory(&self.paths.gemini_root.join("conversations"))?,
+            state_digest,
+            brain_marker,
+            conversations_marker,
             captured_at: Some(Utc::now()),
         })
     }

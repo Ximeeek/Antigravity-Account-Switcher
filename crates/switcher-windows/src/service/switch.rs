@@ -553,6 +553,10 @@ impl SwitcherService {
             fs::rename(&self.paths.state_db, &backup)
                 .map_err(|source| SwitcherError::io(&self.paths.state_db, source))?;
         }
+        if let Some(parent) = self.paths.state_db.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|source| SwitcherError::io(parent, source))?;
+        }
         fs::rename(&rebuilt, &self.paths.state_db)
             .map_err(|source| SwitcherError::io(&rebuilt, source))?;
         self.logger.info(
