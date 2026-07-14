@@ -343,7 +343,13 @@
   "settings_security_hint_off": "Zapisane poświadczenia na dysku są obecnie chronione jedynie standardowym mechanizmem Windows DPAPI.",
   "settings_security_btn_disable": "Wyłącz blokadę",
   "settings_security_btn_enable": "Włącz blokadę",
-  "settings_security_btn_lock_now": "Zablokuj teraz"
+  "settings_security_btn_lock_now": "Zablokuj teraz",
+  "security_widget_secure": "Bezpieczne szyfrowanie aktywne",
+  "security_widget_unsecured": "Szyfrowanie wyłączone",
+  "security_widget_secure_desc": "Klucz główny Zero-Knowledge w pełni zabezpiecza Twoje dane.",
+  "security_widget_unsecured_desc": "Pliki lokalne są niezabezpieczone. Ustaw hasło główne, aby je zaszyfrować.",
+  "security_widget_lock_btn": "Zablokuj teraz",
+  "security_widget_setup_btn": "Zabezpiecz program"
 }
 
 

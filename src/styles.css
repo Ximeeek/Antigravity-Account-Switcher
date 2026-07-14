@@ -3887,3 +3887,78 @@ body.mini-window-body {
   margin-left: 2px;
 }
 
+/* Quick Lock Security Status Widget */
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlowSuccess {
+  0% {
+    box-shadow: 0 0 0 0 rgba(35, 165, 90, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(35, 165, 90, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(35, 165, 90, 0);
+  }
+}
+
+@keyframes pulseGlowWarning {
+  0% {
+    box-shadow: 0 0 0 0 rgba(240, 178, 50, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(240, 178, 50, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(240, 178, 50, 0);
+  }
+}
+
+.shield-glow-success {
+  animation: pulseGlowSuccess 2.5s infinite;
+}
+
+.shield-glow-warning {
+  animation: pulseGlowWarning 2.5s infinite;
+}
+
+.quick-lock-button {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-lock-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 67, 53, 0.25);
+  background: rgba(234, 67, 53, 0.16) !important;
+}
+
+.quick-lock-button.setup:hover {
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.25);
+  background: rgba(88, 101, 242, 0.16) !important;
+}
+
+.quick-lock-button:active, .quick-lock-button.clicking {
+  transform: translateY(1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.quick-lock-button svg {
+  transition: transform 0.3s ease;
+}
+
+.quick-lock-button:hover svg {
+  transform: scale(1.15) rotate(-8deg);
+}
+
+

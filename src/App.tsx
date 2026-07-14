@@ -730,6 +730,7 @@ export default function App() {
               onToggleSmartSwitch={handleToggleSmartSwitch}
               onSwitchLevelChange={handleSwitchLevelChange}
               onOpenGuide={() => handleOpenAbout("guide")}
+              onLockProfile={() => setLockTarget({} as any)}
             />
 
           </div>

@@ -343,7 +343,13 @@
   "settings_security_hint_off": "Saved credentials on disk are currently protected only by standard Windows DPAPI.",
   "settings_security_btn_disable": "Disable Lock",
   "settings_security_btn_enable": "Enable Lock",
-  "settings_security_btn_lock_now": "Lock App Now"
+  "settings_security_btn_lock_now": "Lock App Now",
+  "security_widget_secure": "Secure Storage Active",
+  "security_widget_unsecured": "Encryption Disabled",
+  "security_widget_secure_desc": "Zero-Knowledge master key protects all profiles at rest.",
+  "security_widget_unsecured_desc": "Local files are unsecured. Set a master password to encrypt.",
+  "security_widget_lock_btn": "Lock Now",
+  "security_widget_setup_btn": "Secure Switcher"
 }
 
 
