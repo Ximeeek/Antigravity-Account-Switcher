@@ -217,7 +217,7 @@ interface AboutModalProps {
 }
 
 export function AboutModal({ open, state, onClose }: AboutModalProps) {
-  const [activeTab, setActiveTab] = useState<"about" | "specs">("about");
+  const [activeTab, setActiveTab] = useState<"about" | "specs" | "guide">("about");
   const [copied, setCopied] = useState(false);
   const [releases, setReleases] = useState<any[]>([]);
   const [loadingReleases, setLoadingReleases] = useState(false);
@@ -337,7 +337,7 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
               <Icon name={copied ? "check" : "copy"} size={16} />
               <span>{copied ? t("dev_specs_copied") : t("dev_copy_specs")}</span>
             </button>
-          ) : (
+          ) : activeTab === "about" ? (
             <a
               className="button button--ghost"
               href="https://github.com/Ximeeek/Antigravity-Account-Switcher/releases"
@@ -348,7 +348,7 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
               <Icon name="info" size={16} />
               <span>{t("about_view_on_github")}</span>
             </a>
-          )}
+          ) : null}
           <button
             className="button button--primary"
             data-autofocus
@@ -374,6 +374,13 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
           {t("about_tab_info")}
         </button>
         <button
+          className={`about-tab-btn ${activeTab === "guide" ? "about-tab-btn--active" : ""}`}
+          onClick={() => setActiveTab("guide")}
+          type="button"
+        >
+          {t("about_tab_guide")}
+        </button>
+        <button
           className={`about-tab-btn ${activeTab === "specs" ? "about-tab-btn--active" : ""}`}
           onClick={() => setActiveTab("specs")}
           type="button"
@@ -382,7 +389,7 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
         </button>
       </div>
 
-      {activeTab === "about" ? (
+      {activeTab === "about" && (
         <div className="about-content-tab">
           <div className="about-brand-section">
             <div className="about-logo-wrapper">
@@ -485,7 +492,107 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {activeTab === "guide" && (
+        <div className="guide-content-tab" style={{
+          maxHeight: "360px",
+          overflowY: "auto",
+          paddingRight: "4px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px"
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: "600", margin: 0 }}>
+              {t("guide_title")}
+            </h3>
+            <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: 0 }}>
+              {t("guide_desc")}
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {/* Smart Switch */}
+            <div style={{
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid var(--border, #2d3139)",
+              borderRadius: "8px",
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-blue, #5865f2)" }}>
+                <Icon name="settings" size={16} />
+                <strong style={{ fontSize: "0.88rem", fontWeight: "600" }}>{t("guide_smart_switch_title")}</strong>
+              </div>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-secondary, #8e9297)", margin: 0, lineHeight: "1.4" }}>
+                {t("guide_smart_switch_body")}
+              </p>
+            </div>
+
+            {/* Switch Mode / Levels */}
+            <div style={{
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid var(--border, #2d3139)",
+              borderRadius: "8px",
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-blue, #5865f2)" }}>
+                <Icon name="zap" size={16} />
+                <strong style={{ fontSize: "0.88rem", fontWeight: "600" }}>{t("guide_switch_modes_title")}</strong>
+              </div>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-secondary, #8e9297)", margin: 0, lineHeight: "1.4", whiteSpace: "pre-line" }}>
+                {t("guide_switch_modes_body")}
+              </p>
+            </div>
+
+            {/* Auto Refresh */}
+            <div style={{
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid var(--border, #2d3139)",
+              borderRadius: "8px",
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-blue, #5865f2)" }}>
+                <Icon name="refresh" size={16} />
+                <strong style={{ fontSize: "0.88rem", fontWeight: "600" }}>{t("guide_auth_refresh_title")}</strong>
+              </div>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-secondary, #8e9297)", margin: 0, lineHeight: "1.4" }}>
+                {t("guide_auth_refresh_body")}
+              </p>
+            </div>
+
+            {/* Mini Mode */}
+            <div style={{
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid var(--border, #2d3139)",
+              borderRadius: "8px",
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-blue, #5865f2)" }}>
+                <Icon name="mini" size={16} />
+                <strong style={{ fontSize: "0.88rem", fontWeight: "600" }}>{t("guide_mini_mode_title")}</strong>
+              </div>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-secondary, #8e9297)", margin: 0, lineHeight: "1.4" }}>
+                {t("guide_mini_mode_body")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "specs" && (
         <div className="geek-specs-grid" style={{
           display: "grid",
           gridTemplateColumns: "1fr",

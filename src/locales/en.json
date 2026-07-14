@@ -247,5 +247,16 @@
   "language_desc": "Choose the UI language.",
   "nav_main_aria": "Main navigation",
   "aria_switching_from_to": "Switching from {from} to {to}",
-  "aria_switch_progress": "Account switching progress"
+  "aria_switch_progress": "Account switching progress",
+  "about_tab_guide": "Guide",
+  "guide_title": "Feature Guide",
+  "guide_desc": "Explanation of the key concepts and mechanisms behind the application.",
+  "guide_smart_switch_title": "Smart Switch",
+  "guide_smart_switch_body": "This feature automatically swaps your active profile to another saved profile with the highest remaining Gemini API limits when the current profile's limits are running low. This process runs in the background and triggers when the 5-hour limit drops below 10% or the weekly limit falls below 5%. To avoid interrupting your workflow, switching is automatically blocked if the Antigravity agent is actively running a task.",
+  "guide_switch_modes_title": "Switch Mode (Levels)",
+  "guide_switch_modes_body": "Determines the speed and scope of the restart when switching profiles:\n• Level 1 (Full Restart): Restarts the entire Antigravity 2.0 application. Slower (~8s), but guarantees a complete interface and session refresh.\n• Level 2 (Fast Restart): Restarts only the background language server process (language_server.exe). Blazing fast (~2s) and keeps the open window and chat history intact.\n• Level 2+ (Patched Fast): Slashes profile switching down to ~300ms by patching the language server to restart in 150ms instead of 2s.",
+  "guide_auth_refresh_title": "Authentication Auto-refresh",
+  "guide_auth_refresh_body": "The 'Valid (auto-refreshed)' status indicates that the application is managing the validity of your Google sessions in the background. The Switcher automatically renews authentication tokens before they expire using secure local mechanisms. This prevents you from having to re-authenticate via browser every time you switch accounts.",
+  "guide_mini_mode_title": "Mini Mode",
+  "guide_mini_mode_body": "A compact version of the application that can be pinned on top of other windows (Always on Top). It provides a simplified interface for instant, one-click profile switching without having to open the full control panel."
 }

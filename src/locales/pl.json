@@ -247,5 +247,16 @@
   "language_desc": "Wybierz język interfejsu.",
   "nav_main_aria": "Główna nawigacja",
   "aria_switching_from_to": "Przełączenie z {from} na {to}",
-  "aria_switch_progress": "Postęp przełączania konta"
+  "aria_switch_progress": "Postęp przełączania konta",
+  "about_tab_guide": "Przewodnik",
+  "guide_title": "Przewodnik po funkcjach",
+  "guide_desc": "Wyjaśnienie najważniejszych pojęć i mechanizmów działania aplikacji.",
+  "guide_smart_switch_title": "Smart Switch (Inteligentne przełączanie)",
+  "guide_smart_switch_body": "Funkcja ta automatycznie przełącza aktywne konto na inne zapisane konto o największym pozostałym limicie Gemini API, gdy na obecnym koncie limity są na wyczerpaniu. Dzieje się to automatycznie w tle, kiedy limit 5-godzinny spadnie poniżej 10% lub limit tygodniowy spadnie poniżej 5%. Aby nie zakłócić pracy, przełączanie jest automatycznie blokowane, gdy agent Antigravity wykonuje zadanie.",
+  "guide_switch_modes_title": "Switch Mode (Poziomy przełączania)",
+  "guide_switch_modes_body": "Określa szybkość oraz stopień ingerencji w działanie Antigravity podczas zmiany konta:\n• Poziom 1 (Full Restart): Całkowity restart aplikacji Antigravity 2.0. Trwa ok. 8 sekund, ale w 100% odświeża sesję i interfejs.\n• Poziom 2 (Fast Restart): Restartuje tylko proces serwera językowego (language_server.exe). Zmiana trwa ok. 2 sekundy i nie zamyka okna edytora ani nie czyści historii czatu.\n• Poziom 2+ (Patched Fast): Natychmiastowa zmiana konta w ~300ms dzięki zmodyfikowaniu czasu restartu serwera językowego (skróconego z 2s do 150ms).",
+  "guide_auth_refresh_title": "Authentication Auto-refresh (Automatyczne odnawianie)",
+  "guide_auth_refresh_body": "Status 'Valid (auto-refreshed)' oznacza, że aplikacja w tle dba o ważność Twoich sesji Google. Switcher automatycznie odnawia tokeny uwierzytelniające przed ich wygaśnięciem, korzystając z bezpiecznych mechanizmów lokalnych. Dzięki temu nie musisz przechodzić przez ponowne logowanie w przeglądarce za każdym razem, gdy przełączasz profil.",
+  "guide_mini_mode_title": "Mini Mode (Tryb Mini)",
+  "guide_mini_mode_body": "Kompaktowa wersja aplikacji, którą możesz przypiąć na wierzchu ekranu (Always on Top). Zawiera uproszczony interfejs pozwalający na zmianę aktywnego profilu jednym kliknięciem, bez potrzeby otwierania głównego okna programu."
 }
