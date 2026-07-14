@@ -168,6 +168,16 @@ impl SwitcherService {
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
         
+        if let Ok(metadata) = self.load_profile_metadata(target_profile_id) {
+            if let Some(ref email) = metadata.account_email {
+                if let Some(refresh_token) = super::helpers::parse_refresh_token(&target_credential) {
+                    self.fetch_and_cache_quota_sync(email, &refresh_token);
+                }
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        
         // Update active profile in switcher config
         {
             let mut config = self.config.write();

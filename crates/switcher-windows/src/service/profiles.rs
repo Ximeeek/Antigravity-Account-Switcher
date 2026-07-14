@@ -964,6 +964,42 @@ impl SwitcherService {
         Ok(())
     }
 
+    pub fn fetch_and_cache_quota_sync(&self, email: &str, refresh_token: &str) {
+        let email_clone = email.to_owned();
+        let refresh_token_clone = refresh_token.to_owned();
+        let logger_clone = self.logger.clone();
+        
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            let result = handle.block_on(async move {
+                crate::quota::QuotaDecryptor::fetch_live_quota(&refresh_token_clone).await
+            });
+            match result {
+                Ok(live_quota) => {
+                    let mut cache = global_quota_cache().lock().unwrap();
+                    cache.insert(email_clone, (live_quota, std::time::Instant::now()));
+                    logger_clone.info(
+                        None,
+                        "quota",
+                        format!("Target quota fetched and cached successfully during switch"),
+                    );
+                }
+                Err(err) => {
+                    logger_clone.warn(
+                        None,
+                        "quota",
+                        format!("Failed to fetch target quota synchronously: {}", err),
+                    );
+                }
+            }
+        } else {
+            logger_clone.warn(
+                None,
+                "quota",
+                "No Tokio runtime handle found; skipping synchronous quota fetch",
+            );
+        }
+    }
+
     pub fn close_app_lock(&self) -> Result<()> {
         *self.master_key.write() = None;
         Ok(())

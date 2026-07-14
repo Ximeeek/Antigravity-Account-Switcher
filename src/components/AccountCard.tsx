@@ -101,8 +101,9 @@ export function AccountCard({
       <div className="account-card__status">
         <StatusPill tone={token.tone}>{token.label}</StatusPill>
         <span className="token-detail">{token.detail}</span>
-        <MiniQuotaBadges quota={profile.quota} />
       </div>
+
+      <MiniQuotaBadges quota={profile.quota} />
 
       <div className="account-card__meta">
         <Icon name="clock" size={15} />

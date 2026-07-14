@@ -379,6 +379,15 @@ impl SwitcherService {
         lock.current_step = SwitchStep::Relaunch;
         self.set_progress(&lock, None);
         self.log_artifact_inventory(Some(operation_id), "active-before-relaunch", None);
+        
+        if let Ok(metadata) = self.load_profile_metadata(target_profile_id) {
+            if let Some(ref email) = metadata.account_email {
+                if let Some(refresh_token) = super::helpers::parse_refresh_token(&target_credential) {
+                    self.fetch_and_cache_quota_sync(email, &refresh_token);
+                }
+            }
+        }
+
         let (relaunched_pid, warning) = match process.launch(Some(operation_id)) {
             Ok(pid) => (Some(pid), None),
             Err(error) => {
@@ -388,6 +397,9 @@ impl SwitcherService {
                 (None, Some(warning))
             }
         };
+        
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+
         self.progress.write().take();
         Ok(SwitchOutcome {
             operation_id,
