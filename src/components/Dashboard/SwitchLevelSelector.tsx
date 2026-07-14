@@ -10,23 +10,53 @@ interface SwitchLevelSelectorProps {
 export default function SwitchLevelSelector({
   value,
   onChange,
-  busy = false,
 }: SwitchLevelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localValue, setLocalValue] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Optimistic update: sync local value when backend value updates
+  const pendingValue = useRef<number | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Flush any pending optimistic save immediately
+  const flushChange = useRef<() => void>(() => {});
+  flushChange.current = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    if (pendingValue.current !== null) {
+      onChange(pendingValue.current);
+    }
+  };
+
+  // Optimistic update: sync local value when backend value updates,
+  // but ONLY if we do not have a pending local change in flight!
   useEffect(() => {
-    setLocalValue(value);
+    if (pendingValue.current === value) {
+      pendingValue.current = null;
+    }
+    if (pendingValue.current === null) {
+      setLocalValue(value);
+    }
   }, [value]);
 
-  // Click outside to close popover
+  // Flush pending changes on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingValue.current !== null) {
+        flushChange.current();
+      }
+    };
+  }, []);
+
+  // Click outside to close popover and flush changes
   useEffect(() => {
     if (!isOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        flushChange.current();
         setIsOpen(false);
       }
     };
@@ -44,7 +74,19 @@ export default function SwitchLevelSelector({
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseInt(e.target.value, 10);
     setLocalValue(newValue); // Instant optimistic update on frontend!
-    onChange(newValue);      // Propagate change to backend
+    pendingValue.current = newValue;
+
+    // Debounce the Tauri IPC call by 150ms to allow smooth sliding/dragging
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      if (pendingValue.current !== null) {
+        onChange(pendingValue.current);
+      }
+    }, 150);
+
     if (!hasChanged) {
       setHasChanged(true);
       localStorage.setItem("antigravity_switch_level_changed", "true");
@@ -53,6 +95,9 @@ export default function SwitchLevelSelector({
 
   const togglePopover = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isOpen) {
+      flushChange.current();
+    }
     setIsOpen((prev) => !prev);
   };
 
@@ -90,7 +135,7 @@ export default function SwitchLevelSelector({
           </div>
 
           {/* Compact Slider Track */}
-          <div className={`compact-slider-track-container ${busy ? "compact-slider-track-container--busy" : ""}`}>
+          <div className="compact-slider-track-container">
             <div className="compact-slider-track-bg">
               {/* Glowing Active Track Fill */}
               <div
@@ -118,7 +163,6 @@ export default function SwitchLevelSelector({
               step="1"
               value={localValue}
               onChange={handleSliderChange}
-              disabled={busy}
               className="compact-slider-native-input"
               aria-valuemin={1}
               aria-valuemax={3}
