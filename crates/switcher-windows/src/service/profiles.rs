@@ -183,6 +183,7 @@ impl SwitcherService {
         }
         validate_display_name(&display_name)?;
         self.paths.validate_same_volume()?;
+        let credential = self.credentials.read_active()?;
         self.preflight_active()?;
 
         let operation_id = Uuid::new_v4();
@@ -191,7 +192,6 @@ impl SwitcherService {
             "profile",
             "Current session import started",
         );
-        let credential = self.credentials.read_active()?;
         let protected = self.credentials.protect(&credential)?;
         let profile_id = Uuid::new_v4();
         let profile_dir = self.paths.profile_dir(profile_id);
