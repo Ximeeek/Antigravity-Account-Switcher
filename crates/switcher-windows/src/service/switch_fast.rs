@@ -52,32 +52,9 @@ impl SwitcherService {
         let ls_proc = process.get_language_server_process()?;
         let old_pid = ls_proc.as_ref().map(|p| p.pid);
         
-        // 3. Backup current profile's credentials
-        lock.current_step = SwitchStep::BackupCurrent;
-        self.journal().write(&lock)?;
-        self.set_progress(&lock, None);
-        if !from_profile_id.is_nil() {
-            self.backup_current_profile(&mut lock, &active_credential, &protected_active)?;
-        }
-        
-        // 4. Update credentials BEFORE killing
-        lock.current_step = SwitchStep::UpdateCredential;
-        self.journal().write(&lock)?;
-        self.set_progress(&lock, None);
-        self.credentials.write_active(&target_credential)?;
-        lock.target_credential_written = true;
-        self.journal().write(&lock)?;
-        
-        // 5. Verify target credentials consistency
-        lock.current_step = SwitchStep::VerifyConsistency;
-        self.journal().write(&lock)?;
-        self.set_progress(&lock, None);
-        self.verify_target(&target_credential)?;
-        
-        // 6. Kill language_server.exe
+        // 3. Kill language_server.exe and write target credentials immediately to prevent race conditions
         lock.current_step = SwitchStep::CloseProcesses;
         self.journal().write(&lock)?;
-        self.set_progress(&lock, None);
         
         if let Some(pid) = old_pid {
             self.logger.info(
@@ -85,8 +62,38 @@ impl SwitcherService {
                 "process",
                 format!("Killing language_server.exe process pid={}", pid),
             );
-            process.kill_pid(pid)?;
+            if let Err(e) = process.kill_pid(pid) {
+                self.logger.warn(
+                    Some(operation_id),
+                    "process",
+                    format!("Failed to kill language_server.exe process pid={}: {}", pid, e),
+                );
+            }
         }
+        
+        self.credentials.write_active(&target_credential)?;
+        lock.target_credential_written = true;
+        self.journal().write(&lock)?;
+        self.set_progress(&lock, None);
+        
+        // 4. Backup current profile's credentials
+        lock.current_step = SwitchStep::BackupCurrent;
+        self.journal().write(&lock)?;
+        self.set_progress(&lock, None);
+        if !from_profile_id.is_nil() {
+            self.backup_current_profile(&mut lock, &active_credential, &protected_active)?;
+        }
+        
+        // 5. Update credentials step (visual progress transition)
+        lock.current_step = SwitchStep::UpdateCredential;
+        self.journal().write(&lock)?;
+        self.set_progress(&lock, None);
+        
+        // 6. Verify target credentials consistency
+        lock.current_step = SwitchStep::VerifyConsistency;
+        self.journal().write(&lock)?;
+        self.set_progress(&lock, None);
+        self.verify_target(&target_credential)?;
         
         // 7. Wait for auto-respawn and verify responsiveness
         lock.current_step = SwitchStep::Relaunch;
