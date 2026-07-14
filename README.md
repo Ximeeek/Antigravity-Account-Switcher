@@ -6,18 +6,7 @@
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#development)
 [![Early Development](https://img.shields.io/badge/Status-Early_Development-orange.svg)](#development)
 
----
 
-### Try the Live Interactive Demo (No Install Required!)
-
-You can preview and test the complete application interface, settings, mini switcher, progress animations, and recovery workflows directly in your web browser:
-
-*   **[Play the Interactive Demo (via GitHack)](https://raw.githack.com/Ximeeek/Antigravity-Account-Switcher/main/demo.html)**
-*   **[Alternative Demo Link (GitHub Pages)](https://ximeeek.github.io/Antigravity-Account-Switcher/demo.html)**
-
-*To run the demo locally, simply open the [demo.html](demo.html) file in your web browser.*
-
----
 
 > [!CAUTION]
 > **LEGAL DISCLAIMER & TERMS OF USE**
