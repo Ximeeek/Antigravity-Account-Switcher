@@ -115,6 +115,11 @@ const errorMessage = (error: unknown): string => {
   if (message.includes("Missing id_token in response")) {
     return t("err_oauth_id");
   }
+  if (message.includes("is already registered. Please delete the existing profile first")) {
+    const match = message.match(/Account\s+(.+)\s+is already registered/);
+    const email = match ? match[1] : "";
+    return t("err_duplicate_account", { email });
+  }
 
   return message;
 };

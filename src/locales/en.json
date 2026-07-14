@@ -286,5 +286,6 @@
   "err_single_instance_msg": "Another instance of Antigravity Account Switcher is already running.",
   "err_no_op_to_recover": "No switch operation to recover.",
   "err_oauth_token": "Missing access token (access_token) in OAuth response.",
-  "err_oauth_id": "Missing identity token (id_token) in OAuth response."
+  "err_oauth_id": "Missing identity token (id_token) in OAuth response.",
+  "err_duplicate_account": "Account {email} is already registered. Please delete the existing profile first."
 }

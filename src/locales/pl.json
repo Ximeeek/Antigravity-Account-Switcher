@@ -286,5 +286,6 @@
   "err_single_instance_msg": "Inna instancja Antigravity Account Switcher jest już uruchomiona.",
   "err_no_op_to_recover": "Brak operacji do odzyskania.",
   "err_oauth_token": "Brak tokenu dostępu (access_token) w odpowiedzi serwera OAuth.",
-  "err_oauth_id": "Brak tokenu tożsamości (id_token) w odpowiedzi serwera OAuth."
+  "err_oauth_id": "Brak tokenu tożsamości (id_token) w odpowiedzi serwera OAuth.",
+  "err_duplicate_account": "Konto {email} jest już zarejestrowane. Usuń najpierw istniejący profil tego konta."
 }
