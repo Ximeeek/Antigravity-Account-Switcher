@@ -20,6 +20,7 @@ interface ActiveAccountProps {
   switchLevel: number;
   onSwitchLevelChange: (level: number) => void;
   busy?: boolean;
+  onOpenGuide?: () => void;
 }
 
 export default function ActiveAccount({
@@ -29,6 +30,7 @@ export default function ActiveAccount({
   switchLevel,
   onSwitchLevelChange,
   busy = false,
+  onOpenGuide,
 }: ActiveAccountProps) {
   const token = getTokenPresentation(profile);
   const cardRef = useRef<HTMLElement>(null);
@@ -163,6 +165,36 @@ export default function ActiveAccount({
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <p className="eyebrow">{t("active_account")}</p>
               <StatusPill tone="success">{t("active")}</StatusPill>
+              {onOpenGuide && (
+                <button
+                  type="button"
+                  onClick={onOpenGuide}
+                  title={t("about_tab_guide")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "4px",
+                    margin: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--text-secondary, #8e9297)",
+                    cursor: "pointer",
+                    borderRadius: "50%",
+                    transition: "all 0.2s ease-out",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--accent-blue, #5865f2)";
+                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-secondary, #8e9297)";
+                    e.currentTarget.style.background = "none";
+                  }}
+                >
+                  <Icon name="info" size={13} />
+                </button>
+              )}
             </div>
 
             <div

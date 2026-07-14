@@ -23,6 +23,7 @@ interface DashboardProps {
   onDelete: (profile: ProfileSummary) => void;
   onToggleSmartSwitch: () => void;
   onSwitchLevelChange: (level: number) => void;
+  onOpenGuide?: () => void;
 }
 
 export function Dashboard({
@@ -33,6 +34,7 @@ export function Dashboard({
   onDelete,
   onToggleSmartSwitch,
   onSwitchLevelChange,
+  onOpenGuide,
 }: DashboardProps) {
   const disclaimer = getDisclaimerText();
   const isEmpty = state.profiles.length === 0;
@@ -72,6 +74,7 @@ export function Dashboard({
               switchLevel={state.settings.switch_level}
               onSwitchLevelChange={onSwitchLevelChange}
               busy={busy}
+              onOpenGuide={onOpenGuide}
             />
           ) : (
             <section className="inline-notice inline-notice--warning" role="status">

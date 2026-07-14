@@ -214,9 +214,10 @@ interface AboutModalProps {
   open: boolean;
   state: any;
   onClose: () => void;
+  defaultTab?: "about" | "specs" | "guide";
 }
 
-export function AboutModal({ open, state, onClose }: AboutModalProps) {
+export function AboutModal({ open, state, onClose, defaultTab }: AboutModalProps) {
   const [activeTab, setActiveTab] = useState<"about" | "specs" | "guide">("about");
   const [copied, setCopied] = useState(false);
   const [releases, setReleases] = useState<any[]>([]);
@@ -259,7 +260,7 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
 
   useEffect(() => {
     if (!open) return;
-    setActiveTab("about");
+    setActiveTab(defaultTab || "about");
     setLoadingReleases(true);
     
     fetch("https://api.github.com/repos/Ximeeek/Antigravity-Account-Switcher/releases")
@@ -281,7 +282,7 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
       .finally(() => {
         setLoadingReleases(false);
       });
-  }, [open]);
+  }, [open, defaultTab]);
 
   const handleCopySpecs = () => {
     const specsText = JSON.stringify({

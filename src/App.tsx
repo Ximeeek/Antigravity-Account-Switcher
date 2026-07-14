@@ -82,7 +82,13 @@ export default function App() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [addProfileOpen, setAddProfileOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [aboutTab, setAboutTab] = useState<"about" | "specs" | "guide">("about");
   const [deleteTarget, setDeleteTarget] = useState<ProfileSummary | null>(null);
+
+  const handleOpenAbout = (tab: "about" | "specs" | "guide" = "about") => {
+    setAboutTab(tab);
+    setAboutOpen(true);
+  };
   const [pendingSwitch, setPendingSwitch] = useState<SwitchOperation | null>(null);
   const [lang, setLang] = useState<Language>(getLanguage);
 
@@ -451,7 +457,7 @@ export default function App() {
         engineStatus={state.engine_status}
         onDemoScenarioChange={handleDemoScenario}
         onViewChange={setView}
-        onBrandClick={() => setAboutOpen(true)}
+        onBrandClick={() => handleOpenAbout("about")}
         onOpenMini={() => {
           showMiniWindow().catch((err) => console.error("Failed to open mini window", err));
         }}
@@ -504,6 +510,7 @@ export default function App() {
               state={state}
               onToggleSmartSwitch={handleToggleSmartSwitch}
               onSwitchLevelChange={handleSwitchLevelChange}
+              onOpenGuide={() => handleOpenAbout("guide")}
             />
           </div>
         ) : (
@@ -546,6 +553,7 @@ export default function App() {
         open={aboutOpen}
         state={state}
         onClose={() => setAboutOpen(false)}
+        defaultTab={aboutTab}
       />
 
       {notice ? <Toast notice={notice} onClose={() => setNotice(null)} /> : null}
