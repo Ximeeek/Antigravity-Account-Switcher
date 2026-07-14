@@ -145,6 +145,10 @@ pub struct PersistentConfig {
     pub switch_level: u8,
     #[serde(default = "default_patch_cooldown")]
     pub patch_cooldown_ms: u32,
+    #[serde(default)]
+    pub patched_asar_mtime: Option<u64>,
+    #[serde(default)]
+    pub patched_asar_cooldown: Option<u32>,
 }
 
 impl Default for PersistentConfig {
@@ -158,6 +162,8 @@ impl Default for PersistentConfig {
             smart_switch_enabled: false,
             switch_level: 1,
             patch_cooldown_ms: 100,
+            patched_asar_mtime: None,
+            patched_asar_cooldown: None,
         }
     }
 }

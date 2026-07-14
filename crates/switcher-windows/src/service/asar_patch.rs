@@ -9,14 +9,14 @@ use std::process::Command;
 use uuid::Uuid;
 
 use crate::SwitcherService;
-use switcher_core::{Result, SwitcherError};
+use switcher_core::{Result, SwitcherError, save_json};
 
 impl SwitcherService {
     /// Checks if the app.asar file is patched with the expected cooldown value.
     /// Returns true if it is patched, false if it is not.
     /// Returns an error if the file cannot be read or is invalid.
     pub fn is_asar_patched(&self) -> Result<bool> {
-        let config = self.config.read();
+        let config = self.config.read().clone();
         let install_path = match &config.installation_path {
             Some(path) => path,
             None => return Ok(false),
@@ -26,9 +26,31 @@ impl SwitcherService {
             return Ok(false);
         }
 
+        let metadata = fs::metadata(&asar_path).map_err(|e| SwitcherError::io(&asar_path, e))?;
+        let current_mtime = metadata.modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        if config.patched_asar_mtime == Some(current_mtime)
+            && config.patched_asar_cooldown == Some(config.patch_cooldown_ms)
+        {
+            return Ok(true);
+        }
+
         let bytes = fs::read(&asar_path).map_err(|e| SwitcherError::io(&asar_path, e))?;
         let content = String::from_utf8_lossy(&bytes);
-        Ok(self.verify_cooldown_in_str(&content, config.patch_cooldown_ms))
+        let is_patched = self.verify_cooldown_in_str(&content, config.patch_cooldown_ms);
+
+        if is_patched {
+            let mut write_config = self.config.write();
+            write_config.patched_asar_mtime = Some(current_mtime);
+            write_config.patched_asar_cooldown = Some(config.patch_cooldown_ms);
+            let _ = save_json(&self.paths.config, &*write_config);
+        }
+
+        Ok(is_patched)
     }
 
     /// Verifies and applies the patch to app.asar if needed.
@@ -118,6 +140,19 @@ impl SwitcherService {
         // 3. Move the verified patched asar to live location
         self.logger.info(Some(op_id), "patch", "Patch successfully verified. Overwriting live app.asar.");
         fs::copy(&temp_patched_asar, &asar_path).map_err(|e| SwitcherError::io(&asar_path, e))?;
+
+        if let Ok(metadata) = fs::metadata(&asar_path) {
+            if let Some(mtime) = metadata.modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+            {
+                let mut write_config = self.config.write();
+                write_config.patched_asar_mtime = Some(mtime);
+                write_config.patched_asar_cooldown = Some(write_config.patch_cooldown_ms);
+                let _ = save_json(&self.paths.config, &*write_config);
+            }
+        }
 
         // Clean up
         let _ = fs::remove_dir_all(&temp_dir);
