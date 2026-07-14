@@ -19,6 +19,7 @@ impl SwitcherService {
         self.paths.validate_same_volume()?;
         self.preflight_target_identity(target_profile_id)?;
         
+        let switch_level = self.config.read().switch_level;
         let from_profile_id = self
             .config
             .read()
@@ -44,11 +45,77 @@ impl SwitcherService {
         self.set_progress(&lock, None);
         self.journal().write(&lock)?;
         
+        let process = self.process_manager()?;
+        
+        // 0. Auto-patch app.asar if needed (Level 2+ / 3 only). If the patch was successfully
+        // applied/re-applied, it required closing Antigravity.exe (if it was running).
+        // In that case, we MUST perform a full restart switch fallback.
+        let patch_applied = if switch_level == 3 {
+            self.ensure_asar_patched(Some(operation_id))?
+        } else {
+            false
+        };
+        if patch_applied {
+            self.logger.info(
+                Some(operation_id),
+                "patch",
+                "app.asar patch was applied/re-applied. Falling back to full app restart switch for this cycle.",
+            );
+            
+            // Backup current profile's credentials if not nil
+            if !from_profile_id.is_nil() {
+                self.backup_current_profile(&mut lock, &active_credential, &protected_active)?;
+            }
+            
+            // Write target credentials
+            self.credentials.write_active(&target_credential)?;
+            lock.target_credential_written = true;
+            self.journal().write(&lock)?;
+            
+            // Make sure everything is closed/unlocked
+            lock.current_step = SwitchStep::CloseProcesses;
+            self.journal().write(&lock)?;
+            process.close_all(operation_id)?;
+            
+            lock.current_step = SwitchStep::VerifyUnlocked;
+            self.journal().write(&lock)?;
+            process.wait_until_unlocked(&self.paths, operation_id)?;
+            
+            {
+                let mut config = self.config.write();
+                config.active_profile_id = Some(target_profile_id);
+                save_json(&self.paths.config, &*config)?;
+            }
+            self.touch_profile(target_profile_id)?;
+            
+            self.journal().remove()?;
+            
+            let relaunched_pid = match process.launch(Some(operation_id)) {
+                Ok(pid) => Some(pid),
+                Err(error) => {
+                    self.logger.error(
+                        Some(operation_id),
+                        "process",
+                        format!("Full restart fallback relaunch failed: {}", error),
+                    );
+                    None
+                }
+            };
+            
+            self.progress.write().take();
+            self.last_switches.lock().push(Instant::now());
+            
+            return Ok(SwitchOutcome {
+                operation_id,
+                relaunched_pid,
+                warning: Some("The app.asar patch was applied. A full restart of the application was performed.".to_owned()),
+            });
+        }
+
         // 1. Cooldown check (handled in request_switch, but check again here for safety)
         self.check_cooldown()?;
         
         // 2. Identify all language_server.exe processes before writing credentials/killing
-        let process = self.process_manager()?;
         let ls_procs = process.get_language_server_processes()?;
         let old_pids: std::collections::HashSet<u32> = ls_procs.iter().map(|p| p.pid).collect();
         
@@ -104,10 +171,14 @@ impl SwitcherService {
         let mut success = false;
         let mut new_pid = None;
         let poll_start = Instant::now();
+
+        let is_patched = switch_level == 3 && self.is_asar_patched().unwrap_or(false);
+        let poll_interval = if is_patched { Duration::from_millis(20) } else { Duration::from_millis(100) };
+        let timeout = if is_patched { Duration::from_millis(2000) } else { Duration::from_secs(5) };
         
-        // Poll for up to 5 seconds
-        while poll_start.elapsed() < Duration::from_secs(5) {
-            thread::sleep(Duration::from_millis(100));
+        // Poll for respawn
+        while poll_start.elapsed() < timeout {
+            thread::sleep(poll_interval);
             if let Ok(current_procs) = process.get_language_server_processes() {
                 if let Some(new_proc) = current_procs.iter().find(|p| !old_pids.contains(&p.pid)) {
                     // Found a new process!

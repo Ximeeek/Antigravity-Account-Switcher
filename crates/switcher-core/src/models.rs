@@ -120,10 +120,15 @@ pub struct SettingsView {
     pub token_refresh_enabled: bool,
     pub smart_switch_enabled: bool,
     pub switch_level: u8,
+    pub patch_cooldown_ms: u32,
 }
 
 fn default_switch_level() -> u8 {
     1
+}
+
+fn default_patch_cooldown() -> u32 {
+    100
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -138,6 +143,8 @@ pub struct PersistentConfig {
     pub smart_switch_enabled: bool,
     #[serde(default = "default_switch_level")]
     pub switch_level: u8,
+    #[serde(default = "default_patch_cooldown")]
+    pub patch_cooldown_ms: u32,
 }
 
 impl Default for PersistentConfig {
@@ -150,6 +157,7 @@ impl Default for PersistentConfig {
             active_profile_id: None,
             smart_switch_enabled: false,
             switch_level: 1,
+            patch_cooldown_ms: 100,
         }
     }
 }

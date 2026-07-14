@@ -227,6 +227,11 @@ export const normalizeAppState = (value: unknown): AppState => {
           pick(source, "switch_level", "switchLevel"),
         1,
       ),
+      patch_cooldown_ms: asNumber(
+        pick(settingsSource, "patch_cooldown_ms", "patchCooldownMs") ??
+          pick(source, "patch_cooldown_ms", "patchCooldownMs"),
+        100,
+      ),
     },
     app_version: asNullableString(pick(source, "app_version", "appVersion", "version")),
     antigravity_version: asNullableString(

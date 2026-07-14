@@ -57,6 +57,7 @@ export const makeDemoState = (): AppState => ({
     antigravity_path: "C:\\Program Files\\Antigravity\\Antigravity.exe",
     smart_switch_enabled: false,
     switch_level: 1,
+    patch_cooldown_ms: 100,
   },
   app_version: "1.0.0-demo",
   antigravity_version: "1.4.2-demo",
@@ -203,6 +204,10 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
         switch_level: asNumber(
           pick(settings, "switch_level", "switchLevel"),
           demoState.settings.switch_level,
+        ),
+        patch_cooldown_ms: asNumber(
+          pick(settings, "patch_cooldown_ms", "patchCooldownMs"),
+          demoState.settings.patch_cooldown_ms || 100,
         ),
       };
       return clone(demoState);

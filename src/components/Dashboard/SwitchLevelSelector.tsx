@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { t } from "../../i18n";
 
 interface SwitchLevelSelectorProps {
-  value: number; // 1 or 2
+  value: number; // 1, 2, or 3
   onChange: (value: number) => void;
   busy?: boolean; // Kept in interface for props compatibility
 }
@@ -55,9 +55,9 @@ export default function SwitchLevelSelector({
     setIsOpen((prev) => !prev);
   };
 
-  const snapPoints = ["11px", "calc(100% - 11px)"];
-  const thumbLeft = localValue === 1 ? snapPoints[0] : snapPoints[1];
-  const activePercentage = localValue === 1 ? "0%" : "100%"; // 0% at Lvl 1 completely hides the blue sliver!
+  const snapPoints = ["11px", "50%", "calc(100% - 11px)"];
+  const thumbLeft = localValue === 1 ? snapPoints[0] : (localValue === 2 ? snapPoints[1] : snapPoints[2]);
+  const activePercentage = localValue === 1 ? "0%" : (localValue === 2 ? "50%" : "100%");
 
   return (
     <div className="switch-mode-popover-container" ref={containerRef}>
@@ -70,7 +70,9 @@ export default function SwitchLevelSelector({
         aria-expanded={isOpen}
       >
         <span className="switch-mode-trigger__text">{t("switch_mode")}</span>
-        <span className="switch-mode-trigger__badge">{value === 1 ? "Lvl 1" : "Lvl 2"}</span>
+        <span className="switch-mode-trigger__badge">
+          {value === 1 ? "Lvl 1" : (value === 2 ? "Lvl 2" : "Lvl 2+")}
+        </span>
       </button>
 
       {/* Floating Popover Box */}
@@ -79,10 +81,10 @@ export default function SwitchLevelSelector({
           {/* Popover Header showing: Restart Type (Left) & Speed Multiplier (Right) */}
           <div className="switch-mode-popover-header">
             <span className="popover-header-left">
-              {localValue === 1 ? t("switch_level_1_short") : t("switch_level_2_short")}
+              {localValue === 1 ? t("switch_level_1_short") : (localValue === 2 ? t("switch_level_2_short") : t("switch_level_3_short"))}
             </span>
-            <span className={`popover-header-right ${localValue === 2 ? "speed-highlight" : "slow-highlight"}`}>
-              {localValue === 2 ? t("switch_level_faster") : t("slower")}
+            <span className={`popover-header-right ${localValue > 1 ? "speed-highlight" : "slow-highlight"}`}>
+              {localValue === 1 ? t("slower") : (localValue === 2 ? t("switch_level_faster") : t("switch_level_blazing"))}
             </span>
           </div>
 
@@ -98,7 +100,8 @@ export default function SwitchLevelSelector({
 
             {/* Snapping Dots */}
             <div className={`compact-slider-dot ${localValue >= 1 ? "compact-slider-dot--active" : ""}`} style={{ left: "11px" }} />
-            <div className={`compact-slider-dot ${localValue >= 2 ? "compact-slider-dot--active" : ""}`} style={{ left: "calc(100% - 11px)" }} />
+            <div className={`compact-slider-dot ${localValue >= 2 ? "compact-slider-dot--active" : ""}`} style={{ left: "50%" }} />
+            <div className={`compact-slider-dot ${localValue >= 3 ? "compact-slider-dot--active" : ""}`} style={{ left: "calc(100% - 11px)" }} />
 
             {/* Custom Sliding Thumb */}
             <div
@@ -110,15 +113,15 @@ export default function SwitchLevelSelector({
             <input
               type="range"
               min="1"
-              max="2"
+              max="3"
               step="1"
               value={localValue}
               onChange={handleSliderChange}
               className="compact-slider-native-input"
               aria-valuemin={1}
-              aria-valuemax={2}
+              aria-valuemax={3}
               aria-valuenow={localValue}
-              aria-valuetext={localValue === 1 ? t("switch_level_1") : t("switch_level_2")}
+              aria-valuetext={localValue === 1 ? t("switch_level_1") : (localValue === 2 ? t("switch_level_2") : t("switch_level_3"))}
             />
           </div>
         </div>

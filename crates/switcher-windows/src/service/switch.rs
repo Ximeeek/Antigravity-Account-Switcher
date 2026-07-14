@@ -201,7 +201,7 @@ impl SwitcherService {
         }
         
         let config = self.config.read().clone();
-        if config.switch_level == 2 {
+        if config.switch_level == 2 || config.switch_level == 3 {
             return self.perform_fast_switch(operation_id, target_profile_id);
         }
         

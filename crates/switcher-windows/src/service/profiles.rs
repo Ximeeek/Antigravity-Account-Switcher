@@ -93,6 +93,7 @@ impl SwitcherService {
                 token_refresh_enabled: false,
                 smart_switch_enabled: config.smart_switch_enabled,
                 switch_level: config.switch_level,
+                patch_cooldown_ms: config.patch_cooldown_ms,
             },
             app_version: version.to_owned(),
             antigravity_version,
@@ -146,6 +147,7 @@ impl SwitcherService {
                 token_refresh_enabled: false,
                 smart_switch_enabled: config.smart_switch_enabled,
                 switch_level: config.switch_level,
+                patch_cooldown_ms: config.patch_cooldown_ms,
             },
             app_version: version.to_owned(),
             antigravity_version,
@@ -281,6 +283,7 @@ impl SwitcherService {
         installation_path: Option<String>,
         smart_switch_enabled: bool,
         switch_level: u8,
+        patch_cooldown_ms: Option<u32>,
     ) -> Result<SettingsView> {
         let mut path = installation_path.map(PathBuf::from);
         if let Some(ref p) = path {
@@ -296,10 +299,17 @@ impl SwitcherService {
                 "Only unprivileged ports are allowed (>= 1024)".to_owned(),
             ));
         }
-        if switch_level != 1 && switch_level != 2 {
+        if switch_level != 1 && switch_level != 2 && switch_level != 3 {
             return Err(SwitcherError::InvalidConfiguration(
                 "Invalid account switching level".to_owned(),
             ));
+        }
+        if let Some(cooldown) = patch_cooldown_ms {
+            if cooldown < 10 || cooldown > 5000 {
+                return Err(SwitcherError::InvalidConfiguration(
+                    "Patch cooldown must be between 10ms and 5000ms".to_owned(),
+                ));
+            }
         }
         {
             let mut config = self.config.write();
@@ -307,6 +317,9 @@ impl SwitcherService {
             config.installation_path = path;
             config.smart_switch_enabled = smart_switch_enabled;
             config.switch_level = switch_level;
+            if let Some(cooldown) = patch_cooldown_ms {
+                config.patch_cooldown_ms = cooldown;
+            }
             save_json(&self.paths.config, &*config)?;
         }
         let state = self.app_state(env!("CARGO_PKG_VERSION"))?;

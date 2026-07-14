@@ -75,6 +75,7 @@ export interface AppSettings {
   antigravity_path: string;
   smart_switch_enabled: boolean;
   switch_level: number;
+  patch_cooldown_ms: number;
 }
 
 

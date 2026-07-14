@@ -12,6 +12,7 @@ pub mod profiles;
 pub mod smart_switch;
 pub mod switch;
 pub mod switch_fast;
+pub mod asar_patch;
 #[cfg(test)]
 pub mod tests;
 
@@ -95,6 +96,14 @@ impl SwitcherService {
                 ),
             );
         }
+        
+        // Attempt to apply the app.asar patch at startup if switch level is Level 2+ (3) and Antigravity is not running
+        if service.config.read().switch_level == 3 {
+            if let Err(e) = service.ensure_asar_patched(None) {
+                service.logger.warn(None, "patch", format!("Failed to apply app.asar patch at startup: {}", e));
+            }
+        }
+
         Ok(service)
     }
 

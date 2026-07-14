@@ -82,6 +82,7 @@ pub struct AppSettingsInput {
     antigravity_path: String,
     smart_switch_enabled: bool,
     switch_level: u8,
+    patch_cooldown_ms: Option<u32>,
 }
 
 #[tauri::command]
@@ -100,6 +101,7 @@ pub fn update_settings(
             path,
             settings.smart_switch_enabled,
             settings.switch_level,
+            settings.patch_cooldown_ms,
         )
         .map_err(|e| e.to_string())
 }
