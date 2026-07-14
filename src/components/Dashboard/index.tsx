@@ -82,26 +82,46 @@ export function Dashboard({
         <EmptyState onAdd={onAdd} />
       ) : (
         <>
-          {bannerCollapsed ? (
-            <div 
-              className="security-status-widget minimized"
-              onClick={handleToggleBanner}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                background: "var(--background-secondary, #161920)",
-                border: "1px solid var(--border-color, #2d3139)",
-                borderLeft: state.hasMasterPassword 
-                  ? "4px solid #23a55a" 
-                  : "4px solid #f0b232",
-                cursor: "pointer",
-                marginBottom: "20px",
-                animation: "slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
-              }}
-            >
+          <div 
+            className={`security-status-widget ${bannerCollapsed ? "minimized" : "expanded"}`}
+            onClick={bannerCollapsed ? handleToggleBanner : undefined}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: bannerCollapsed ? "8px 16px" : "12px 16px",
+              borderRadius: "8px",
+              background: "var(--background-secondary, #161920)",
+              border: "1px solid var(--border-color, #2d3139)",
+              borderLeft: state.hasMasterPassword 
+                ? "4px solid #23a55a" 
+                : "4px solid #f0b232",
+              boxShadow: bannerCollapsed ? "none" : "0 4px 15px rgba(0, 0, 0, 0.2)",
+              marginBottom: "20px",
+              cursor: bannerCollapsed ? "pointer" : "default",
+              position: "relative",
+              height: bannerCollapsed ? "36px" : "62px",
+              transition: "height 0.25s cubic-bezier(0.16, 1, 0.3, 1), padding 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease",
+              overflow: "hidden",
+              boxSizing: "border-box"
+            }}
+          >
+            {/* Minimized Content */}
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              padding: "0 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              opacity: bannerCollapsed ? 1 : 0,
+              pointerEvents: bannerCollapsed ? "auto" : "none",
+              transform: bannerCollapsed ? "translateY(0)" : "translateY(-10px)",
+              transition: "opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+            }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <Icon 
                   name="shield" 
@@ -134,27 +154,24 @@ export function Dashboard({
                 <Icon name="chevron-down" size={14} style={{ color: "var(--text-muted)" }} />
               </div>
             </div>
-          ) : (
-            <div 
-              className="security-status-widget"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                background: "var(--background-secondary, #161920)",
-                border: "1px solid var(--border-color, #2d3139)",
-                borderLeft: state.hasMasterPassword 
-                  ? "4px solid #23a55a" 
-                  : "4px solid #f0b232",
-                boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",
-                marginBottom: "20px",
-                position: "relative",
-                animation: "slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+
+            {/* Expanded Content */}
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              padding: "0 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              opacity: bannerCollapsed ? 0 : 1,
+              pointerEvents: bannerCollapsed ? "none" : "auto",
+              transform: bannerCollapsed ? "translateY(10px)" : "translateY(0)",
+              transition: "opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
                 <div 
                   className={state.hasMasterPassword ? "shield-glow-success" : "shield-glow-warning"}
                   style={{
@@ -171,7 +188,7 @@ export function Dashboard({
                 >
                   <Icon name="shield" size={18} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>
                       {state.hasMasterPassword ? t("security_widget_secure") : t("security_widget_unsecured")}
@@ -189,7 +206,7 @@ export function Dashboard({
                       </span>
                     )}
                   </div>
-                  <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                  <span style={{ fontSize: "11px", color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {state.hasMasterPassword 
                       ? t("security_widget_secure_desc")
                       : t("security_widget_unsecured_desc")}
@@ -197,7 +214,7 @@ export function Dashboard({
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
                 {state.hasMasterPassword ? (
                   <button
                     className="quick-lock-button"
@@ -288,7 +305,7 @@ export function Dashboard({
                 </button>
               </div>
             </div>
-          )}
+          </div>
           <GlobalQuotaSummary profiles={state.profiles} />
 
           {active ? (

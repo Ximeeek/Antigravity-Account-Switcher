@@ -36,6 +36,10 @@ export function Settings({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showWipeModal, setShowWipeModal] = useState(false);
   const [showUninstallModal, setShowUninstallModal] = useState(false);
+  const [feedbackTitle, setFeedbackTitle] = useState("");
+  const [feedbackDesc, setFeedbackDesc] = useState("");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   useEffect(() => setDraft(state.settings), [state.settings]);
 
@@ -167,6 +171,57 @@ export function Settings({
   const saving = workingAction === "settings";
   const copying = workingAction === "diagnostics";
 
+  const handleSendGitHub = async () => {
+    if (!feedbackTitle.trim() || !feedbackDesc.trim()) {
+      setFeedbackError(t("feedback_validation_empty"));
+      return;
+    }
+    setFeedbackError(null);
+    const customRepo = localStorage.getItem("devtools_github_repo") || "Ximeeek/Antigravity-Account-Switcher";
+    const repoUrl = `https://github.com/h/${customRepo}/issues/new`.replace("/h/", "/");
+    const title = encodeURIComponent(feedbackTitle);
+    const body = encodeURIComponent(`## Description\n${feedbackDesc}\n\n---\n*Sent from Antigravity Account Switcher Client*`);
+    const url = `${repoUrl}?title=${title}&body=${body}`;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_browser_url", { url });
+    } catch (err) {
+      console.error("Failed to open browser:", err);
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!feedbackTitle.trim() || !feedbackDesc.trim()) {
+      setFeedbackError(t("feedback_validation_empty"));
+      return;
+    }
+    setFeedbackError(null);
+    setEmailStatus("sending");
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const customFormId = localStorage.getItem("devtools_form_id") || null;
+      const customSubjectId = localStorage.getItem("devtools_subject_id") || null;
+      const customDescId = localStorage.getItem("devtools_desc_id") || null;
+
+      await invoke("send_email_report", {
+        subject: feedbackTitle,
+        message: feedbackDesc,
+        customFormId,
+        customSubjectId,
+        customDescId
+      });
+      setEmailStatus("success");
+      setFeedbackTitle("");
+      setFeedbackDesc("");
+      setTimeout(() => setEmailStatus("idle"), 4000);
+    } catch (err: any) {
+      console.error(err);
+      setEmailStatus("error");
+      setFeedbackError(err.message || String(err));
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (draft.http_port < 1024 || draft.http_port > 65535) {
@@ -175,6 +230,10 @@ export function Settings({
     }
     if (!draft.antigravity_path.trim()) {
       setValidationError(t("validation_path"));
+      return;
+    }
+    if (draft.smart_switch_enabled && state.profiles.length <= 1) {
+      setValidationError(t("validation_smart_switch_profiles"));
       return;
     }
     setValidationError(null);
@@ -254,12 +313,18 @@ export function Settings({
                 <input
                   type="checkbox"
                   checked={draft.smart_switch_enabled}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    if (checked && state.profiles.length <= 1) {
+                      setValidationError(t("validation_smart_switch_profiles"));
+                      return;
+                    }
+                    setValidationError(null);
                     setDraft((current) => ({
                       ...current,
-                      smart_switch_enabled: event.target.checked,
-                    }))
-                  }
+                      smart_switch_enabled: checked,
+                    }));
+                  }}
                   style={{ 
                     marginTop: "3px",
                     width: "16px",
@@ -366,7 +431,7 @@ export function Settings({
 
         <section className="settings-card" aria-labelledby="security-heading">
           <div className="settings-card__header settings-card__header--stackable">
-            <div className="settings-card__icon settings-card__icon--blue" style={{ backgroundColor: "rgba(111, 92, 246, 0.1)", color: "var(--accent-color, #5865f2)" }}>
+            <div className="settings-card__icon" style={{ backgroundColor: "rgba(240, 178, 50, 0.1)", color: "#f0b232", borderColor: "rgba(240, 178, 50, 0.18)" }}>
               <Icon name="lock" />
             </div>
             <div>
@@ -513,6 +578,124 @@ export function Settings({
               >
                 <Icon name="trash" size={16} />
                 <span>{t("maintenance_uninstall_btn")}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="settings-card settings-card--feedback" aria-labelledby="feedback-heading">
+          <div className="settings-card__header settings-card__header--stackable">
+            <div className="settings-card__icon settings-card__icon--blue" style={{ backgroundColor: "rgba(74, 140, 247, 0.1)", color: "#4a8cf7" }}>
+              <Icon name="mail" />
+            </div>
+            <div>
+              <h2 id="feedback-heading">{t("settings_feedback_title")}</h2>
+              <p>{t("settings_feedback_desc")}</p>
+              <p style={{ margin: "2px 0 0 0", fontSize: "10px", color: "var(--accent-blue, #4a8cf7)" }}>{t("feedback_desc_note")}</p>
+            </div>
+          </div>
+          <div className="settings-card__body" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label className="field" htmlFor="bug-title" style={{ width: "100%" }}>
+                <span className="field__label" style={{ marginBottom: "4px", display: "inline-block" }}>{t("feedback_title_label")}</span>
+                <input
+                  id="bug-title"
+                  type="text"
+                  placeholder={t("feedback_title_placeholder")}
+                  value={feedbackTitle}
+                  onChange={(e) => setFeedbackTitle(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: "var(--background-secondary, #161920)",
+                    border: "1px solid var(--border-color, #2d3139)",
+                    color: "var(--text-primary, #fff)",
+                    fontFamily: "inherit",
+                    fontSize: "13px"
+                  }}
+                />
+              </label>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label className="field" htmlFor="bug-desc" style={{ width: "100%" }}>
+                <span className="field__label" style={{ marginBottom: "4px", display: "inline-block" }}>{t("feedback_desc_label")}</span>
+                <textarea
+                  id="bug-desc"
+                  placeholder={t("feedback_desc_placeholder")}
+                  value={feedbackDesc}
+                  onChange={(e) => setFeedbackDesc(e.target.value)}
+                  rows={4}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: "var(--background-secondary, #161920)",
+                    border: "1px solid var(--border-color, #2d3139)",
+                    color: "var(--text-primary, #fff)",
+                    fontFamily: "inherit",
+                    fontSize: "13px",
+                    resize: "vertical"
+                  }}
+                />
+              </label>
+            </div>
+
+            {feedbackError ? (
+              <p className="field-error" style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0", display: "flex", alignItems: "center", gap: "6px" }} role="alert">
+                <Icon name="error" size={14} />
+                <span>{feedbackError}</span>
+              </p>
+            ) : null}
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+              <button
+                type="button"
+                onClick={handleSendGitHub}
+                className="button button--primary"
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "12px",
+                  padding: "8px 12px",
+                  height: "36px",
+                  cursor: "pointer",
+                  boxSizing: "border-box"
+                }}
+              >
+                <span>{t("feedback_btn_github")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                disabled={emailStatus === "sending"}
+                className={`button ${emailStatus === "success" ? "button--success" : "button--secondary"}`}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "12px",
+                  padding: "8px 12px",
+                  height: "36px",
+                  cursor: emailStatus === "sending" ? "default" : "pointer",
+                  boxSizing: "border-box",
+                  backgroundColor: emailStatus === "success" ? "#23a55a" : undefined,
+                  borderColor: emailStatus === "success" ? "#23a55a" : undefined,
+                  color: emailStatus === "success" ? "#fff" : undefined
+                }}
+              >
+                <span>
+                  {emailStatus === "sending"
+                    ? t("feedback_status_sending")
+                    : emailStatus === "success"
+                    ? t("feedback_status_success")
+                    : emailStatus === "error"
+                    ? t("feedback_status_error")
+                    : t("feedback_btn_email")}
+                </span>
               </button>
             </div>
           </div>

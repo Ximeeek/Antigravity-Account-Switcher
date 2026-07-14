@@ -238,4 +238,104 @@ pub fn close_app_lock(
     service.close_app_lock().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn open_browser_url(url: String) -> Result<(), String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Invalid protocol".to_string());
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("rundll32")
+            .arg("url.dll,FileProtocolHandler")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let cmd = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        std::process::Command::new(cmd)
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn send_email_report(
+    subject: String,
+    message: String,
+    custom_form_id: Option<String>,
+    custom_subject_id: Option<String>,
+    custom_desc_id: Option<String>,
+) -> Result<(), String> {
+    use std::sync::{Mutex, OnceLock};
+    use std::time::{Instant, Duration};
+
+    // Helper to get static rate limiter timestamp.
+    // Limits feedback requests to 1 per 60 seconds per running app instance.
+    fn get_last_submission() -> &'static Mutex<Option<Instant>> {
+        static LAST_SUBMISSION: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
+        LAST_SUBMISSION.get_or_init(|| Mutex::new(None))
+    }
+
+    let last_sub_mutex = get_last_submission();
+    {
+        let mut guard = last_sub_mutex.lock().unwrap();
+        if let Some(last_time) = *guard {
+            let elapsed = last_time.elapsed();
+            if elapsed < Duration::from_secs(60) {
+                let remaining = 60 - elapsed.as_secs();
+                return Err(format!("Please wait {} seconds before sending another report.", remaining));
+            }
+        }
+        *guard = Some(Instant::now());
+    }
+
+    let form_id = custom_form_id.unwrap_or_else(|| "1FAIpQLSd3we3q3-D5yAPV6EoPOlW0wq3ELpkt4clDirPdUg4P4TNtgw".to_string());
+    let subject_entry = custom_subject_id.unwrap_or_else(|| "entry.314165948".to_string());
+    let desc_entry = custom_desc_id.unwrap_or_else(|| "entry.1832756536".to_string());
+
+    log::info!("[feedback] Initiating bug report submission to Google Forms. Subject: {}", subject);
+    println!("[feedback] Initiating bug report submission to Google Forms. Subject: {}", subject);
+
+    let client = reqwest::Client::new();
+    let params = [
+        (subject_entry.as_str(), subject.as_str()),
+        (desc_entry.as_str(), message.as_str()),
+    ];
+
+    log::debug!("[feedback] Sending POST request to Google Forms...");
+    println!("[feedback] Sending POST request to Google Forms...");
+
+    let res = client
+        .post(format!("https://docs.google.com/forms/d/e/{}/formResponse", form_id))
+        .form(&params)
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .send()
+        .await
+        .map_err(|e| {
+            log::error!("[feedback] Network error during Google Form submission: {}", e);
+            println!("[feedback] Network error during Google Form submission: {}", e);
+            e.to_string()
+        })?;
+
+    let status = res.status();
+    log::info!("[feedback] Google Forms responded with status: {}", status);
+    println!("[feedback] Google Forms responded with status: {}", status);
+
+    if status.is_success() {
+        log::info!("[feedback] Bug report submitted successfully via Google Forms!");
+        println!("[feedback] Bug report submitted successfully via Google Forms!");
+        Ok(())
+    } else {
+        let body_text = res.text().await.unwrap_or_default();
+        log::error!("[feedback] Google Forms server error: {} - {}", status, body_text);
+        println!("[feedback] Google Forms server error: {} - {}", status, body_text);
+        Err(format!("Server returned error status {}: {}", status, body_text))
+    }
+}
+
 

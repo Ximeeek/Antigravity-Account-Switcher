@@ -135,7 +135,9 @@ pub fn run() {
             commands::lock_profile,
             commands::unlock_profile,
             commands::remove_profile_lock,
-            commands::close_app_lock
+            commands::close_app_lock,
+            commands::open_browser_url,
+            commands::send_email_report
         ])
 
 

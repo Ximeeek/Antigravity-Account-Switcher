@@ -16,6 +16,50 @@ export function DevTools({ onSetNotice }: DevToolsProps) {
   const timerRef = useRef<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
 
+  const [githubRepo, setGithubRepo] = useState("");
+  const [formId, setFormId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [descId, setDescId] = useState("");
+
+  useEffect(() => {
+    setGithubRepo(localStorage.getItem("devtools_github_repo") || "");
+    setFormId(localStorage.getItem("devtools_form_id") || "");
+    setSubjectId(localStorage.getItem("devtools_subject_id") || "");
+    setDescId(localStorage.getItem("devtools_desc_id") || "");
+  }, []);
+
+  const handleSaveFeedback = () => {
+    localStorage.setItem("devtools_github_repo", githubRepo.trim());
+    localStorage.setItem("devtools_form_id", formId.trim());
+    localStorage.setItem("devtools_subject_id", subjectId.trim());
+    localStorage.setItem("devtools_desc_id", descId.trim());
+    onSetNotice({ tone: "success", message: t("devtools_feedback_saved") });
+  };
+
+  const handleResetFeedback = () => {
+    localStorage.removeItem("devtools_github_repo");
+    localStorage.removeItem("devtools_form_id");
+    localStorage.removeItem("devtools_subject_id");
+    localStorage.removeItem("devtools_desc_id");
+    setGithubRepo("");
+    setFormId("");
+    setSubjectId("");
+    setDescId("");
+    onSetNotice({ tone: "success", message: t("devtools_feedback_reset") });
+  };
+
+  const inputStyle = {
+    background: "var(--surface-inset, #1a1d24)",
+    border: "1px solid var(--border, #2d3139)",
+    borderRadius: "6px",
+    padding: "8px 12px",
+    color: "var(--text-primary, #ffffff)",
+    width: "100%",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    marginTop: "4px"
+  };
+
   useEffect(() => {
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -163,6 +207,97 @@ export function DevTools({ onSetNotice }: DevToolsProps) {
                   <span>{t("devtools_btn_trigger")}</span>
                 </button>
               )}
+            </div>
+          </div>
+        </section>
+
+        <section className="settings-card settings-card--feedback-customizer">
+          <div className="settings-card__header">
+            <div className="settings-card__icon" style={{ background: "rgba(255, 92, 92, 0.1)", color: "#ff5c5c" }}>
+              <Icon name="settings" />
+            </div>
+            <div>
+              <h2 id="devtools-feedback-heading">{t("devtools_feedback_title")}</h2>
+              <p>{t("devtools_feedback_desc")}</p>
+            </div>
+          </div>
+
+          <div className="settings-form" style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <label className="field" style={{ width: "100%" }}>
+              <span className="field__label">{t("devtools_github_label")}</span>
+              <input
+                type="text"
+                value={githubRepo}
+                onChange={(e) => setGithubRepo(e.target.value)}
+                placeholder="Ximeeek/Antigravity-Account-Switcher"
+                style={inputStyle}
+              />
+            </label>
+
+            <label className="field" style={{ width: "100%" }}>
+              <span className="field__label">{t("devtools_form_id_label")}</span>
+              <input
+                type="text"
+                value={formId}
+                onChange={(e) => setFormId(e.target.value)}
+                placeholder="1FAIpQLSd3we3q3-D5yAPV6EoPOlW0wq3ELpkt4clDirPdUg4P4TNtgw"
+                style={inputStyle}
+              />
+            </label>
+
+            <div style={{ display: "flex", gap: "12px", width: "100%" }}>
+              <label className="field" style={{ flex: 1 }}>
+                <span className="field__label">{t("devtools_subject_id_label")}</span>
+                <input
+                  type="text"
+                  value={subjectId}
+                  onChange={(e) => setSubjectId(e.target.value)}
+                  placeholder="entry.1894779123"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label className="field" style={{ flex: 1 }}>
+                <span className="field__label">{t("devtools_desc_id_label")}</span>
+                <input
+                  type="text"
+                  value={descId}
+                  onChange={(e) => setDescId(e.target.value)}
+                  placeholder="entry.1589479096"
+                  style={inputStyle}
+                />
+              </label>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+              <button
+                className="button button--primary"
+                onClick={handleSaveFeedback}
+                type="button"
+                style={{ background: "#ff5c5c", borderColor: "#ff5c5c", cursor: "pointer" }}
+              >
+                <Icon name="check" size={16} />
+                <span>{t("devtools_btn_save_feedback")}</span>
+              </button>
+              <button
+                className="button button--secondary"
+                onClick={handleResetFeedback}
+                type="button"
+                style={{ cursor: "pointer" }}
+              >
+                <Icon name="refresh" size={16} />
+                <span>{t("devtools_btn_reset_feedback")}</span>
+              </button>
+            </div>
+
+            <div style={{ marginTop: "16px", padding: "12px", borderRadius: "8px", border: "1px solid var(--border-color, #2d3139)", backgroundColor: "var(--background-secondary, #161920)" }}>
+              <h3 style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 600, color: "var(--text-primary, #fff)", display: "flex", alignItems: "center", gap: "6px" }}>
+                <Icon name="info" size={14} style={{ color: "var(--accent-blue, #4a8cf7)" }} />
+                {t("devtools_feedback_guide_title")}
+              </h3>
+              <p style={{ margin: 0, fontSize: "11px", lineHeight: "1.5", color: "var(--text-secondary, #8e9297)", whiteSpace: "pre-line" }}>
+                {t("devtools_feedback_guide_body")}
+              </p>
             </div>
           </div>
         </section>

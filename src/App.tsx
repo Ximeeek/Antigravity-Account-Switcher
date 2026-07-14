@@ -248,6 +248,27 @@ export default function App() {
     }
   }, [state?.active_profile_id, state?.engine_status]);
 
+  useEffect(() => {
+    if (!state) return;
+    if (state.profiles.length <= 1 && state.settings.smart_switch_enabled && workingAction !== "settings") {
+      const disableSmartSwitch = async () => {
+        try {
+          const next = await updateSettings({
+            ...state.settings,
+            smart_switch_enabled: false,
+          });
+          if (mounted.current) {
+            setState(next);
+            setNotice({ tone: "info", message: t("toast_smart_switch_auto_disabled") });
+          }
+        } catch (err) {
+          console.error("Failed to auto-disable smart switch:", err);
+        }
+      };
+      void disableSmartSwitch();
+    }
+  }, [state?.profiles?.length, state?.settings?.smart_switch_enabled, workingAction]);
+
   const performStateAction = useCallback(
     async (
       actionName: string,
