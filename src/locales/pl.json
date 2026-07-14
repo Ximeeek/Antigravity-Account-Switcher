@@ -262,5 +262,16 @@
   "guide_auth_refresh_title": "Authentication Auto-refresh (Automatyczne odnawianie)",
   "guide_auth_refresh_body": "Status 'Valid (auto-refreshed)' oznacza, że aplikacja w tle dba o ważność Twoich sesji Google. Switcher automatycznie odnawia tokeny uwierzytelniające przed ich wygaśnięciem, korzystając z bezpiecznych mechanizmów lokalnych. Dzięki temu nie musisz przechodzić przez ponowne logowanie w przeglądarce za każdym razem, gdy przełączasz profil.",
   "guide_mini_mode_title": "Mini Mode (Tryb Mini)",
-  "guide_mini_mode_body": "Kompaktowa wersja aplikacji, którą możesz przypiąć na wierzchu ekranu (Always on Top). Zawiera uproszczony interfejs pozwalający na zmianę aktywnego profilu jednym kliknięciem, bez potrzeby otwierania głównego okna programu."
+  "guide_mini_mode_body": "Kompaktowa wersja aplikacji, którą możesz przypiąć na wierzchu ekranu (Always on Top). Zawiera uproszczony interfejs pozwalający na zmianę aktywnego profilu jednym kliknięciem, bez potrzeby otwierania głównego okna programu.",
+  "err_operation_in_progress": "Operacja przełączania jest już w toku.",
+  "err_profile_already_active": "Profil docelowy jest już aktywny.",
+  "err_no_active_profile": "Brak aktywnego profilu; zaimportuj najpierw bieżącą sesję (użyj przycisku 'Zapisz bieżącą sesję').",
+  "err_recovery_required": "Wymagane jest przywrócenie poprzedniej operacji.",
+  "err_confirmation_required": "Antigravity nadal działa i wymaga potwierdzenia zamknięcia.",
+  "err_credential_unavailable": "Nie można odczytać danych uwierzytelniających Antigravity. Upewnij się, że jesteś zalogowany w Antigravity.",
+  "err_missing_active_data": "Brak wymaganych danych aktywnej sesji (prawdopodobnie nie zalogowano się jeszcze w Antigravity): {path}",
+  "err_destination_exists": "Docelowa ścieżka operacji już istnieje: {path}",
+  "err_files_locked": "Pliki Antigravity są nadal zablokowane: {path}",
+  "err_process_shutdown": "Nie udało się zamknąć procesów Antigravity: {error}",
+  "err_cross_volume": "Ścieżki nie znajdują się na tym samym woluminie."
 }

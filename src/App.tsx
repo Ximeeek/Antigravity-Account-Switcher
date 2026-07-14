@@ -52,13 +52,62 @@ import LoadError from "./components/LoadError";
 import Toast, { type Notice } from "./components/Toast";
 
 const errorMessage = (error: unknown): string => {
-  if (error instanceof Error && error.message) return error.message;
-  if (typeof error === "string") return error;
-  if (typeof error === "object" && error !== null && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string") return message;
+  let message = "";
+  if (error instanceof Error && error.message) {
+    message = error.message;
+  } else if (typeof error === "string") {
+    message = error;
+  } else if (typeof error === "object" && error !== null && "message" in error) {
+    const msg = (error as { message?: unknown }).message;
+    if (typeof msg === "string") message = msg;
   }
-  return t("unexpected_error");
+
+  if (!message) return t("unexpected_error");
+
+  // Localize known backend errors
+  if (message.includes("Switching operation is already in progress")) {
+    return t("err_operation_in_progress");
+  }
+  if (message.includes("Target profile is already active")) {
+    return t("err_profile_already_active");
+  }
+  if (message.includes("No active profile; import the current session first")) {
+    return t("err_no_active_profile");
+  }
+  if (message.includes("Recovery of previous operation is required")) {
+    return t("err_recovery_required");
+  }
+  if (message.includes("Antigravity is still running and requires confirmation to close")) {
+    return t("err_confirmation_required");
+  }
+  if (message.includes("Cannot read Antigravity credentials")) {
+    return t("err_credential_unavailable");
+  }
+  if (message.includes("Missing required active session data")) {
+    const match = message.match(/Missing required active session data:\s*(.+)/);
+    const path = match ? match[1] : "";
+    return t("err_missing_active_data", { path });
+  }
+  if (message.includes("Operation destination already exists")) {
+    const match = message.match(/Operation destination already exists:\s*(.+)/);
+    const path = match ? match[1] : "";
+    return t("err_destination_exists", { path });
+  }
+  if (message.includes("Antigravity files are still locked")) {
+    const match = message.match(/Antigravity files are still locked:\s*(.+)/);
+    const path = match ? match[1] : "";
+    return t("err_files_locked", { path });
+  }
+  if (message.includes("Failed to close Antigravity processes")) {
+    const match = message.match(/Failed to close Antigravity processes:\s*(.+)/);
+    const err = match ? match[1] : "";
+    return t("err_process_shutdown", { error: err });
+  }
+  if (message.includes("Paths are not on the same volume")) {
+    return t("err_cross_volume");
+  }
+
+  return message;
 };
 
 

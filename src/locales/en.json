@@ -262,5 +262,16 @@
   "guide_auth_refresh_title": "Authentication Auto-refresh",
   "guide_auth_refresh_body": "The 'Valid (auto-refreshed)' status indicates that the application is managing the validity of your Google sessions in the background. The Switcher automatically renews authentication tokens before they expire using secure local mechanisms. This prevents you from having to re-authenticate via browser every time you switch accounts.",
   "guide_mini_mode_title": "Mini Mode",
-  "guide_mini_mode_body": "A compact version of the application that can be pinned on top of other windows (Always on Top). It provides a simplified interface for instant, one-click profile switching without having to open the full control panel."
+  "guide_mini_mode_body": "A compact version of the application that can be pinned on top of other windows (Always on Top). It provides a simplified interface for instant, one-click profile switching without having to open the full control panel.",
+  "err_operation_in_progress": "Switching operation is already in progress.",
+  "err_profile_already_active": "Target profile is already active.",
+  "err_no_active_profile": "No active profile; please import the current session first (use the 'Save current session' button).",
+  "err_recovery_required": "Recovery of the previous operation is required.",
+  "err_confirmation_required": "Antigravity is still running and requires confirmation to close.",
+  "err_credential_unavailable": "Cannot read Antigravity credentials. Please make sure you are logged in to Antigravity.",
+  "err_missing_active_data": "Missing required active session data (you might not be logged in to Antigravity yet): {path}",
+  "err_destination_exists": "Operation destination already exists: {path}",
+  "err_files_locked": "Antigravity files are still locked: {path}",
+  "err_process_shutdown": "Failed to close Antigravity processes: {error}",
+  "err_cross_volume": "Paths are not on the same volume."
 }
