@@ -561,8 +561,8 @@ impl SwitcherService {
                         .as_ref()
                         .map_or(false, |bytes| check_has_refresh_token(bytes));
 
-                    let mut display_name = metadata.display_name.clone();
-                    let mut account_email = metadata.account_email.clone();
+                    let display_name = metadata.display_name.clone();
+                    let account_email = metadata.account_email.clone();
                     let mut token_expiry = metadata.token_expiry;
 
                     if is_active {
@@ -732,11 +732,12 @@ impl SwitcherService {
 
         if let Ok(dir_entries) = fs::read_dir(&self.paths.profiles) {
             for entry in dir_entries.filter_map(std::result::Result::ok) {
-                let metadata_path = entry.path().join("metadata.json");
-                if !metadata_path.is_file() {
+                let profile_id = Uuid::parse_str(&entry.file_name().to_string_lossy())
+                    .unwrap_or_else(|_| Uuid::nil());
+                if profile_id.is_nil() {
                     continue;
                 }
-                if let Ok(metadata) = load_json::<ProfileMetadata>(&metadata_path) {
+                if let Ok(metadata) = self.load_profile_metadata(profile_id) {
                     let is_active = active_profile_id == Some(metadata.profile_id);
                     let credential_bytes = if is_active {
                         active_credential.clone()

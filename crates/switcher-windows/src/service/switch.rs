@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{SwitcherService, SwitchOutcome, PendingSwitch};
 use switcher_core::{
     Result, SwitcherError, SwitchLock, SwitchStep, LockStatus, SwitchRequestResult,
-    atomic_write, save_json, ProfileMetadata, load_json,
+    save_json,
 };
 
 use super::database::validate_state_database;
@@ -645,11 +645,14 @@ impl SwitcherService {
 
     pub(crate) fn preflight_target_identity(&self, profile_id: Uuid) -> Result<()> {
         let profile = self.paths.profile_dir(profile_id);
-        for name in ["credentials.enc", "metadata.json"] {
-            let path = profile.join(name);
-            if !path.is_file() {
-                return Err(SwitcherError::MissingActiveData(path));
-            }
+        let cred_path = profile.join("credentials.enc");
+        if !cred_path.is_file() {
+            return Err(SwitcherError::MissingActiveData(cred_path));
+        }
+        let metadata_json = profile.join("metadata.json");
+        let metadata_enc = profile.join("metadata.enc");
+        if !metadata_json.is_file() && !metadata_enc.is_file() {
+            return Err(SwitcherError::MissingActiveData(metadata_json));
         }
         Ok(())
     }

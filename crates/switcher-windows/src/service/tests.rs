@@ -176,5 +176,40 @@ mod tests {
         assert_eq!(get_fraction(&quota, "gemini-weekly"), Some(0.12));
         assert_eq!(get_fraction(&quota, "gemini-nonexistent"), None);
     }
+
+    #[test]
+    fn test_preflight_target_identity_supports_json_and_enc() {
+        use super::super::{SwitcherPaths, SwitcherService};
+        use uuid::Uuid;
+
+        let temp = tempfile::tempdir().unwrap();
+        let paths = SwitcherPaths::from_root(temp.path().to_path_buf()).unwrap();
+        paths.ensure().unwrap();
+        let service = SwitcherService::new(paths).unwrap();
+
+        let profile_id = Uuid::new_v4();
+        let profile_dir = service.paths.profile_dir(profile_id);
+        std::fs::create_dir_all(&profile_dir).unwrap();
+
+        // 1. Initially both missing credentials and metadata -> should fail
+        assert!(service.preflight_target_identity(profile_id).is_err());
+
+        // 2. Add credentials.enc only -> should fail
+        std::fs::write(profile_dir.join("credentials.enc"), b"").unwrap();
+        assert!(service.preflight_target_identity(profile_id).is_err());
+
+        // 3. Add metadata.json -> should pass
+        std::fs::write(profile_dir.join("metadata.json"), b"").unwrap();
+        assert!(service.preflight_target_identity(profile_id).is_ok());
+
+        // 4. Remove metadata.json, add metadata.enc -> should pass
+        std::fs::remove_file(profile_dir.join("metadata.json")).unwrap();
+        std::fs::write(profile_dir.join("metadata.enc"), b"").unwrap();
+        assert!(service.preflight_target_identity(profile_id).is_ok());
+
+        // 5. Remove both -> should fail
+        std::fs::remove_file(profile_dir.join("metadata.enc")).unwrap();
+        assert!(service.preflight_target_identity(profile_id).is_err());
+    }
 }
 
