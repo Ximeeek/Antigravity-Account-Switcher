@@ -72,6 +72,10 @@ impl SwitcherService {
             .iter()
             .map(|path| path.to_string_lossy().into_owned())
             .collect();
+        let antigravity_version = config
+            .installation_path
+            .as_ref()
+            .and_then(|path| read_antigravity_version(path));
         Ok(AppStateView {
             engine_status,
             active_profile,
@@ -91,6 +95,7 @@ impl SwitcherService {
                 switch_level: config.switch_level,
             },
             app_version: version.to_owned(),
+            antigravity_version,
         })
     }
 
@@ -120,6 +125,10 @@ impl SwitcherService {
             .iter()
             .map(|path| path.to_string_lossy().into_owned())
             .collect();
+        let antigravity_version = config
+            .installation_path
+            .as_ref()
+            .and_then(|path| read_antigravity_version(path));
         Ok(AppStateView {
             engine_status,
             active_profile,
@@ -139,6 +148,7 @@ impl SwitcherService {
                 switch_level: config.switch_level,
             },
             app_version: version.to_owned(),
+            antigravity_version,
         })
     }
 
@@ -272,9 +282,15 @@ impl SwitcherService {
         smart_switch_enabled: bool,
         switch_level: u8,
     ) -> Result<SettingsView> {
-        let path = installation_path
-            .map(PathBuf::from)
-            .filter(|p| p.join("Antigravity.exe").is_file());
+        let mut path = installation_path.map(PathBuf::from);
+        if let Some(ref p) = path {
+            if p.is_file() || p.extension().is_some() {
+                if let Some(parent) = p.parent() {
+                    path = Some(parent.to_path_buf());
+                }
+            }
+        }
+        let path = path.filter(|p| p.join("Antigravity.exe").is_file());
         if http_port < 1024 {
             return Err(SwitcherError::InvalidConfiguration(
                 "Dozwolone są wyłącznie porty nieuprzywilejowane (>= 1024)".to_owned(),

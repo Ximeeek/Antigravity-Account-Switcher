@@ -295,6 +295,7 @@ pub struct AppStateView {
     pub recovery: Option<RecoveryView>,
     pub settings: SettingsView,
     pub app_version: String,
+    pub antigravity_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

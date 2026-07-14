@@ -174,11 +174,36 @@ pub(crate) fn timestamp_to_datetime(value: i64) -> Option<DateTime<Utc>> {
 
 #[allow(dead_code)]
 pub(crate) fn read_antigravity_version(installation: &Path) -> Option<String> {
+    let exe_path = installation.join("Antigravity.exe");
+    if !exe_path.exists() {
+        return None;
+    }
+
+    // Attempt to read via PowerShell (fast, native on Windows)
+    let output = std::process::Command::new("powershell")
+        .arg("-NoProfile")
+        .arg("-Command")
+        .arg(format!(
+            "(Get-Item '{}').VersionInfo.ProductVersion",
+            exe_path.to_string_lossy().replace('\'', "''")
+        ))
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let version = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        if !version.is_empty() {
+            return Some(version);
+        }
+    }
+
+    // Fallback if PowerShell query fails
     let package = installation.join("resources").join("app.asar");
-    package
-        .metadata()
-        .ok()
-        .map(|_| "wykryta (szczegółowa wersja dostępna po uruchomieniu)".to_owned())
+    if package.exists() {
+        Some("wykryta (wersja nieznana)".to_owned())
+    } else {
+        None
+    }
 }
 
 #[allow(dead_code)]

@@ -401,7 +401,7 @@ export function AboutModal({ open, state, onClose }: AboutModalProps) {
           </div>
 
           <div className="about-info-row">
-            <span className="about-info-label">Antigravity Editor:</span>
+            <span className="about-info-label">Antigravity 2.0:</span>
             <span className="about-info-value">
               <code>{state?.antigravity_version || "—"}</code>
             </span>
