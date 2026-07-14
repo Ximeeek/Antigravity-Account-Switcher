@@ -546,6 +546,15 @@ impl SwitcherService {
     }
 
     pub async fn list_profiles_live(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
+        use std::sync::OnceLock;
+        use std::sync::Mutex as StdMutex;
+        use std::collections::HashSet;
+
+        fn quota_fetching() -> &'static StdMutex<HashSet<String>> {
+            static FETCHING: OnceLock<StdMutex<HashSet<String>>> = OnceLock::new();
+            FETCHING.get_or_init(|| StdMutex::new(HashSet::new()))
+        }
+
         let mut profiles = self.list_profiles(active_profile_id)?;
 
         for profile in &mut profiles {
@@ -558,43 +567,54 @@ impl SwitcherService {
 
                 if let Some(ref bytes) = credential_bytes {
                     if let Some(ref refresh_token) = parse_refresh_token(bytes) {
-                        let use_cached = {
+                        let (has_valid_cache, cached_val) = {
                             let cache = self.quota_cache.lock();
                             let now = std::time::Instant::now();
-                            let cache_duration = if profile.is_active {
-                                std::time::Duration::from_secs(5)
-                            } else {
-                                std::time::Duration::from_secs(60)
-                            };
+                            // Cache quota for 15 minutes (900 seconds)
+                            let cache_duration = std::time::Duration::from_secs(900);
                             if let Some((cached_quota, cached_time)) = cache.get(email) {
-                                if now.duration_since(*cached_time) < cache_duration {
-                                    profile.quota = Some(cached_quota.clone());
-                                    true
-                                } else {
-                                    false
-                                }
+                                let valid = now.duration_since(*cached_time) < cache_duration;
+                                (valid, Some(cached_quota.clone()))
                             } else {
-                                false
+                                (false, None)
                             }
                         };
 
-                        if !use_cached {
-                            match QuotaDecryptor::fetch_live_quota(refresh_token).await {
-                                Ok(live_quota) => {
-                                    let mut cache = self.quota_cache.lock();
-                                    cache.insert(email.clone(), (live_quota.clone(), std::time::Instant::now()));
-                                    profile.quota = Some(live_quota);
+                        if let Some(ref quota) = cached_val {
+                            profile.quota = Some(quota.clone());
+                        }
+
+                        if !has_valid_cache {
+                            let should_fetch = {
+                                let mut fetching = quota_fetching().lock().unwrap();
+                                if fetching.contains(email) {
+                                    false
+                                } else {
+                                    fetching.insert(email.clone());
+                                    true
                                 }
-                                Err(err) => {
-                                    self.logger.warn(
-                                        None,
-                                        "quota",
-                                        format!(
-                                            "Failed to fetch quotas on the fly for {}: {}",
-                                            profile.metadata.display_name, err
-                                        ),
-                                    );
+                            };
+
+                            if should_fetch {
+                                match QuotaDecryptor::fetch_live_quota(refresh_token).await {
+                                    Ok(live_quota) => {
+                                        let mut cache = self.quota_cache.lock();
+                                        cache.insert(email.clone(), (live_quota.clone(), std::time::Instant::now()));
+                                        profile.quota = Some(live_quota);
+                                    }
+                                    Err(err) => {
+                                        self.logger.warn(
+                                            None,
+                                            "quota",
+                                            format!(
+                                                "Failed to fetch quotas on the fly for {}: {}",
+                                                profile.metadata.display_name, err
+                                            ),
+                                        );
+                                    }
                                 }
+                                // Remove from fetching set
+                                quota_fetching().lock().unwrap().remove(email);
                             }
                         }
                     }
