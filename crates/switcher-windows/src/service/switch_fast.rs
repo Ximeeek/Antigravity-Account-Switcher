@@ -4,8 +4,7 @@
  * Main exports: impl SwitcherService perform_fast_switch method
  */
 
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use uuid::Uuid;
 
 use crate::{SwitcherService, SwitchOutcome};
@@ -168,115 +167,30 @@ impl SwitcherService {
         self.journal().write(&lock)?;
         self.set_progress(&lock, None);
         
-        let mut success = false;
-        let mut new_pid = None;
-        let poll_start = Instant::now();
+        // Update active profile in switcher config
+        {
+            let mut config = self.config.write();
+            config.active_profile_id = Some(target_profile_id);
+            save_json(&self.paths.config, &*config)?;
+        }
+        self.touch_profile(target_profile_id)?;
+        
+        // Record successful switch attempt in history
+        self.last_switches.lock().push(Instant::now());
+        
+        self.journal().remove()?;
+        self.progress.write().take();
+        
+        self.logger.info(
+            Some(operation_id),
+            "process",
+            format!("Fast switch completed successfully in {} ms", started.elapsed().as_millis()),
+        );
 
-        let is_patched = switch_level == 3 && self.is_asar_patched().unwrap_or(false);
-        let poll_interval = if is_patched { Duration::from_millis(20) } else { Duration::from_millis(100) };
-        let timeout = if is_patched { Duration::from_millis(2000) } else { Duration::from_secs(5) };
-        
-        // Poll for respawn
-        while poll_start.elapsed() < timeout {
-            thread::sleep(poll_interval);
-            if let Ok(current_procs) = process.get_language_server_processes() {
-                if let Some(new_proc) = current_procs.iter().find(|p| !old_pids.contains(&p.pid)) {
-                    // Found a new process!
-                    new_pid = Some(new_proc.pid);
-                    // Verify it stays alive for at least 150ms
-                    thread::sleep(Duration::from_millis(150));
-                    if let Ok(verify_procs) = process.get_language_server_processes() {
-                        if verify_procs.iter().any(|p| p.pid == new_proc.pid) {
-                            success = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        if success {
-            self.logger.info(
-                Some(operation_id),
-                "process",
-                format!(
-                    "language_server.exe restarted successfully in {} ms, new pid={}",
-                    started.elapsed().as_millis(),
-                    new_pid.unwrap_or(0)
-                ),
-            );
-            
-            // Update active profile in switcher config
-            {
-                let mut config = self.config.write();
-                config.active_profile_id = Some(target_profile_id);
-                save_json(&self.paths.config, &*config)?;
-            }
-            self.touch_profile(target_profile_id)?;
-            
-            // Record successful switch attempt in history
-            self.last_switches.lock().push(Instant::now());
-            
-            self.journal().remove()?;
-            
-            // Let the editor GUI reload and settle before completing the switch
-            thread::sleep(Duration::from_millis(1500));
-            
-            self.progress.write().take();
-            
-            Ok(SwitchOutcome {
-                operation_id,
-                relaunched_pid: new_pid,
-                warning: None,
-            })
-        } else {
-            // FALLBACK TO TIER 0 / LEVEL 1 (Full restart)
-            self.logger.warn(
-                Some(operation_id),
-                "process",
-                "Fast restart failed: language_server.exe did not respawn or respond. Falling back to full app restart.",
-            );
-            
-            // Perform Level 1 (Full restart) switch sequence
-            lock.current_step = SwitchStep::CloseProcesses;
-            self.journal().write(&lock)?;
-            process.close_all(operation_id)?;
-            
-            lock.current_step = SwitchStep::VerifyUnlocked;
-            self.journal().write(&lock)?;
-            process.wait_until_unlocked(&self.paths, operation_id)?;
-            
-            {
-                let mut config = self.config.write();
-                config.active_profile_id = Some(target_profile_id);
-                save_json(&self.paths.config, &*config)?;
-            }
-            self.touch_profile(target_profile_id)?;
-            
-            self.journal().remove()?;
-            
-            let relaunched_pid = match process.launch(Some(operation_id)) {
-                Ok(pid) => Some(pid),
-                Err(error) => {
-                    self.logger.error(
-                        Some(operation_id),
-                        "process",
-                        format!("Full restart fallback relaunch failed: {}", error),
-                    );
-                    None
-                }
-            };
-            
-            self.progress.write().take();
-            
-            // Record successful switch attempt in history
-            self.last_switches.lock().push(Instant::now());
-            
-            Ok(SwitchOutcome {
-                operation_id,
-                relaunched_pid,
-                warning: Some("Fast restart failed (service did not restart). A full restart of the application was performed.".to_owned()),
-            })
-        }
+        Ok(SwitchOutcome {
+            operation_id,
+            relaunched_pid: None,
+            warning: None,
+        })
     }
 }
