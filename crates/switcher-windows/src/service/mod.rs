@@ -122,6 +122,6 @@ impl SwitcherService {
             target_profile_id: lock.to_profile_id,
             warning,
         });
-        std::thread::sleep(std::time::Duration::from_millis(400));
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
