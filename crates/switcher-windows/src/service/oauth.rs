@@ -255,6 +255,15 @@ impl SwitcherService {
         let credential_bytes = serde_json::to_vec(&credential_json)
             .map_err(|e| SwitcherError::Message(e.to_string()))?;
 
+        // Check for duplicate account email
+        let existing = self.list_profiles(None)?;
+        if existing.iter().any(|p| p.metadata.account_email.as_deref().map(|e| e.to_lowercase()) == Some(email.to_lowercase())) {
+            return Err(SwitcherError::Message(format!(
+                "Account {} is already registered. Please delete the existing profile first.",
+                email
+            )));
+        }
+
         let new_profile_id = Uuid::new_v4();
         let profile_dir = self.paths.profile_dir(new_profile_id);
         fs::create_dir_all(&profile_dir)

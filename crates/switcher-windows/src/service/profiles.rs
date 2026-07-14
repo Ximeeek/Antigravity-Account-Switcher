@@ -186,6 +186,16 @@ impl SwitcherService {
         let credential = self.credentials.read_active()?;
         self.preflight_active()?;
 
+        if let Some(ref email) = account_email {
+            let existing = self.list_profiles(None)?;
+            if existing.iter().any(|p| p.metadata.account_email.as_ref().map(|e| e.to_lowercase()) == Some(email.to_lowercase())) {
+                return Err(SwitcherError::Message(format!(
+                    "Account {} is already registered. Please delete the existing profile first.",
+                    email
+                )));
+            }
+        }
+
         let operation_id = Uuid::new_v4();
         self.logger.info(
             Some(operation_id),
