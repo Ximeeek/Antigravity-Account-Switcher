@@ -106,6 +106,15 @@ const errorMessage = (error: unknown): string => {
   if (message.includes("Paths are not on the same volume")) {
     return t("err_cross_volume");
   }
+  if (message.includes("No switch operation to recover")) {
+    return t("err_no_op_to_recover");
+  }
+  if (message.includes("Missing access_token in response")) {
+    return t("err_oauth_token");
+  }
+  if (message.includes("Missing id_token in response")) {
+    return t("err_oauth_id");
+  }
 
   return message;
 };

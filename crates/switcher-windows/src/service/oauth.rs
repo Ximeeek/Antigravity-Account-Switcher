@@ -220,7 +220,7 @@ impl SwitcherService {
             .get("access_token")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                SwitcherError::Message("Brak access_token w odpowiedzi".to_owned())
+                SwitcherError::Message("Missing access_token in response".to_owned())
             })?;
         let refresh_token = token_val.get("refresh_token")
             .and_then(|v| v.as_str())
@@ -231,7 +231,7 @@ impl SwitcherService {
             .get("id_token")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                SwitcherError::Message("Brak id_token w odpowiedzi".to_owned())
+                SwitcherError::Message("Missing id_token in response".to_owned())
             })?;
         let expires_in = token_val
             .get("expires_in")
