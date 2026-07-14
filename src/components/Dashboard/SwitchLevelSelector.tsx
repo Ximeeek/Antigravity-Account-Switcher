@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { t } from "../../i18n";
+import { Modal } from "../Modal";
 
 interface SwitchLevelSelectorProps {
   value: number; // 1, 2, 3, or 4 (1=Lvl1, 4=Lvl1+, 2=Lvl2, 3=Lvl2+)
@@ -94,6 +95,8 @@ export default function SwitchLevelSelector({
     return localStorage.getItem("antigravity_switch_level_changed") === "true";
   });
 
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseInt(e.target.value, 10);
     setLocalSliderValue(newValue); // Instant optimistic update on frontend!
@@ -113,6 +116,10 @@ export default function SwitchLevelSelector({
     if (!hasChanged) {
       setHasChanged(true);
       localStorage.setItem("antigravity_switch_level_changed", "true");
+    }
+
+    if ((newValue === 3 || newValue === 4) && localStorage.getItem("antigravity_level_2_warning_shown") !== "true") {
+      setShowWarningModal(true);
     }
   };
 
@@ -206,6 +213,36 @@ export default function SwitchLevelSelector({
           </div>
         </div>
       )}
+
+      <Modal
+        open={showWarningModal}
+        onClose={() => {
+          localStorage.setItem("antigravity_level_2_warning_shown", "true");
+          setShowWarningModal(false);
+        }}
+        title={t("level_2_warning_title")}
+        footer={
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => {
+              localStorage.setItem("antigravity_level_2_warning_shown", "true");
+              setShowWarningModal(false);
+            }}
+          >
+            {t("level_2_warning_btn")}
+          </button>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="compact-alert compact-alert--warning" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px", margin: 0 }}>
+            <strong>{t("level_2_warning_title")}</strong>
+            <p style={{ margin: 0, fontSize: "13px", lineHeight: "1.5" }}>
+              {t("level_2_warning_desc")}
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
