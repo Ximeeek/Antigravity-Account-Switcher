@@ -273,5 +273,18 @@
   "err_destination_exists": "Operation destination already exists: {path}",
   "err_files_locked": "Antigravity files are still locked: {path}",
   "err_process_shutdown": "Failed to close Antigravity processes: {error}",
-  "err_cross_volume": "Paths are not on the same volume."
+  "err_cross_volume": "Paths are not on the same volume.",
+  "err_webview2_title": "WebView2 Runtime Required",
+  "err_webview2_prompt": "This application requires the Microsoft Edge WebView2 Runtime to function properly.\n\nWould you like to download and install it now?",
+  "err_webview2_dl_title": "Downloading Installer",
+  "err_webview2_dl_msg": "Downloading WebView2 installer in the background. Please wait for the official installer to launch...",
+  "err_webview2_fail_title": "Installation Failed",
+  "err_webview2_fail_msg": "WebView2 installation was cancelled or failed. The application will close.",
+  "err_webview2_missing_title": "Runtime Missing",
+  "err_webview2_missing_msg": "WebView2 Runtime was not detected even after running the installer. The application will close.",
+  "err_single_instance_title": "Application Already Running",
+  "err_single_instance_msg": "Another instance of Antigravity Account Switcher is already running.",
+  "err_no_op_to_recover": "No switch operation to recover.",
+  "err_oauth_token": "Missing access token (access_token) in OAuth response.",
+  "err_oauth_id": "Missing identity token (id_token) in OAuth response."
 }

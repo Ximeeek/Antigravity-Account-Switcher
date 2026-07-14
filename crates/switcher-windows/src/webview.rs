@@ -20,6 +20,20 @@ fn decode_wide(bytes: &[u16]) -> String {
 }
 
 #[cfg(windows)]
+fn get_translation(key: &str, is_polish: bool) -> String {
+    let json_str = if is_polish {
+        include_str!("../../../src/locales/pl.json")
+    } else {
+        include_str!("../../../src/locales/en.json")
+    };
+    let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap_or(serde_json::Value::Null);
+    parsed.get(key)
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| key.to_string())
+}
+
+#[cfg(windows)]
 fn query_registry_value(
     hkey_root: windows_sys::Win32::System::Registry::HKEY,
     subkey: &str,
@@ -127,24 +141,15 @@ pub async fn check_and_install_webview2() -> Result<(), String> {
     };
 
     // MessageBox Title & Text
-    let (title, prompt) = if is_polish {
-        (
-            "Wymagany składnik WebView2",
-            "Ta aplikacja wymaga biblioteki Microsoft Edge WebView2 do prawidłowego działania.\n\nCzy chcesz ją teraz pobrać i zainstalować?",
-        )
-    } else {
-        (
-            "WebView2 Runtime Required",
-            "This application requires the Microsoft Edge WebView2 Runtime to function properly.\n\nWould you like to download and install it now?",
-        )
-    };
+    let title = get_translation("err_webview2_title", is_polish);
+    let prompt = get_translation("err_webview2_prompt", is_polish);
 
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         MessageBoxW, MB_ICONQUESTION, MB_YESNO, IDYES, MB_ICONERROR, MB_OK, MB_ICONINFORMATION
     };
 
-    let title_wide = encode_wide(title);
-    let prompt_wide = encode_wide(prompt);
+    let title_wide = encode_wide(&title);
+    let prompt_wide = encode_wide(&prompt);
 
     let choice = unsafe {
         MessageBoxW(
@@ -160,19 +165,10 @@ pub async fn check_and_install_webview2() -> Result<(), String> {
     }
 
     // Notify user about download starting
-    let (dl_title, dl_msg) = if is_polish {
-        (
-            "Pobieranie instalatora",
-            "Pobieranie instalatora WebView2 w tle. Proszę czekać na uruchomienie oficjalnego instalatora...",
-        )
-    } else {
-        (
-            "Downloading Installer",
-            "Downloading WebView2 installer in the background. Please wait for the official installer to launch...",
-        )
-    };
-    let dl_title_wide = encode_wide(dl_title);
-    let dl_msg_wide = encode_wide(dl_msg);
+    let dl_title = get_translation("err_webview2_dl_title", is_polish);
+    let dl_msg = get_translation("err_webview2_dl_msg", is_polish);
+    let dl_title_wide = encode_wide(&dl_title);
+    let dl_msg_wide = encode_wide(&dl_msg);
 
     unsafe {
         MessageBoxW(
@@ -211,19 +207,10 @@ pub async fn check_and_install_webview2() -> Result<(), String> {
     let _ = std::fs::remove_file(&installer_path);
 
     if !status.success() {
-        let (err_title, err_msg) = if is_polish {
-            (
-                "Instalacja nie powiodła się",
-                "Instalacja WebView2 została anulowana lub nie powiodła się. Aplikacja zostanie zamknięta.",
-            )
-        } else {
-            (
-                "Installation Failed",
-                "WebView2 installation was cancelled or failed. The application will close.",
-            )
-        };
-        let err_title_wide = encode_wide(err_title);
-        let err_msg_wide = encode_wide(err_msg);
+        let err_title = get_translation("err_webview2_fail_title", is_polish);
+        let err_msg = get_translation("err_webview2_fail_msg", is_polish);
+        let err_title_wide = encode_wide(&err_title);
+        let err_msg_wide = encode_wide(&err_msg);
         unsafe {
             MessageBoxW(
                 ptr::null_mut(),
@@ -237,19 +224,10 @@ pub async fn check_and_install_webview2() -> Result<(), String> {
 
     // Verify it is actually installed now
     if !is_webview2_installed() {
-        let (err_title, err_msg) = if is_polish {
-            (
-                "Brak biblioteki",
-                "Po zakończeniu instalacji nadal nie wykryto WebView2 w systemie. Aplikacja zostanie zamknięta.",
-            )
-        } else {
-            (
-                "Runtime Missing",
-                "WebView2 Runtime was not detected even after running the installer. The application will close.",
-            )
-        };
-        let err_title_wide = encode_wide(err_title);
-        let err_msg_wide = encode_wide(err_msg);
+        let err_title = get_translation("err_webview2_missing_title", is_polish);
+        let err_msg = get_translation("err_webview2_missing_msg", is_polish);
+        let err_title_wide = encode_wide(&err_title);
+        let err_msg_wide = encode_wide(&err_msg);
         unsafe {
             MessageBoxW(
                 ptr::null_mut(),
@@ -283,20 +261,11 @@ pub fn check_single_instance() {
             let err = GetLastError();
             if err == ERROR_ALREADY_EXISTS {
                 let is_polish = windows_sys::Win32::Globalization::GetUserDefaultUILanguage() == 0x0415;
-                let (title, msg) = if is_polish {
-                    (
-                        "Aplikacja już działa",
-                        "Inna instancja Antigravity Account Switcher jest już uruchomiona.",
-                    )
-                } else {
-                    (
-                        "Application Already Running",
-                        "Another instance of Antigravity Account Switcher is already running.",
-                    )
-                };
+                let title = get_translation("err_single_instance_title", is_polish);
+                let msg = get_translation("err_single_instance_msg", is_polish);
 
-                let title_wide = encode_wide(title);
-                let msg_wide = encode_wide(msg);
+                let title_wide = encode_wide(&title);
+                let msg_wide = encode_wide(&msg);
 
                 MessageBoxW(
                     ptr::null_mut(),

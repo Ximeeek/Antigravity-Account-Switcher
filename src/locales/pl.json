@@ -273,5 +273,18 @@
   "err_destination_exists": "Docelowa ścieżka operacji już istnieje: {path}",
   "err_files_locked": "Pliki Antigravity są nadal zablokowane: {path}",
   "err_process_shutdown": "Nie udało się zamknąć procesów Antigravity: {error}",
-  "err_cross_volume": "Ścieżki nie znajdują się na tym samym woluminie."
+  "err_cross_volume": "Ścieżki nie znajdują się na tym samym woluminie.",
+  "err_webview2_title": "Wymagany składnik WebView2",
+  "err_webview2_prompt": "Ta aplikacja wymaga biblioteki Microsoft Edge WebView2 do prawidłowego działania.\n\nCzy chcesz ją teraz pobrać i zainstalować?",
+  "err_webview2_dl_title": "Pobieranie instalatora",
+  "err_webview2_dl_msg": "Pobieranie instalatora WebView2 w tle. Proszę czekać na uruchomienie oficjalnego instalatora...",
+  "err_webview2_fail_title": "Instalacja nie powiodła się",
+  "err_webview2_fail_msg": "Instalacja WebView2 została anulowana lub nie powiodła się. Aplikacja zostanie zamknięta.",
+  "err_webview2_missing_title": "Brak biblioteki",
+  "err_webview2_missing_msg": "Po zakończeniu instalacji nadal nie wykryto WebView2 w systemie. Aplikacja zostanie zamknięta.",
+  "err_single_instance_title": "Aplikacja już działa",
+  "err_single_instance_msg": "Inna instancja Antigravity Account Switcher jest już uruchomiona.",
+  "err_no_op_to_recover": "Brak operacji do odzyskania.",
+  "err_oauth_token": "Brak tokenu dostępu (access_token) w odpowiedzi serwera OAuth.",
+  "err_oauth_id": "Brak tokenu tożsamości (id_token) w odpowiedzi serwera OAuth."
 }
