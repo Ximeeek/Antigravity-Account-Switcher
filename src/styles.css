@@ -3962,4 +3962,45 @@ body.mini-window-body {
   transform: scale(1.15) rotate(-8deg);
 }
 
+/* Settings Cards Glow Effects */
+.settings-card__glow-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--radius-card, 16px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.settings-card__glow {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  width: 380px;
+  height: 220px;
+  margin-left: -190px;
+  margin-top: -110px;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  filter: blur(18px);
+}
+
+.settings-card__glow--1 {
+  background: radial-gradient(circle, rgba(125, 231, 246, 0.25) 0%, rgba(111, 92, 246, 0.12) 50%, transparent 80%);
+  opacity: 0.24;
+}
+
+.settings-card__glow--2 {
+  background: radial-gradient(circle, rgba(111, 229, 241, 0.22) 0%, rgba(72, 137, 244, 0.1) 60%, transparent 80%);
+  opacity: 0.22;
+}
+
+.settings-card__glow--3 {
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.25) 0%, rgba(111, 92, 246, 0.12) 50%, transparent 80%);
+  opacity: 0.25;
+}
+
 

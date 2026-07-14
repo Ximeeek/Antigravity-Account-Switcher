@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useRef, type FormEvent } from "react";
 import type { AppSettings, AppState, ProfileSummary } from "../types";
 
 import { Icon } from "./Icons";
@@ -39,6 +39,123 @@ export function Settings({
 
   useEffect(() => setDraft(state.settings), [state.settings]);
 
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    // Find all settings cards
+    const cards = grid.querySelectorAll(".settings-card");
+    const glowContainers: {
+      card: HTMLElement;
+      glows: HTMLElement[];
+      left: number;
+      top: number;
+    }[] = [];
+
+    // Initialize glow containers for each card
+    cards.forEach((cardNode) => {
+      const card = cardNode as HTMLElement;
+
+      // Ensure the card has relative positioning
+      if (getComputedStyle(card).position === "static") {
+        card.style.position = "relative";
+      }
+
+      // Check if it already has the container
+      let container = card.querySelector(".settings-card__glow-container") as HTMLElement;
+      if (!container) {
+        container = document.createElement("div");
+        container.className = "settings-card__glow-container";
+        container.setAttribute("aria-hidden", "true");
+
+        // Create 3 glows
+        for (let i = 1; i <= 3; i++) {
+          const glow = document.createElement("div");
+          glow.className = `settings-card__glow settings-card__glow--${i}`;
+          container.appendChild(glow);
+        }
+
+        // Insert as first child so it sits behind card content
+        card.insertBefore(container, card.firstChild);
+      }
+
+      const glows = Array.from(container.querySelectorAll(".settings-card__glow")) as HTMLElement[];
+      glowContainers.push({
+        card,
+        glows,
+        left: 0,
+        top: 0,
+      });
+    });
+
+    let animationFrameId: number;
+    let lastTime = 0;
+
+    const tick = (timestamp: number) => {
+      if (!lastTime) lastTime = timestamp;
+      const t = timestamp / 1000; // time in seconds
+
+      // Measure grid and cards offsets relative to the grid
+      const gridRect = grid.getBoundingClientRect();
+      if (gridRect.width === 0 || gridRect.height === 0) {
+        animationFrameId = requestAnimationFrame(tick);
+        return;
+      }
+
+      // Update offsets (handles window resizing)
+      glowContainers.forEach((item) => {
+        const cardRect = item.card.getBoundingClientRect();
+        item.left = cardRect.left - gridRect.left;
+        item.top = cardRect.top - gridRect.top;
+      });
+
+      // Calculate global coordinates of the 3 glows in the grid
+      const w = gridRect.width;
+      const h = gridRect.height;
+
+      // Glow 1: organic curved path
+      const g1x = w * (0.5 + 0.44 * Math.sin(t * 0.45));
+      const g1y = h * (0.5 + 0.44 * Math.cos(t * 0.32 + 0.8));
+
+      // Glow 2: figure-8 style drifting path
+      const g2x = w * (0.5 + 0.42 * Math.sin(t * 0.38 + 2.0));
+      const g2y = h * (0.5 + 0.42 * Math.sin(t * 0.76) * Math.cos(t * 0.18 + 0.5));
+
+      // Glow 3: wide loop with speed variations
+      const angle3 = t * 0.28 + Math.sin(t * 0.12) * 0.4;
+      const g3x = w * (0.5 + 0.4 * Math.cos(angle3));
+      const g3y = h * (0.5 + 0.4 * Math.sin(angle3 * 1.4 + 1.2));
+
+      const glowPositions = [
+        { x: g1x, y: g1y },
+        { x: g2x, y: g2y },
+        { x: g3x, y: g3y },
+      ];
+
+      // Update local position of each glow inside each card
+      glowContainers.forEach((item) => {
+        glowPositions.forEach((pos, idx) => {
+          const glowEl = item.glows[idx];
+          if (glowEl) {
+            const localX = pos.x - item.left;
+            const localY = pos.y - item.top;
+            glowEl.style.transform = `translate3d(${localX.toFixed(1)}px, ${localY.toFixed(1)}px, 0)`;
+          }
+        });
+      });
+
+      animationFrameId = requestAnimationFrame(tick);
+    };
+
+    animationFrameId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
   const dirty = useMemo(
     () =>
       draft.http_port !== state.settings.http_port ||
@@ -74,7 +191,7 @@ export function Settings({
         </div>
       </div>
 
-      <div className="settings-grid">
+      <div className="settings-grid" ref={gridRef}>
         <section className="settings-card settings-card--server" aria-labelledby="server-heading">
           <div className="settings-card__header">
             <div className="settings-card__icon settings-card__icon--blue">
