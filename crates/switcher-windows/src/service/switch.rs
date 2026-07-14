@@ -61,16 +61,7 @@ impl SwitcherService {
             return Err(SwitcherError::OperationInProgress);
         }
         let config = self.config.read().clone();
-        let active = match config.active_profile_id {
-            Some(id) => id,
-            None => {
-                if self.credentials.read_active().is_ok() {
-                    return Err(SwitcherError::NoActiveProfile);
-                } else {
-                    Uuid::nil()
-                }
-            }
-        };
+        let active = config.active_profile_id.unwrap_or_else(Uuid::nil);
         if active == target_profile_id {
             return Err(SwitcherError::ProfileAlreadyActive);
         }
@@ -143,7 +134,7 @@ impl SwitcherService {
     pub fn recovery_rollback(&self) -> Result<()> {
         let _guard = self.operation_lock.lock();
         let mut lock = self.journal().read()?.ok_or_else(|| {
-            SwitcherError::InvalidConfiguration("Brak operacji do odzyskania".to_owned())
+            SwitcherError::InvalidConfiguration("No switch operation to recover".to_owned())
         })?;
         let process = self.process_manager()?;
         if process.is_running() {
@@ -174,7 +165,7 @@ impl SwitcherService {
         let (operation_id, target_profile_id) = {
             let _guard = self.operation_lock.lock();
             let mut lock = self.journal().read()?.ok_or_else(|| {
-                SwitcherError::InvalidConfiguration("Brak operacji do odzyskania".to_owned())
+                SwitcherError::InvalidConfiguration("No switch operation to recover".to_owned())
             })?;
             let process = self.process_manager()?;
             if process.is_running() {
@@ -214,13 +205,15 @@ impl SwitcherService {
         }
         
         self.paths.validate_same_volume()?;
-        self.preflight_active_artifacts()?;
-        self.preflight_target_identity(target_profile_id)?;
         let from_profile_id = self
             .config
             .read()
             .active_profile_id
             .unwrap_or_else(Uuid::nil);
+        if !from_profile_id.is_nil() {
+            self.preflight_active_artifacts()?;
+        }
+        self.preflight_target_identity(target_profile_id)?;
         let active_credential = if from_profile_id.is_nil() {
             Vec::new()
         } else {
@@ -272,8 +265,10 @@ impl SwitcherService {
         }
 
         if let Err(error) = (|| -> Result<()> {
-            self.repair_active_state_database_if_needed(operation_id)?;
-            self.preflight_active()?;
+            if !from_profile_id.is_nil() {
+                self.repair_active_state_database_if_needed(operation_id)?;
+                self.preflight_active()?;
+            }
             if !is_level1_plus {
                 self.merge_legacy_profile_artifacts(operation_id)?;
             }
@@ -499,7 +494,10 @@ impl SwitcherService {
 
     pub(crate) fn preflight_active(&self) -> Result<()> {
         self.preflight_active_artifacts()?;
-        validate_state_database(&self.paths.state_db)
+        if self.paths.state_db.exists() {
+            validate_state_database(&self.paths.state_db)?;
+        }
+        Ok(())
     }
 
     pub(crate) fn preflight_active_artifacts(&self) -> Result<()> {

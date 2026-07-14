@@ -76,7 +76,7 @@ impl SwitcherPaths {
                 kind: MoveKind::StateDatabase,
                 active: self.state_db.clone(),
                 profile_relative: PathBuf::from("state.vscdb"),
-                required: true,
+                required: false,
             },
             ArtifactPath {
                 kind: MoveKind::StateDatabaseWal,
