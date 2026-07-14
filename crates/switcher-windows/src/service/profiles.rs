@@ -527,7 +527,18 @@ impl SwitcherService {
             }
         }
 
-        Ok(self.config.read().active_profile_id)
+        let current_active = self.config.read().active_profile_id;
+        if current_active.is_some() {
+            self.logger.warn(
+                None,
+                "profile",
+                "Active credential on disk does not match any profile. Deselecting active profile in config.".to_owned(),
+            );
+            let mut config = self.config.write();
+            config.active_profile_id = None;
+            save_json(&self.paths.config, &*config)?;
+        }
+        Ok(None)
     }
 
     pub(crate) fn list_profiles(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {

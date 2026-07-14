@@ -1,22 +1,8 @@
 use sha2::{Digest, Sha256};
 use switcher_core::{Result, SwitcherError};
 
-fn primary_target() -> &'static str {
-    if cfg!(debug_assertions) {
-        "gemini:antigravity_dev"
-    } else {
-        "gemini:antigravity"
-    }
-}
-
-fn display_target() -> &'static str {
-    if cfg!(debug_assertions) {
-        "LegacyGeneric:target=gemini:antigravity_dev"
-    } else {
-        "LegacyGeneric:target=gemini:antigravity"
-    }
-}
-
+const PRIMARY_TARGET: &str = "gemini:antigravity";
+const DISPLAY_TARGET: &str = "LegacyGeneric:target=gemini:antigravity";
 const DPAPI_DESCRIPTION: &str = "Antigravity Account Switcher profile credential";
 
 #[derive(Debug, Clone)]
@@ -29,7 +15,7 @@ impl CredentialStore {
     pub fn read_active(&self) -> Result<Vec<u8>> {
         #[cfg(windows)]
         {
-            read_target(primary_target()).or_else(|_| read_target(display_target()))
+            read_target(PRIMARY_TARGET).or_else(|_| read_target(DISPLAY_TARGET))
         }
         #[cfg(not(windows))]
         {
@@ -40,12 +26,12 @@ impl CredentialStore {
     pub fn write_active(&self, bytes: &[u8]) -> Result<()> {
         #[cfg(windows)]
         {
-            let target = if read_target(primary_target()).is_ok() {
-                primary_target()
-            } else if read_target(display_target()).is_ok() {
-                display_target()
+            let target = if read_target(PRIMARY_TARGET).is_ok() {
+                PRIMARY_TARGET
+            } else if read_target(DISPLAY_TARGET).is_ok() {
+                DISPLAY_TARGET
             } else {
-                primary_target()
+                PRIMARY_TARGET
             };
             write_target(target, bytes)
         }
