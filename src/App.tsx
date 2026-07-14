@@ -275,11 +275,6 @@ export default function App() {
   );
 
   const handleActivate = async (profile: ProfileSummary, password?: string) => {
-    if (profile.is_locked && !profile.is_unlocked && !password) {
-      setUnlockTarget(profile);
-      setUnlockMode("activate");
-      return;
-    }
     setWorkingAction("request-switch");
     try {
       const requested = await requestSwitch(profile.profile_id, password);
@@ -571,7 +566,7 @@ export default function App() {
   const activeProfile = state.profiles.find(
     (p) => p.profile_id === state.active_profile_id
   );
-  const isAppLocked = activeProfile && activeProfile.is_locked && !activeProfile.is_unlocked;
+  const isAppLocked = state.isAppLocked;
 
   return (
     <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -632,7 +627,7 @@ export default function App() {
                   {t("app_locked_title")}
                 </h2>
                 <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: "1.4" }}>
-                  {t("app_locked_desc", { name: activeProfile.display_name })}
+                  {t("app_locked_desc")}
                 </p>
 
               </div>
@@ -647,8 +642,9 @@ export default function App() {
                 if (errorEl) errorEl.style.display = "none";
                 setWorkingAction("unlock-active");
                 try {
-                  const updated = await unlockProfile(activeProfile.profile_id, pwdInput.value);
+                  const updated = await unlockProfile("", pwdInput.value);
                   setState(updated);
+
                 } catch (err: any) {
                   if (errorEl && errorSpan) {
                     errorSpan.textContent = err.message || String(err);
@@ -734,15 +730,6 @@ export default function App() {
               onToggleSmartSwitch={handleToggleSmartSwitch}
               onSwitchLevelChange={handleSwitchLevelChange}
               onOpenGuide={() => handleOpenAbout("guide")}
-              onLock={setLockTarget}
-              onUnlock={(profile) => {
-                setUnlockTarget(profile);
-                setUnlockMode("unlock");
-              }}
-              onRemoveLock={(profile) => {
-                setUnlockTarget(profile);
-                setUnlockMode("remove_lock");
-              }}
             />
 
           </div>
@@ -756,12 +743,12 @@ export default function App() {
               onUninstallApp={handleUninstallApp}
               state={state}
               workingAction={workingAction}
-              onLockProfile={setLockTarget}
-              onUnlockProfile={(profile) => {
+              onLockProfile={(profile: ProfileSummary) => setLockTarget(profile)}
+              onUnlockProfile={(profile: ProfileSummary) => {
                 setUnlockTarget(profile);
                 setUnlockMode("unlock");
               }}
-              onRemoveProfileLock={(profile) => {
+              onRemoveProfileLock={(profile: ProfileSummary) => {
                 setUnlockTarget(profile);
                 setUnlockMode("remove_lock");
               }}

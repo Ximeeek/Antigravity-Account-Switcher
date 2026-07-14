@@ -134,8 +134,10 @@ pub fn run() {
             commands::force_smart_switch,
             commands::lock_profile,
             commands::unlock_profile,
-            commands::remove_profile_lock
+            commands::remove_profile_lock,
+            commands::close_app_lock
         ])
+
 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

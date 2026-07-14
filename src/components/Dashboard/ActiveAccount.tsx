@@ -249,27 +249,6 @@ export default function ActiveAccount({
             <div className="profile-identity__copy">
               <h1 id="active-account-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {profile.display_name}
-                {profile.is_locked ? (
-                  <button
-                    type="button"
-                    onClick={() => onRemoveLock?.(profile)}
-                    title={t("card_unlock_remove_title")}
-                    className="icon-button"
-                    style={{ color: "var(--warning)", background: "none", border: "none", cursor: "pointer", padding: "4px", display: "inline-flex", alignItems: "center" }}
-                  >
-                    <Icon name="lock" size={18} />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onLock?.(profile)}
-                    title={t("card_lock_title")}
-                    className="icon-button"
-                    style={{ opacity: 0.4, background: "none", border: "none", cursor: "pointer", padding: "4px", display: "inline-flex", alignItems: "center" }}
-                  >
-                    <Icon name="unlock" size={18} />
-                  </button>
-                )}
               </h1>
 
               {profile.account_email ? (

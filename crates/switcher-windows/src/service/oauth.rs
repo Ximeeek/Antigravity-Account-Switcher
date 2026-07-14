@@ -269,9 +269,6 @@ impl SwitcherService {
         fs::create_dir_all(&profile_dir)
             .map_err(|source| SwitcherError::io(&profile_dir, source))?;
 
-        let protected = self.credentials.protect(&credential_bytes)?;
-        atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
-
         let metadata = ProfileMetadata {
             profile_id: new_profile_id,
             display_name: display_name.trim().to_owned(),
@@ -280,12 +277,10 @@ impl SwitcherService {
             last_activated_at: now,
             token_expiry: Some(token_expiry),
             snapshot_initialized: true,
-            is_locked: false,
-            salt: None,
-            encrypted_data: None,
         };
 
-        save_json(&profile_dir.join("metadata.json"), &metadata)?;
+        self.save_profile_metadata(new_profile_id, &metadata)?;
+        self.save_profile_credentials(new_profile_id, &credential_bytes)?;
 
         self.logger.info(
             Some(operation_id),
@@ -337,7 +332,6 @@ impl SwitcherService {
             is_active: auto_activated,
             metadata,
             has_refresh_token: true,
-            is_unlocked: true,
             quota,
         })
 

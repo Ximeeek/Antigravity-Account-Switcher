@@ -24,9 +24,6 @@ interface DashboardProps {
   onToggleSmartSwitch: () => void;
   onSwitchLevelChange: (level: number) => void;
   onOpenGuide?: () => void;
-  onLock?: (profile: ProfileSummary) => void;
-  onUnlock?: (profile: ProfileSummary) => void;
-  onRemoveLock?: (profile: ProfileSummary) => void;
 }
 
 export function Dashboard({
@@ -38,9 +35,6 @@ export function Dashboard({
   onToggleSmartSwitch,
   onSwitchLevelChange,
   onOpenGuide,
-  onLock,
-  onUnlock,
-  onRemoveLock,
 }: DashboardProps) {
 
   const disclaimer = getDisclaimerText();
@@ -82,9 +76,6 @@ export function Dashboard({
               onSwitchLevelChange={onSwitchLevelChange}
               busy={busy}
               onOpenGuide={onOpenGuide}
-              onLock={onLock}
-              onUnlock={onUnlock}
-              onRemoveLock={onRemoveLock}
             />
 
           ) : (
@@ -133,9 +124,6 @@ export function Dashboard({
                   key={profile.profile_id}
                   onActivate={onActivate}
                   onDelete={onDelete}
-                  onLock={onLock}
-                  onUnlock={onUnlock}
-                  onRemoveLock={onRemoveLock}
                   profile={profile}
                 />
 

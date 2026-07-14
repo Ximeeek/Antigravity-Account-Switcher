@@ -201,6 +201,9 @@ export const normalizeAppState = (value: unknown): AppState => {
     editor_running: asBoolean(
       pick(source, "editor_running", "editorRunning", "antigravity_running", "antigravityRunning"),
     ),
+    isAppLocked: asBoolean(pick(source, "is_app_locked", "isAppLocked")),
+    hasMasterPassword: asBoolean(pick(source, "has_master_password", "hasMasterPassword")),
+
     operation: normalizeOperation(
       pick(source, "operation", "switch_operation", "switchOperation", "pending_switch", "pendingSwitch"),
     ),

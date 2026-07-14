@@ -210,36 +210,32 @@ pub async fn force_smart_switch(
 #[tauri::command]
 pub fn lock_profile(
     service: State<'_, Arc<SwitcherService>>,
-    profile_id: String,
     password: String,
-) -> Result<ProfileView, String> {
-    let uuid = Uuid::parse_str(&profile_id).map_err(|e| e.to_string())?;
-    service
-        .lock_profile(uuid, &password)
-        .map_err(|e| e.to_string())
+) -> Result<(), String> {
+    service.lock_app(&password).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn unlock_profile(
     service: State<'_, Arc<SwitcherService>>,
-    profile_id: String,
     password: String,
-) -> Result<ProfileView, String> {
-    let uuid = Uuid::parse_str(&profile_id).map_err(|e| e.to_string())?;
-    service
-        .unlock_profile(uuid, &password)
-        .map_err(|e| e.to_string())
+) -> Result<(), String> {
+    service.unlock_app(&password).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn remove_profile_lock(
     service: State<'_, Arc<SwitcherService>>,
-    profile_id: String,
     password: String,
-) -> Result<ProfileView, String> {
-    let uuid = Uuid::parse_str(&profile_id).map_err(|e| e.to_string())?;
-    service
-        .remove_profile_lock(uuid, &password)
-        .map_err(|e| e.to_string())
+) -> Result<(), String> {
+    service.remove_app_lock(&password).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn close_app_lock(
+    service: State<'_, Arc<SwitcherService>>,
+) -> Result<(), String> {
+    service.close_app_lock().map_err(|e| e.to_string())
+}
+
 

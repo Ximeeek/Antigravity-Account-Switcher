@@ -18,6 +18,8 @@ reqwest = { workspace = true }
 base64 = { workspace = true }
 tokio = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled"] }
+hex = "0.4"
+
 
 
 

@@ -66,14 +66,14 @@ impl SwitcherService {
         if active == target_profile_id {
             return Err(SwitcherError::ProfileAlreadyActive);
         }
-        let metadata = self.require_profile(target_profile_id)?;
-        if metadata.is_locked {
-            let has_key = password.is_some() || self.decrypted_profiles.read().contains_key(&target_profile_id);
-            if !has_key {
-                return Err(SwitcherError::Message("Profile is locked and requires a password".to_owned()));
-            }
+        let has_master_password = self.paths.root.join("master_lock.json").is_file();
+        let is_app_locked = has_master_password && self.master_key.read().is_none();
+        if is_app_locked {
+            return Err(SwitcherError::Message("Application is locked. Unlock to perform switch.".to_owned()));
         }
+        let _metadata = self.load_profile_metadata(target_profile_id)?;
         self.preflight_target_identity(target_profile_id)?;
+
         
         // Cooldown check
         self.check_cooldown()?;
@@ -406,29 +406,8 @@ impl SwitcherService {
         fs::create_dir_all(&profile_dir)
             .map_err(|source| SwitcherError::io(&profile_dir, source))?;
 
-        let path = profile_dir.join("metadata.json");
-        let is_locked = if path.is_file() {
-            if let Ok(metadata) = load_json::<ProfileMetadata>(&path) {
-                metadata.is_locked
-            } else {
-                false
-            }
-        } else {
-            false
-        };
+        self.save_profile_credentials(lock.from_profile_id, active_credential)?;
 
-        if is_locked {
-            let key = self.decrypted_profiles.read().get(&lock.from_profile_id).map(|p| p.key);
-
-            if let Some(derived_key) = key {
-                let encrypted = switcher_core::crypto::encrypt_with_key(active_credential, &derived_key)?;
-                atomic_write(&profile_dir.join("credentials.enc"), &encrypted)?;
-            } else {
-                return Err(SwitcherError::Message("Cannot backup active profile: key not found in cache".to_owned()));
-            }
-        } else {
-            atomic_write(&profile_dir.join("credentials.enc"), &protected.0)?;
-        }
         lock.credential_backup_written = true;
         let manifest = self.capture_active_manifest(active_credential)?;
         save_json(&profile_dir.join("manifest.json"), &manifest)?;

@@ -9,9 +9,6 @@ interface AccountCardProps {
   busy?: boolean;
   onActivate: (profile: ProfileSummary) => void;
   onDelete: (profile: ProfileSummary) => void;
-  onLock?: (profile: ProfileSummary) => void;
-  onUnlock?: (profile: ProfileSummary) => void;
-  onRemoveLock?: (profile: ProfileSummary) => void;
 }
 
 
@@ -64,9 +61,6 @@ export function AccountCard({
   busy = false,
   onActivate,
   onDelete,
-  onLock,
-  onUnlock,
-  onRemoveLock,
 }: AccountCardProps) {
   const token = getTokenPresentation(profile);
 
@@ -80,14 +74,6 @@ export function AccountCard({
           <div className="profile-identity__copy">
             <h3 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               {profile.display_name}
-              {profile.is_locked && (
-                <Icon 
-                  name={profile.is_unlocked ? "unlock" : "lock"} 
-                  size={15} 
-                  style={{ color: profile.is_unlocked ? "var(--success)" : "var(--warning)" }} 
-                  title={profile.is_unlocked ? t("card_unlocked_hint") : t("card_locked_hint")}
-                />
-              )}
             </h3>
             {profile.account_email ? (
               <p className="profile-email" title={profile.account_email}>
@@ -99,42 +85,6 @@ export function AccountCard({
           </div>
         </div>
         <div style={{ display: "flex", gap: "6px" }}>
-          {profile.is_locked ? (
-            profile.is_unlocked ? (
-              <button
-                className="icon-button"
-                disabled={busy}
-                onClick={() => onRemoveLock?.(profile)}
-                title={t("card_unlock_remove_title")}
-                type="button"
-                style={{ color: "var(--warning)" }}
-              >
-                <Icon name="unlock" size={17} />
-              </button>
-            ) : (
-              <button
-                className="icon-button"
-                disabled={busy}
-                onClick={() => onUnlock?.(profile)}
-                title={t("card_unlock_title")}
-                type="button"
-                style={{ color: "var(--primary)" }}
-              >
-                <Icon name="lock" size={17} />
-              </button>
-            )
-          ) : (
-            <button
-              className="icon-button"
-              disabled={busy}
-              onClick={() => onLock?.(profile)}
-              title={t("card_lock_title")}
-              type="button"
-              style={{ opacity: 0.6 }}
-            >
-              <Icon name="unlock" size={17} />
-            </button>
-          )}
           <button
             aria-label={t("card_delete_aria", { name: profile.display_name })}
             className="icon-button icon-button--danger"
@@ -166,11 +116,7 @@ export function AccountCard({
         type="button"
       >
         {busy ? <Icon name="loader" size={16} /> : null}
-        <span>
-          {profile.is_locked && !profile.is_unlocked 
-            ? t("card_unlock_activate") 
-            : t("card_activate")}
-        </span>
+        <span>{t("card_activate")}</span>
       </button>
     </article>
   );

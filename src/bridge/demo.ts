@@ -62,7 +62,10 @@ export const makeDemoState = (): AppState => ({
   app_version: "1.0.0-demo",
   antigravity_version: "1.4.2-demo",
   last_error: null,
+  isAppLocked: false,
+  hasMasterPassword: false,
 });
+
 
 export let demoState = makeDemoState();
 let demoOperationStartedAt = 0;

@@ -141,13 +141,17 @@ export const uninstallApp = (): Promise<void> =>
   call<void>("uninstall_app");
 
 export const lockProfile = (profileId: string, password: string): Promise<AppState> =>
-  commandThenState("lock_profile", { profileId, password });
+  commandThenState("lock_profile", { password });
 
 export const unlockProfile = (profileId: string, password: string): Promise<AppState> =>
-  commandThenState("unlock_profile", { profileId, password });
+  commandThenState("unlock_profile", { password });
 
 export const removeProfileLock = (profileId: string, password: string): Promise<AppState> =>
-  commandThenState("remove_profile_lock", { profileId, password });
+  commandThenState("remove_profile_lock", { password });
+
+export const closeAppLock = (): Promise<AppState> =>
+  commandThenState("close_app_lock");
+
 
 
 export const setDemoScenario = (scenario: DemoScenario): AppState => {

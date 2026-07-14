@@ -258,79 +258,72 @@ export function Settings({
             </div>
           </div>
           <div className="settings-card__body" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
-            {state.profiles.map((profile) => (
-              <div 
-                key={profile.profile_id} 
-                style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "space-between", 
-                  padding: "10px 12px", 
-                  borderRadius: "8px", 
-                  border: "1px solid var(--border-color, #2d3139)", 
-                  backgroundColor: "var(--background-secondary, #161920)",
-                  fontSize: "14px"
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                  <strong style={{ color: "var(--text-primary, #fff)" }}>{profile.display_name}</strong>
-                  <span style={{ fontSize: "11px", color: "var(--text-secondary, #8e9297)" }}>
-                    {profile.account_email || t("email_hidden")}
-                  </span>
-                </div>
-                
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  {profile.is_locked ? (
-                    profile.is_unlocked ? (
-                      <>
-                        <span style={{ fontSize: "11px", color: "var(--success, #23a55a)", backgroundColor: "rgba(35, 165, 90, 0.1)", padding: "2px 6px", borderRadius: "4px" }}>
-                          {t("status_unlocked")}
-                        </span>
-                        <button
-                          className="button button--secondary button--small"
-                          onClick={() => onRemoveProfileLock?.(profile)}
-                          type="button"
-                          style={{ padding: "4px 8px", fontSize: "12px" }}
-                        >
-                          <Icon name="unlock" size={14} style={{ marginRight: "4px" }} />
-                          <span>{t("settings_btn_unlock_remove")}</span>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: "11px", color: "var(--warning, #f0b232)", backgroundColor: "rgba(240, 178, 50, 0.1)", padding: "2px 6px", borderRadius: "4px" }}>
-                          {t("status_locked")}
-                        </span>
-                        <button
-                          className="button button--primary button--small"
-                          onClick={() => onUnlockProfile?.(profile)}
-                          type="button"
-                          style={{ padding: "4px 8px", fontSize: "12px" }}
-                        >
-                          <Icon name="lock" size={14} style={{ marginRight: "4px" }} />
-                          <span>{t("settings_btn_unlock")}</span>
-                        </button>
-                      </>
-                    )
-                  ) : (
-                    <>
-                      <span style={{ fontSize: "11px", color: "var(--text-secondary, #8e9297)", backgroundColor: "rgba(255, 255, 255, 0.05)", padding: "2px 6px", borderRadius: "4px" }}>
-                        {t("status_no_lock")}
-                      </span>
-                      <button
-                        className="button button--secondary button--small"
-                        onClick={() => onLockProfile?.(profile)}
-                        type="button"
-                        style={{ padding: "4px 8px", fontSize: "12px" }}
-                      >
-                        <Icon name="lock" size={14} style={{ marginRight: "4px" }} />
-                        <span>{t("settings_btn_lock")}</span>
-                      </button>
-                    </>
-                  )}
-                </div>
+            <div 
+              style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "space-between", 
+                padding: "12px", 
+                borderRadius: "8px", 
+                border: "1px solid var(--border-color, #2d3139)", 
+                backgroundColor: "var(--background-secondary, #161920)",
+                fontSize: "14px"
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                <strong style={{ color: "var(--text-primary, #fff)" }}>
+                  {state.hasMasterPassword ? t("settings_security_status_on") : t("settings_security_status_off")}
+                </strong>
+                <span style={{ fontSize: "11px", color: "var(--text-secondary, #8e9297)" }}>
+                  {state.hasMasterPassword 
+                    ? t("settings_security_hint_on") 
+                    : t("settings_security_hint_off")}
+                </span>
               </div>
-            ))}
+              
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {state.hasMasterPassword ? (
+                  <>
+                    <button
+                      className="button button--secondary button--small"
+                      onClick={() => onRemoveProfileLock?.({} as any)}
+                      type="button"
+                      style={{ padding: "4px 8px", fontSize: "12px" }}
+                    >
+                      <Icon name="unlock" size={14} style={{ marginRight: "4px" }} />
+                      <span>{t("settings_security_btn_disable")}</span>
+                    </button>
+                    <button
+                      className="button button--secondary button--small"
+                      onClick={async () => {
+                        try {
+                          const { invoke } = await import("@tauri-apps/api/core");
+                          await invoke("close_app_lock");
+                          window.location.reload();
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      type="button"
+                      style={{ padding: "4px 8px", fontSize: "12px" }}
+                    >
+                      <Icon name="lock" size={14} style={{ marginRight: "4px" }} />
+                      <span>{t("settings_security_btn_lock_now")}</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="button button--primary button--small"
+                    onClick={() => onLockProfile?.({} as any)}
+                    type="button"
+                    style={{ padding: "4px 8px", fontSize: "12px" }}
+                  >
+                    <Icon name="lock" size={14} style={{ marginRight: "4px" }} />
+                    <span>{t("settings_security_btn_enable")}</span>
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </section>
 

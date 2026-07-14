@@ -3675,6 +3675,7 @@ version = "0.1.1-nightly.20260714"
 dependencies = [
  "base64 0.22.1",
  "chrono",
+ "hex",
  "parking_lot",
  "reqwest 0.12.28",
  "rusqlite",

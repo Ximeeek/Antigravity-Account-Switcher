@@ -16,13 +16,8 @@ pub struct ProfileMetadata {
     pub token_expiry: Option<DateTime<Utc>>,
     #[serde(default = "existing_profile_has_snapshot")]
     pub snapshot_initialized: bool,
-    #[serde(default)]
-    pub is_locked: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub salt: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub encrypted_data: Option<String>,
 }
+
 
 
 fn existing_profile_has_snapshot() -> bool {
@@ -105,10 +100,10 @@ pub struct ProfileView {
     pub token_status: TokenStatus,
     pub is_active: bool,
     pub has_refresh_token: bool,
-    pub is_unlocked: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quota: Option<ProfileQuotaView>,
 }
+
 
 
 
@@ -320,7 +315,10 @@ pub struct AppStateView {
     pub settings: SettingsView,
     pub app_version: String,
     pub antigravity_version: Option<String>,
+    pub is_app_locked: bool,
+    pub has_master_password: bool,
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -356,3 +354,10 @@ mod tests {
         assert!(metadata.snapshot_initialized);
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MasterLockConfig {
+    pub salt: String, // hex encoded salt
+    pub test_encryption: String, // hex encoded ciphertext of "antigravity"
+}
+

@@ -43,18 +43,8 @@ pub struct SwitchOutcome {
     pub warning: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DecryptedProfile {
-    pub display_name: String,
-    pub account_email: Option<String>,
-}
 
-#[derive(Debug)]
-pub(crate) struct DecryptedProfileInternal {
-    pub display_name: String,
-    pub account_email: Option<String>,
-    pub key: [u8; 32],
-}
+
 
 
 #[derive(Debug)]
@@ -68,7 +58,7 @@ pub struct SwitcherService {
     pub(crate) operation_lock: Mutex<()>,
     pub(crate) active_oauth_cancellation: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
     pub(crate) last_switches: Mutex<Vec<std::time::Instant>>,
-    pub(crate) decrypted_profiles: RwLock<HashMap<Uuid, DecryptedProfileInternal>>,
+    pub(crate) master_key: RwLock<Option<[u8; 32]>>,
 }
 
 
@@ -98,9 +88,10 @@ impl SwitcherService {
             operation_lock: Mutex::new(()),
             active_oauth_cancellation: Mutex::new(None),
             last_switches: Mutex::new(Vec::new()),
-            decrypted_profiles: RwLock::new(HashMap::new()),
+            master_key: RwLock::new(None),
             paths,
         });
+
 
         service.logger.info(None, "app", "Application initialized");
         service.log_artifact_inventory(None, "startup-active", None);

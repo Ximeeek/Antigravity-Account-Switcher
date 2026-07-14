@@ -45,10 +45,9 @@ export interface ProfileSummary {
   token_expiry?: string | null;
   token_status: TokenStatus;
   has_refresh_token?: boolean;
-  is_locked?: boolean;
-  is_unlocked?: boolean;
   quota?: ProfileQuotaSummary | null;
 }
+
 
 
 export interface SwitchOperation {
@@ -91,11 +90,14 @@ export interface AppState {
   operation: SwitchOperation | null;
   recovery: RecoveryState | null;
   settings: AppSettings;
+  isAppLocked: boolean;
+  hasMasterPassword: boolean;
 
   app_version?: string | null;
   antigravity_version?: string | null;
   last_error?: string | null;
 }
+
 
 export interface AddProfileInput {
   display_name: string;
