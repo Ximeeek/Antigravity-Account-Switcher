@@ -129,4 +129,69 @@ impl SwitcherService {
 
         Ok(())
     }
+
+    #[cfg(debug_assertions)]
+    pub async fn force_smart_switch_bypass_quota(&self) -> Result<()> {
+        let active_profile_id = match self.config.read().active_profile_id {
+            Some(id) => id,
+            None => return Err(switcher_core::SwitcherError::NoActiveProfile),
+        };
+
+        let profiles = self.list_profiles_live(Some(active_profile_id)).await?;
+        
+        let mut candidate: Option<(Uuid, f64, f64)> = None;
+        let mut fallback_candidate: Option<Uuid> = None;
+
+        for profile in &profiles {
+            if profile.is_active || profile.token_status != TokenStatus::Valid {
+                continue;
+            }
+            if fallback_candidate.is_none() {
+                fallback_candidate = Some(profile.metadata.profile_id);
+            }
+            if let Some(ref q) = profile.quota {
+                let cand_5h = get_bucket_remaining_fraction(q, "gemini-5h").unwrap_or(0.0);
+                let cand_weekly = get_bucket_remaining_fraction(q, "gemini-weekly").unwrap_or(0.0);
+                if cand_5h >= 0.15 && cand_weekly >= 0.08 {
+                    if let Some((_, best_5h, _)) = candidate {
+                        if cand_5h > best_5h {
+                            candidate = Some((profile.metadata.profile_id, cand_5h, cand_weekly));
+                        }
+                    } else {
+                        candidate = Some((profile.metadata.profile_id, cand_5h, cand_weekly));
+                    }
+                }
+            }
+        }
+
+        let target_id = if let Some((id, _, _)) = candidate {
+            id
+        } else if let Some(id) = fallback_candidate {
+            id
+        } else {
+            return Err(switcher_core::SwitcherError::Message("No alternative valid profiles found to switch to".to_string()));
+        };
+
+        self.logger.warn(
+            None,
+            "smart_switch",
+            format!("Forcing smart switch to profile {} (bypassing quota checks)", target_id),
+        );
+
+        match self.request_switch(target_id) {
+            Ok(req) => {
+                let op_id = req.operation_id;
+                if let Err(e) = self.confirm_switch(op_id) {
+                    self.logger.error(None, "smart_switch", format!("Smart switch confirm failed: {}", e));
+                    return Err(e);
+                }
+            }
+            Err(e) => {
+                self.logger.error(None, "smart_switch", format!("Smart switch request failed: {}", e));
+                return Err(e);
+            }
+        }
+
+        Ok(())
+    }
 }

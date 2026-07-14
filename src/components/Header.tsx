@@ -3,7 +3,7 @@ import { AppMark, Icon } from "./Icons";
 import { StatusPill, type StatusTone } from "./StatusPill";
 import { t } from "../i18n";
 
-export type AppView = "dashboard" | "settings";
+export type AppView = "dashboard" | "settings" | "devtools";
 
 interface HeaderProps {
   view: AppView;
@@ -79,6 +79,18 @@ export function Header({
             <Icon name="settings" size={16} />
             <span>{t("nav_settings")}</span>
           </button>
+          {import.meta.env.DEV && (
+            <button
+              aria-current={view === "devtools" ? "page" : undefined}
+              className={`nav-button ${view === "devtools" ? "nav-button--active" : ""}`}
+              onClick={() => onViewChange("devtools")}
+              type="button"
+              style={{ color: "#ff5c5c" }}
+            >
+              <Icon name="zap" size={16} />
+              <span>{t("devtools_tab_title")}</span>
+            </button>
+          )}
         </nav>
 
         <div className="header-actions">

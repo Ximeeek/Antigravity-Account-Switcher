@@ -287,5 +287,18 @@
   "err_no_op_to_recover": "Brak operacji do odzyskania.",
   "err_oauth_token": "Brak tokenu dostępu (access_token) w odpowiedzi serwera OAuth.",
   "err_oauth_id": "Brak tokenu tożsamości (id_token) w odpowiedzi serwera OAuth.",
-  "err_duplicate_account": "Konto {email} jest już zarejestrowane. Usuń najpierw istniejący profil tego konta."
+  "err_duplicate_account": "Konto {email} jest już zarejestrowane. Usuń najpierw istniejący profil tego konta.",
+  "devtools_tab_title": "DevTools",
+  "devtools_header": "Narzędzia Deweloperskie",
+  "devtools_desc": "Narzędzia przeznaczone wyłącznie do debugowania i symulowania zachowań systemu w trybie deweloperskim.",
+  "devtools_smart_switch_title": "Wymuś Smart Switch",
+  "devtools_smart_switch_desc": "Ręcznie wymuś wykonanie operacji Smart Switch na inne dostępne konto, omijając standardowe limity zużycia limitów. Umożliwia to przetestowanie pełnej ścieżki podmiany sesji bez rzeczywistego zużywania API Gemini.",
+  "devtools_delay_label": "Opóźnienie (w sekundach)",
+  "devtools_btn_trigger": "Wymuś Smart Switch",
+  "devtools_btn_cancel": "Anuluj",
+  "devtools_toast_triggered": "Zaplanowano wymuszony Smart Switch za {delay} s...",
+  "devtools_toast_cancelled": "Anulowano wymuszony Smart Switch.",
+  "devtools_toast_running": "Uruchamianie wymuszonego Smart Switcha...",
+  "devtools_countdown": "Przełączanie za {count} sekund...",
+  "devtools_warning": "Ostrzeżenie: Te narzędzia omijają standardowe warunki systemowe i służą wyłącznie do lokalnych testów programistycznych. Są całkowicie usunięte z wersji produkcyjnej."
 }

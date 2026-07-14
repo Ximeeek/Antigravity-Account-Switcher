@@ -189,3 +189,18 @@ pub fn wipe_app_data() -> Result<(), String> {
 pub fn uninstall_app() -> Result<(), String> {
     switcher_windows::uninstall_app_and_self_delete()
 }
+
+#[tauri::command]
+pub async fn force_smart_switch(
+    service: State<'_, Arc<SwitcherService>>,
+) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    {
+        service.force_smart_switch_bypass_quota().await.map_err(|e| e.to_string())
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = service;
+        Err("Not available in release build".to_string())
+    }
+}

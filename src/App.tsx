@@ -32,6 +32,7 @@ import {
   AboutModal,
 } from "./components/ProfileModals";
 import { Settings } from "./components/Settings";
+import { DevTools } from "./components/DevTools";
 import { t, getLanguage, setLanguage, type Language } from "./i18n";
 import {
   RecoveryScreen,
@@ -576,7 +577,7 @@ export default function App() {
               onOpenGuide={() => handleOpenAbout("guide")}
             />
           </div>
-        ) : (
+        ) : view === "settings" ? (
           <div className="fade-in-slide" key="settings">
             <Settings
               onCopyDiagnostics={handleCopyDiagnostics}
@@ -588,7 +589,11 @@ export default function App() {
               workingAction={workingAction}
             />
           </div>
-        )}
+        ) : view === "devtools" && import.meta.env.DEV ? (
+          <div className="fade-in-slide" key="devtools">
+            <DevTools state={state} onSetNotice={setNotice} />
+          </div>
+        ) : null}
       </main>
 
       <SwitchConfirmModal

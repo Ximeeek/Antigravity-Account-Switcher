@@ -130,7 +130,8 @@ pub fn run() {
             commands::hide_mini_window,
             commands::resize_mini_window,
             commands::wipe_app_data,
-            commands::uninstall_app
+            commands::uninstall_app,
+            commands::force_smart_switch
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
