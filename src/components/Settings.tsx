@@ -64,10 +64,6 @@ export function Settings({
           <h1>{t("settings_title")}</h1>
           <p>{t("settings_desc")}</p>
         </div>
-        <div className="version-stack" aria-label={t("versions")}>
-          <span>{t("settings_switcher_ver", { version: state.app_version ?? "—" })}</span>
-          <span>{t("settings_antigravity_ver", { version: state.antigravity_version ?? "—" })}</span>
-        </div>
       </div>
 
       <div className="settings-grid">

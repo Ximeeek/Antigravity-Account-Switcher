@@ -29,7 +29,7 @@ import { Icon } from "./components/Icons";
 import {
   AddProfileModal,
   DeleteProfileModal,
-  GeekSpecsModal,
+  AboutModal,
 } from "./components/ProfileModals";
 import { Settings } from "./components/Settings";
 import { t, getLanguage, setLanguage, type Language } from "./i18n";
@@ -542,7 +542,7 @@ export default function App() {
         profile={deleteTarget}
         working={workingAction === "delete-profile"}
       />
-      <GeekSpecsModal
+      <AboutModal
         open={aboutOpen}
         state={state}
         onClose={() => setAboutOpen(false)}

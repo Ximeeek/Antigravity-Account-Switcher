@@ -3603,3 +3603,260 @@ body.mini-window-body {
     filter: drop-shadow(0 0 0px rgba(0, 240, 255, 0));
   }
 }
+
+/* About Modal Styling */
+.about-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border, #2d3139);
+  margin-bottom: 18px;
+  padding-bottom: 4px;
+}
+
+.about-tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #8e9297);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.about-tab-btn::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.about-tab-btn:hover {
+  color: var(--text-primary, #fff);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.about-tab-btn--active {
+  color: var(--accent-blue, #5865f2);
+  font-weight: 600;
+}
+
+.about-tab-btn--active::after {
+  background: var(--accent-blue, #5865f2);
+}
+
+.about-brand-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.about-logo-wrapper {
+  margin-bottom: 10px;
+  filter: drop-shadow(0 4px 8px rgba(88, 101, 242, 0.15));
+}
+
+.about-app-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+  margin: 0 0 4px 0;
+}
+
+.about-app-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #8e9297);
+  max-width: 340px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.about-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--background-secondary, #161920);
+  border: 1px solid var(--border-color, #2d3139);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+.about-info-label {
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.about-info-value {
+  color: var(--text-secondary, #8e9297);
+  font-variant-numeric: tabular-nums;
+}
+
+.about-releases-section {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.about-releases-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border, #2d3139);
+  padding-bottom: 6px;
+}
+
+.about-releases-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0;
+}
+
+.about-releases-filters {
+  display: flex;
+  gap: 12px;
+  font-size: 0.72rem;
+  color: var(--text-secondary, #8e9297);
+}
+
+.about-releases-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.about-releases-filter-label input {
+  margin: 0;
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: var(--accent-blue, #5865f2);
+}
+
+.about-releases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.about-release-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #2d3139);
+  background: var(--background-secondary, #161920);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+
+.about-release-item:hover {
+  border-color: var(--accent-blue, #5865f2);
+  background: rgba(88, 101, 242, 0.04);
+}
+
+.about-release-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.about-release-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.about-release-tag {
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  font-size: 0.8rem;
+}
+
+.about-release-date {
+  font-size: 0.68rem;
+  color: var(--text-secondary, #8e9297);
+}
+
+.about-release-badges {
+  display: flex;
+  gap: 4px;
+}
+
+.about-badge {
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.about-badge--current {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.about-badge--stable {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.about-badge--prerelease {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.about-release-right {
+  color: var(--text-secondary, #8e9297);
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.about-release-item:hover .about-release-right {
+  color: var(--accent-blue, #5865f2);
+  transform: translateX(2px);
+}
+
+.about-releases-empty {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-secondary, #8e9297);
+  font-size: 0.75rem;
+  border: 1px dashed var(--border, #2d3139);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.about-releases-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--text-secondary, #8e9297);
+  font-size: 0.75rem;
+}
+
