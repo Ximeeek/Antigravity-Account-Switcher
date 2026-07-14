@@ -73,6 +73,92 @@ Detailed rationale for our design and security decisions can be found in our ADR
 *   [ADR-0008: Standalone Antigravity 2.0 Architectural Alignment](docs/decisions/0008-antigravity-two-architecture.md) — Purging legacy editor code and VS Code extensions.
 *   [ADR-0009: Smart Switch Quota Engine and Thresholds](docs/decisions/0009-smart-switch-limits-thresholds.md) — Background quota checks and safety interlocks.
 
+## Changelog
+
+### v0.1.2-nightly.20260714 (Recent Changes)
+
+- **Security & Privacy (Encryption at Rest)**
+  - Implemented secure profile locking and encryption at rest using Windows Data Protection API (DPAPI).
+  - Added a global master password lockdown mechanism.
+  - Implemented active profile lock toggling, visual security status cards, and a quick lock widget.
+- **Tauri & Windows Integration**
+  - Added a WebView2 auto-installer for Evergreen bootstrapper support.
+  - Implemented a local single-instance application lock to prevent multiple concurrent instances.
+  - Hide flashing console windows on CLI process executions to improve UX and security.
+  - Localized native Win32 dialogs dynamically using JSON locale files.
+- **Smart Switch Engine & Performance**
+  - Asynchronous live quota fetching running inside background Tokio tasks.
+  - Stale-while-revalidate caching for quota endpoints to prevent high CPU / API rate limits.
+  - Reduced CPU-heavy scans by caching `app.asar` modification times.
+  - Bypassed unnecessary process polling to optimize the fast switch sequence.
+- **UI & UX Refinements**
+  - Redesigned switch mode selector by relocating it to the active account card header popover.
+  - Added holographic gold glows and debounced sliding animations for Reload (Level 2) and Fast Reload (Level 2+).
+  - Added drifting background glows behind settings cards.
+  - Prevented duplicate Google account additions with auto-detection validation error mappings.
+- **Code Cleanups**
+  - Purged all legacy VS Code extension and third-party manager modules to align with the standalone Antigravity 2.0 application layout.
+
+#### Commit History:
+- `fix(uninstall): isolate wipe and uninstall folder deletions`
+- `fix(service): make sync_active_profile_on_read non-blocking using try_lock`
+- `fix(quota): fetch quota asynchronously to prevent switch hang`
+- `fix(paths): restore production active paths and deselect mismatched profiles`
+- `fix(uninstall): delete development credential targets during wipe`
+- `fix(profiles): prevent concurrent auto-import race condition`
+- `feat(paths): isolate dev and release switcher environments`
+- `feat(feedback): add google forms reporting and devtools overrides`
+- `feat(ui): add 3 random drifting background glows to settings cards`
+- `feat(ui): add first-time warning for level 2 and 2+ switch`
+- `fix(ui): resolve account card badge layout shift and switch progress timing`
+- `fix(service): allow metadata.enc for encrypted profile validation`
+- `ui(dashboard): position security widget above quota limits and support collapse`
+- `ui(dashboard): make security status widget dismissible`
+- `ui(dashboard): add premium quick lock status widget`
+- `feat(security): implement global master password lockdown`
+- `ui(settings): add profile security card and active account lock toggle`
+- `feat(security): implement secure profile locking and encryption at rest`
+- `feat(devtools): add forced smart switch command and UI panel`
+- `perf(patch): cache app.asar modification time to prevent CPU-heavy scans`
+- `perf(quota): fetch live quotas asynchronously in tokio background tasks`
+- `perf(switch): optimize fast switch sequence by bypassing process polling`
+- `perf(quota): prevent thundering herd and high CPU usage via stale-while-revalidate caching`
+- `fix(switch): prevent missing database crash during active state repair`
+- `ui(profile): map and localize duplicate google account error`
+- `feat(profile): prevent duplicate google accounts in switcher`
+- `fix(switch): prevent crash when active database or gemini files do not exist yet`
+- `fix(error): translate OAuth token errors and recovery error in backend and UI`
+- `fix(switch): decouple session activation from active profile presence`
+- `feat(i18n): load native Win32 dialog strings dynamically from JSON locale files`
+- `ui(error): localize backend error messages in React interface`
+- `fix(profile): check active credentials before session preflight`
+- `fix(windows): hide flashing console windows during CLI executions`
+- `feat(windows): add WebView2 auto-installer and single-instance lock`
+- `docs(readme): remove interactive demo.html and links`
+- `docs(adr): remove emojis from interactive demo and readme`
+- `docs(adr): translate decisions to english and add interactive demo`
+- `docs(switch): rename Level 2 to Reload and Level 2+ to Fast Reload`
+- `ui(switch): adjust slider snap positions and update speed multipliers`
+- `feat(switch): add Level 1+ optimized full restart mode`
+- `feat(ui): add minimalist info button to active account header`
+- `feat(ui): add feature guide tab to about modal`
+- `ui(switch): restrict golden glow styling exclusively to the '+' character`
+- `ui(switch): add holographic gold glow and animated plus for Level 2+`
+- `fix(ui): enable responsive sliding with debounce and state sync`
+- `fix(ui): disable slider interactions and sync badge during settings save`
+- `fix(ui): disable closing-app warning and optimize labels for Level 2+`
+- `feat(switch): add Level 2+ switch level with app.asar patching`
+- `chore(i18n): translate comments, logs, and internationalize polish strings`
+- `feat(settings): extract and show Antigravity 2.0 version`
+- `ui(settings): move version switcher info to a tabbed About modal`
+- `fix(switcher): terminate all language server instances on fast switch`
+- `chore(cleanup): remove VS Code extension and legacy third-party manager`
+- `fix(switch): add sleep delay to prevent fast switch GUI glitch`
+- `fix(switch): prevent fast switch race condition and optimize sleeps`
+- `fix(switch): execute fast switch steps chronologically and eliminate race condition`
+- `fix(switch): force full restart and remove fast switch UI selector`
+- `ui(dashboard): relocate switch mode to active account card header popover`
+
 ---
 
 ## Development & Setup

@@ -124,7 +124,7 @@ checksum = "2a4385e2e34eb35d6b3efe798b9eb88096925d87726c0798709bf56d9ed84af3"
 
 [[package]]
 name = "app"
-version = "0.1.1-nightly.20260714"
+version = "0.1.2-nightly.20260714"
 dependencies = [
  "anyhow",
  "log",
@@ -3584,7 +3584,7 @@ dependencies = [
 
 [[package]]
 name = "switcher-core"
-version = "0.1.1-nightly.20260714"
+version = "0.1.2-nightly.20260714"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
@@ -3603,7 +3603,7 @@ dependencies = [
 
 [[package]]
 name = "switcher-windows"
-version = "0.1.1-nightly.20260714"
+version = "0.1.2-nightly.20260714"
 dependencies = [
  "base64 0.22.1",
  "chrono",

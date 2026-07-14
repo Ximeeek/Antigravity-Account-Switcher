@@ -131,6 +131,18 @@ fn is_webview2_installed() -> bool {
 
 #[cfg(windows)]
 pub async fn check_and_install_webview2() -> Result<(), String> {
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let local_webview = exe_dir.join("webview2");
+            if local_webview.exists() {
+                unsafe {
+                    std::env::set_var("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", &local_webview);
+                }
+                return Ok(());
+            }
+        }
+    }
+
     if is_webview2_installed() {
         return Ok(());
     }
