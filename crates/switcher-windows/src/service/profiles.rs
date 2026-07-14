@@ -417,7 +417,12 @@ impl SwitcherService {
 
 
     pub(crate) fn sync_active_profile_on_read(&self) -> Result<Option<Uuid>> {
-        let _guard = self.operation_lock.lock();
+        let _guard = match self.operation_lock.try_lock() {
+            Some(guard) => guard,
+            None => {
+                return Ok(self.config.read().active_profile_id);
+            }
+        };
         let active_credential = match self.credentials.read_active() {
             Ok(bytes) => bytes,
             Err(_) => {
