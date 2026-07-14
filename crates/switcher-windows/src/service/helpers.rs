@@ -200,7 +200,7 @@ pub(crate) fn read_antigravity_version(installation: &Path) -> Option<String> {
     // Fallback if PowerShell query fails
     let package = installation.join("resources").join("app.asar");
     if package.exists() {
-        Some("wykryta (wersja nieznana)".to_owned())
+        Some("detected (unknown version)".to_owned())
     } else {
         None
     }
@@ -208,14 +208,14 @@ pub(crate) fn read_antigravity_version(installation: &Path) -> Option<String> {
 
 #[allow(dead_code)]
 pub(crate) fn windows_version() -> String {
-    std::env::var("OS").unwrap_or_else(|_| "Windows (wersja nieznana)".to_owned())
+    std::env::var("OS").unwrap_or_else(|_| "Windows (unknown version)".to_owned())
 }
 
 pub(crate) fn validate_display_name(name: &str) -> Result<()> {
     let length = name.trim().chars().count();
     if !(1..=80).contains(&length) {
         Err(SwitcherError::InvalidConfiguration(
-            "Nazwa profilu musi mieć od 1 do 80 znaków".to_owned(),
+            "Profile name must be between 1 and 80 characters".to_owned(),
         ))
     } else {
         Ok(())

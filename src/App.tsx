@@ -163,7 +163,7 @@ export default function App() {
       state.engine_status === "ready"
     ) {
       expectedSwitchTarget.current = null;
-      setNotice({ tone: "success", message: "Konto zostało bezpiecznie przełączone." });
+      setNotice({ tone: "success", message: t("toast_switch_success") });
     }
   }, [state?.active_profile_id, state?.engine_status]);
 
@@ -200,7 +200,7 @@ export default function App() {
       if (!mounted.current) return;
       const operation = requested.operation;
       if (!operation) {
-        throw new Error("Nie udało się utworzyć operacji przełączenia konta.");
+        throw new Error(t("err_switch_create_failed"));
       }
       expectedSwitchTarget.current = operation.to_profile_id;
       setPendingSwitch(operation);
@@ -235,7 +235,7 @@ export default function App() {
   const handleConfirmSwitch = async () => {
     const operationId = pendingSwitch?.operation_id ?? state?.operation?.operation_id;
     if (!operationId) {
-      setNotice({ tone: "danger", message: "Brak operacji przełączenia do potwierdzenia." });
+      setNotice({ tone: "danger", message: t("toast_switch_no_op") });
       return;
     }
     setPendingSwitch((current) =>
@@ -280,7 +280,7 @@ export default function App() {
     const succeeded = await performStateAction(
       "add-profile",
       () => startOauthLogin(displayName, lang, autoActivate),
-      `Konto „${displayName}” zostało zapisane.`,
+      t("toast_account_saved", { name: displayName }),
     );
     if (succeeded) setAddProfileOpen(false);
   };
@@ -301,7 +301,7 @@ export default function App() {
     const succeeded = await performStateAction(
       "delete-profile",
       () => deleteProfile(profile.profile_id),
-      `Profil „${profile.display_name}” został usunięty.`,
+      t("toast_account_deleted", { name: profile.display_name }),
     );
     if (succeeded) setDeleteTarget(null);
   };

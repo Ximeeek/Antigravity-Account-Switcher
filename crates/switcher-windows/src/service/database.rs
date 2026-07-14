@@ -11,27 +11,27 @@ use switcher_core::{Result, SwitcherError};
 pub(crate) fn rebuild_state_database_from_json(source: &Path, destination: &Path) -> Result<usize> {
     let raw = std::fs::read(source).map_err(|e| SwitcherError::io(source, e))?;
     let data: serde_json::Value = serde_json::from_slice(&raw)
-        .map_err(|e| SwitcherError::Message(format!("Niepoprawny format JSON: {}", e)))?;
+        .map_err(|e| SwitcherError::Message(format!("Invalid JSON format: {}", e)))?;
     let map = data
         .as_object()
-        .ok_or_else(|| SwitcherError::Message("Główny element JSON musi być obiektem".to_owned()))?;
+        .ok_or_else(|| SwitcherError::Message("Root JSON element must be an object".to_owned()))?;
 
     let mut connection = Connection::open(destination)
-        .map_err(|e| SwitcherError::Message(format!("Błąd tworzenia bazy SQLite: {}", e)))?;
+        .map_err(|e| SwitcherError::Message(format!("SQLite database creation error: {}", e)))?;
     let tx = connection
         .transaction()
-        .map_err(|e| SwitcherError::Message(format!("Błąd transakcji SQLite: {}", e)))?;
+        .map_err(|e| SwitcherError::Message(format!("SQLite transaction error: {}", e)))?;
 
     tx.execute(
         "CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value TEXT)",
         [],
     )
-    .map_err(|e| SwitcherError::Message(format!("Błąd CREATE TABLE: {}", e)))?;
+    .map_err(|e| SwitcherError::Message(format!("CREATE TABLE error: {}", e)))?;
 
     let mut inserted = 0;
     let mut stmt = tx
         .prepare("INSERT INTO ItemTable (key, value) VALUES (?1, ?2)")
-        .map_err(|e| SwitcherError::Message(format!("Błąd prepare: {}", e)))?;
+        .map_err(|e| SwitcherError::Message(format!("Prepare statement error: {}", e)))?;
 
     for (k, v) in map {
         let val_str = match v {
@@ -39,19 +39,19 @@ pub(crate) fn rebuild_state_database_from_json(source: &Path, destination: &Path
             _ => v.to_string(),
         };
         stmt.execute(rusqlite::params![k, val_str])
-            .map_err(|e| SwitcherError::Message(format!("Błąd zapisu klucza {}: {}", k, e)))?;
+            .map_err(|e| SwitcherError::Message(format!("Error writing key {}: {}", k, e)))?;
         inserted += 1;
     }
     drop(stmt);
     tx.commit()
-        .map_err(|e| SwitcherError::Message(format!("Błąd commit transakcji: {}", e)))?;
+        .map_err(|e| SwitcherError::Message(format!("Transaction commit error: {}", e)))?;
     Ok(inserted)
 }
 
 pub(crate) fn validate_state_database(path: &Path) -> Result<()> {
     if !path.is_file() {
         return Err(SwitcherError::Message(format!(
-            "Brak pliku bazy danych globalnego stanu: {}",
+            "Missing global state database file: {}",
             path.display()
         )));
     }
@@ -62,7 +62,7 @@ pub(crate) fn validate_state_database(path: &Path) -> Result<()> {
         .map_err(|e| SwitcherError::io(path, e))?;
     if &header[..15] != b"SQLite format 3" {
         return Err(SwitcherError::Message(
-            "Niepoprawny nagłówek SQLite - plik może być uszkodzony".to_owned(),
+            "Invalid SQLite header - file may be corrupted".to_owned(),
         ));
     }
     Ok(())

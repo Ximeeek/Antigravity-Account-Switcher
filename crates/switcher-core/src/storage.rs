@@ -20,7 +20,7 @@ pub fn save_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path.parent().ok_or_else(|| {
-        SwitcherError::InvalidConfiguration(format!("Ścieżka bez katalogu nadrzędnego: {path:?}"))
+        SwitcherError::InvalidConfiguration(format!("Path without parent directory: {path:?}"))
     })?;
     fs::create_dir_all(parent).map_err(|source| SwitcherError::io(parent, source))?;
     let file_name = path

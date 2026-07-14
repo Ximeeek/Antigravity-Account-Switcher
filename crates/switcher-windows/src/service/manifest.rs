@@ -28,7 +28,7 @@ pub(crate) fn hash_directory(path: &Path) -> Result<String> {
         let entry = entry.map_err(|error| SwitcherError::Message(error.to_string()))?;
         if entry.file_type().is_symlink() {
             return Err(SwitcherError::InvalidConfiguration(format!(
-                "Dowiązania/reparse points nie są obsługiwane w profilu: {}",
+                "Symlinks/reparse points are not supported in the profile: {}",
                 entry.path().display()
             )));
         }
@@ -62,7 +62,7 @@ pub(crate) fn merge_missing_files(source: &Path, destination: &Path) -> Result<u
             let relative = entry
                 .path()
                 .strip_prefix(source)
-                .map_err(|_| SwitcherError::Message("Błąd relatywizacji ścieżki".to_owned()))?;
+                .map_err(|_| SwitcherError::Message("Path relativization error".to_owned()))?;
             let dest_path = destination.join(relative);
             if !dest_path.exists() {
                 if let Some(parent) = dest_path.parent() {

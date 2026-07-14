@@ -26,26 +26,26 @@ pub fn run() {
             }
 
             let service = SwitcherService::initialize().map_err(|e| {
-                eprintln!("Nie udało się zainicjować usługi SwitcherService: {:?}", e);
+                eprintln!("Failed to initialize SwitcherService: {:?}", e);
                 e
             })?;
 
-            // Wstępne pobieranie limitów w tle na starcie
+            // Prefetch quotas in the background on startup
             let service_clone = service.clone();
             tauri::async_runtime::spawn(async move {
                 let _ = service_clone.fetch_all_quotas_on_startup().await;
             });
 
-            // Wątek sprawdzający automatyczne przełączanie (Smart Switch) w tle
+            // Thread checking automatic switching (Smart Switch) in the background
             let service_smart = service.clone();
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
-                // Pomiń pierwszy natychmiastowy tick
+                // Skip the first immediate tick
                 interval.tick().await;
                 loop {
                     interval.tick().await;
                     if let Err(e) = service_smart.check_and_perform_smart_switch().await {
-                        service_smart.logger().error(None, "smart_switch", format!("Błąd Smart Switch: {}", e));
+                        service_smart.logger().error(None, "smart_switch", format!("Smart Switch error: {}", e));
                     }
                 }
             });
@@ -54,8 +54,8 @@ pub fn run() {
 
             http::start_http_server(service.clone(), app.handle().clone());
 
-            let quit_i = MenuItem::with_id(app, "quit", "Zakończ", true, None::<&str>)?;
-            let show_i = MenuItem::with_id(app, "show", "Pokaż okno", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             let icon = app.default_window_icon().cloned().unwrap_or_else(|| {

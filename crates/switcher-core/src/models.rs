@@ -172,13 +172,13 @@ pub enum SwitchStep {
 impl SwitchStep {
     pub fn user_label(self) -> &'static str {
         match self {
-            Self::WriteLock => "Przygotowywanie operacji",
-            Self::CloseProcesses | Self::VerifyUnlocked => "Zamykanie Antigravity",
-            Self::BackupCurrent => "Zapisywanie obecnego profilu",
+            Self::WriteLock => "Preparing operation",
+            Self::CloseProcesses | Self::VerifyUnlocked => "Closing Antigravity",
+            Self::BackupCurrent => "Saving current profile",
             Self::LoadTarget | Self::UpdateCredential | Self::VerifyConsistency => {
-                "Ładowanie i sprawdzanie nowego profilu"
+                "Loading and verifying new profile"
             }
-            Self::RemoveLock | Self::Relaunch => "Kończenie i uruchamianie Antigravity",
+            Self::RemoveLock | Self::Relaunch => "Finishing and starting Antigravity",
         }
     }
 }

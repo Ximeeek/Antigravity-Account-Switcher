@@ -2,49 +2,49 @@ use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SwitcherError {
-    #[error("Operacja przełączania jest już w toku")]
+    #[error("Switching operation is already in progress")]
     OperationInProgress,
-    #[error("Profil docelowy jest już aktywny")]
+    #[error("Target profile is already active")]
     ProfileAlreadyActive,
-    #[error("Nie znaleziono profilu {0}")]
+    #[error("Profile {0} not found")]
     ProfileNotFound(String),
-    #[error("Brak aktywnego profilu; najpierw zaimportuj bieżącą sesję")]
+    #[error("No active profile; import the current session first")]
     NoActiveProfile,
-    #[error("Wymagane jest odzyskiwanie poprzedniej operacji")]
+    #[error("Recovery of previous operation is required")]
     RecoveryRequired,
-    #[error("Antigravity nadal działa i wymaga potwierdzenia zamknięcia")]
+    #[error("Antigravity is still running and requires confirmation to close")]
     ConfirmationRequired,
-    #[error("Ścieżki nie znajdują się na tym samym woluminie: {left:?} i {right:?}")]
+    #[error("Paths are not on the same volume: {left:?} and {right:?}")]
     CrossVolume { left: PathBuf, right: PathBuf },
-    #[error("Brak wymaganych danych aktywnej sesji: {0:?}")]
+    #[error("Missing required active session data: {0:?}")]
     MissingActiveData(PathBuf),
-    #[error("Cel operacji już istnieje: {0:?}")]
+    #[error("Operation destination already exists: {0:?}")]
     DestinationExists(PathBuf),
-    #[error("Nie udało się zamknąć procesów Antigravity: {0}")]
+    #[error("Failed to close Antigravity processes: {0}")]
     ProcessShutdown(String),
-    #[error("Pliki Antigravity są nadal zablokowane: {0:?}")]
+    #[error("Antigravity files are still locked: {0:?}")]
     FilesLocked(PathBuf),
-    #[error("Nie można odczytać poświadczeń Antigravity")]
+    #[error("Cannot read Antigravity credentials")]
     CredentialUnavailable,
-    #[error("Nie udała się kontrola spójności: {0}")]
+    #[error("Consistency check failed: {0}")]
     Consistency(String),
-    #[error("Nieobsługiwany system operacyjny; aplikacja działa wyłącznie w Windows")]
+    #[error("Unsupported operating system; the application runs only on Windows")]
     UnsupportedPlatform,
-    #[error("Nieprawidłowa konfiguracja: {0}")]
+    #[error("Invalid configuration: {0}")]
     InvalidConfiguration(String),
-    #[error("Błąd wejścia/wyjścia dla {path:?}: {source}")]
+    #[error("I/O error for {path:?}: {source}")]
     Io {
         path: PathBuf,
         #[source]
         source: std::io::Error,
     },
-    #[error("Nieprawidłowe dane JSON w {path:?}: {source}")]
+    #[error("Invalid JSON data in {path:?}: {source}")]
     Json {
         path: PathBuf,
         #[source]
         source: serde_json::Error,
     },
-    #[error("Błąd systemu Windows: {0}")]
+    #[error("Windows system error: {0}")]
     Windows(String),
     #[error("{0}")]
     Message(String),

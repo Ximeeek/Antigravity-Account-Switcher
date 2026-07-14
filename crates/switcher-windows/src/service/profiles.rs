@@ -42,7 +42,7 @@ impl SwitcherService {
     pub(crate) fn process_manager(&self) -> Result<crate::ProcessManager> {
         let path = self
             .ensure_installation_path_resolved()
-            .ok_or_else(|| SwitcherError::InvalidConfiguration("Nie określono ścieżki do Antigravity".to_owned()))?;
+            .ok_or_else(|| SwitcherError::InvalidConfiguration("Antigravity installation path is not configured".to_owned()))?;
         Ok(crate::ProcessManager::new(path, self.logger.clone()))
     }
 
@@ -173,7 +173,7 @@ impl SwitcherService {
         }
         if self.config.read().active_profile_id.is_some() {
             return Err(SwitcherError::InvalidConfiguration(
-                "Bezpieczny import kolejnego konta wymaga osobnego workflow logowania; bieżąca wersja rejestruje wyłącznie pierwszą aktywną sesję".to_owned(),
+                "Secure import of another account requires a separate login workflow; the current version only registers the first active session".to_owned(),
             ));
         }
         if self.process_manager()?.is_running() {
@@ -248,7 +248,7 @@ impl SwitcherService {
         }
         if self.config.read().active_profile_id == Some(profile_id) {
             return Err(SwitcherError::InvalidConfiguration(
-                "Nie można usunąć aktywnego profilu".to_owned(),
+                "Cannot delete active profile".to_owned(),
             ));
         }
         let profile = self.paths.profile_dir(profile_id);
@@ -262,7 +262,7 @@ impl SwitcherService {
             .map_err(|_| SwitcherError::ProfileNotFound(profile_id.to_string()))?;
         if !canonical_profile.starts_with(&canonical_root) {
             return Err(SwitcherError::InvalidConfiguration(
-                "Profil wskazuje poza magazyn".to_owned(),
+                "Profile points outside storage".to_owned(),
             ));
         }
         fs::remove_dir_all(&canonical_profile)
@@ -293,12 +293,12 @@ impl SwitcherService {
         let path = path.filter(|p| p.join("Antigravity.exe").is_file());
         if http_port < 1024 {
             return Err(SwitcherError::InvalidConfiguration(
-                "Dozwolone są wyłącznie porty nieuprzywilejowane (>= 1024)".to_owned(),
+                "Only unprivileged ports are allowed (>= 1024)".to_owned(),
             ));
         }
         if switch_level != 1 && switch_level != 2 {
             return Err(SwitcherError::InvalidConfiguration(
-                "Nieprawidłowy poziom przełączania kont".to_owned(),
+                "Invalid account switching level".to_owned(),
             ));
         }
         {
@@ -457,7 +457,7 @@ impl SwitcherService {
         let mut profiles = Vec::new();
         let active_credential = self.credentials.read_active().ok();
         let mut quotas = QuotaDecryptor::decrypt_all_quotas().unwrap_or_else(|e| {
-            self.logger.warn(None, "quota", format!("Nie udało się odszyfrować limitów: {e}"));
+            self.logger.warn(None, "quota", format!("Failed to decrypt quotas: {e}"));
             HashMap::new()
         });
 
@@ -567,7 +567,7 @@ impl SwitcherService {
                                         None,
                                         "quota",
                                         format!(
-                                            "Nie udało się pobrać limitów w locie dla {}: {}",
+                                            "Failed to fetch quotas on the fly for {}: {}",
                                             profile.metadata.display_name, err
                                         ),
                                     );
@@ -612,13 +612,13 @@ impl SwitcherService {
             ));
         }
         report.push("".to_owned());
-        report.push("Ostatnie zdarzenia:".to_owned());
+        report.push("Recent events:".to_owned());
         report.extend(self.logger.tail(200)?);
         Ok(report.join("\n"))
     }
 
     pub async fn fetch_all_quotas_on_startup(&self) -> Result<()> {
-        self.logger.info(None, "quota", "Wstępne pobieranie limitów w tle rozpoczęte...");
+        self.logger.info(None, "quota", "Startup background quota prefetching started...");
         let active_profile_id = self.config.read().active_profile_id;
         let active_credential = self.credentials.read_active().ok();
 
@@ -651,7 +651,7 @@ impl SwitcherService {
                                                 None,
                                                 "quota",
                                                 format!(
-                                                    "Błąd pobierania limitu w tle dla {}: {}",
+                                                    "Error prefetching quota in background for {}: {}",
                                                     display_name, err
                                                 ),
                                             );
@@ -682,7 +682,7 @@ impl SwitcherService {
             }
         }
 
-        self.logger.info(None, "quota", "Wstępne pobieranie limitów zakończone.");
+        self.logger.info(None, "quota", "Startup background quota prefetching completed.");
         Ok(())
     }
 }

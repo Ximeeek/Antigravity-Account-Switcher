@@ -232,5 +232,14 @@
   "maintenance_confirm_wipe_title": "Czy na pewno chcesz wyczyścić dane?",
   "maintenance_confirm_wipe_desc": "Ta operacja spowoduje utratę wszystkich skonfigurowanych profili oraz ustawień. Aplikacja zrestartuje się jako pusta.",
   "maintenance_confirm_uninstall_title": "Czy na pewno chcesz całkowicie odinstalować aplikację?",
-  "maintenance_confirm_uninstall_desc": "Aplikacja usunie wszystkie swoje profile, pamięć podręczną, wpisy w rejestrze Windows oraz sam plik wykonywalny. Aplikacja zostanie natychmiast zamknięta i skasowana."
+  "maintenance_confirm_uninstall_desc": "Aplikacja usunie wszystkie swoje profile, pamięć podręczną, wpisy w rejestrze Windows oraz sam plik wykonywalny. Aplikacja zostanie natychmiast zamknięta i skasowana.",
+  "toast_switch_success": "Konto zostało bezpiecznie przełączone.",
+  "err_switch_create_failed": "Nie udało się utworzyć operacji przełączenia konta.",
+  "toast_switch_no_op": "Brak operacji przełączenia do potwierdzenia.",
+  "toast_account_saved": "Konto „{name}” zostało zapisane.",
+  "toast_account_deleted": "Profil „{name}” został usunięty.",
+  "language_desc": "Wybierz język interfejsu.",
+  "nav_main_aria": "Główna nawigacja",
+  "aria_switching_from_to": "Przełączenie z {from} na {to}",
+  "aria_switch_progress": "Postęp przełączania konta"
 }

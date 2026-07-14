@@ -59,7 +59,7 @@ export function SwitchConfirmModal({
       title={t("confirm_modal_title")}
       description={t("confirm_modal_desc")}
     >
-      <div className="switch-preview" aria-label={`Przełączenie z ${currentName} na ${targetName}`}>
+      <div className="switch-preview" aria-label={t("aria_switching_from_to", { from: currentName, to: targetName })}>
         <div className="switch-preview__account">
           <span className="switch-preview__label">{t("confirm_modal_current")}</span>
           <strong>{currentName}</strong>
@@ -121,7 +121,7 @@ export function SwitchProgressModal({ state, operation }: SwitchProgressModalPro
         <span />
       </div>
 
-      <ol className="operation-stepper" aria-label="Postęp przełączania konta">
+      <ol className="operation-stepper" aria-label={t("aria_switch_progress")}>
         {userSteps.map((step, index) => {
           const status = index < currentStage ? "complete" : index === currentStage ? "current" : "pending";
           return (

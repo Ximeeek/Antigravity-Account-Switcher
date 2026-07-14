@@ -60,7 +60,7 @@ export function Header({
           </div>
         </button>
 
-        <nav aria-label="Główna nawigacja" className="top-navigation">
+        <nav aria-label={t("nav_main_aria")} className="top-navigation">
           <button
             aria-current={view === "dashboard" ? "page" : undefined}
             className={`nav-button ${view === "dashboard" ? "nav-button--active" : ""}`}

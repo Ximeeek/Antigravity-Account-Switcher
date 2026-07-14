@@ -110,7 +110,7 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
       );
       const target = demoState.profiles.find((profile) => profile.profile_id === targetProfileId);
       if (!target || targetProfileId === demoState.active_profile_id) {
-        throw new Error("Nie można przełączyć na wybrane konto.");
+        throw new Error("Cannot switch to the selected account.");
       }
       demoState.operation = {
         operation_id: `demo-${Date.now()}`,
@@ -180,7 +180,7 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
     case "delete_profile": {
       const profileId = asString(pick(args, "profileId", "profile_id"));
       if (profileId === demoState.active_profile_id) {
-        throw new Error("Nie można usunąć aktywnego konta.");
+        throw new Error("Cannot delete the active account.");
       }
       demoState.profiles = demoState.profiles.filter(
         (profile) => profile.profile_id !== profileId,
@@ -210,10 +210,10 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
 
     case "copy_diagnostics":
       return [
-        "Antigravity Account Switcher — raport demonstracyjny",
-        `Wersja: ${demoState.app_version}`,
+        "Antigravity Account Switcher — demo report",
+        `Version: ${demoState.app_version}`,
         `Antigravity: ${demoState.antigravity_version}`,
-        "Brak danych uwierzytelniających w raporcie demonstracyjnym.",
+        "No credentials in demo report.",
       ].join("\n");
 
     case "recovery_resume":
@@ -246,7 +246,7 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
       return clone(demoState);
 
     default:
-      throw new Error(`Nieznana komenda demonstracyjna: ${command}`);
+      throw new Error(`Unknown demo command: ${command}`);
   }
 };
 
@@ -268,7 +268,7 @@ export const setDemoScenario = (scenario: DemoScenario): AppState => {
         current_step: 5,
         from_profile_id: "demo-studio",
         to_profile_id: "demo-research",
-        reason: "Poprzednia operacja została przerwana podczas ładowania nowego profilu.",
+        reason: "Previous operation was interrupted during new profile loading.",
         can_resume: true,
         can_rollback: true,
       };
@@ -287,7 +287,7 @@ export const setDemoScenario = (scenario: DemoScenario): AppState => {
       break;
     case "error":
       demoState.engine_status = "error";
-      demoState.last_error = "Nie udało się połączyć z lokalnym serwerem wtyczki.";
+      demoState.last_error = "Failed to connect to the local plugin server.";
       break;
     case "dashboard":
     default:

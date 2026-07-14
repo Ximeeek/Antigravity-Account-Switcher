@@ -156,7 +156,7 @@ impl SwitcherPaths {
 
 fn env_path(name: &str) -> Result<PathBuf> {
     env::var_os(name).map(PathBuf::from).ok_or_else(|| {
-        SwitcherError::InvalidConfiguration(format!("Brak zmiennej środowiskowej {name}"))
+        SwitcherError::InvalidConfiguration(format!("Missing environment variable {name}"))
     })
 }
 

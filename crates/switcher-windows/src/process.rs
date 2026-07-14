@@ -58,7 +58,7 @@ impl ProcessManager {
             self.logger.info(
                 Some(operation_id),
                 "process",
-                "Brak uruchomionych procesów Antigravity",
+                "No running Antigravity processes",
             );
             return Ok(());
         }
@@ -111,7 +111,7 @@ impl ProcessManager {
             Ok(())
         } else {
             Err(SwitcherError::ProcessShutdown(
-                "część procesów pozostała aktywna po force-kill".to_owned(),
+                "some processes remained active after force-kill".to_owned(),
             ))
         }
     }

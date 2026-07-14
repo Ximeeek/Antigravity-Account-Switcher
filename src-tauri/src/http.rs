@@ -95,7 +95,7 @@ fn handle_client(
                             }
                         });
                         let resp = format!(
-                            r#"{{"accepted":true,"operationId":"{}","message":"Rozpoczęto przełączanie profilu"}}"#,
+                            r#"{{"accepted":true,"operationId":"{}","message":"Profile switching started"}}"#,
                             operation_id.to_string()
                         );
                         send_response(&mut stream, 200, "OK", &resp)?;
@@ -170,7 +170,7 @@ pub fn start_http_server(service: Arc<SwitcherService>, app_handle: AppHandle) {
         service.logger().info(
             None,
             "http",
-            format!("Lokalny serwer HTTP uruchomiony na porcie {}", port),
+            format!("Local HTTP server running on port {}", port),
         );
         for stream in listener.incoming() {
             match stream {
@@ -180,7 +180,7 @@ pub fn start_http_server(service: Arc<SwitcherService>, app_handle: AppHandle) {
                     let app_handle = app_handle.clone();
                     std::thread::spawn(move || {
                         if let Err(e) = handle_client(stream, service, &api_secret, &app_handle) {
-                            eprintln!("Błąd obsługi klienta HTTP: {:?}", e);
+                            eprintln!("HTTP client handler error: {:?}", e);
                         }
                     });
                 }

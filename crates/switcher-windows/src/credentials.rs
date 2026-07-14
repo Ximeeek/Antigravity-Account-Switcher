@@ -117,14 +117,14 @@ fn write_target(target: &str, bytes: &[u8]) -> Result<()> {
     credential.Type = CRED_TYPE_GENERIC;
     credential.TargetName = target.as_mut_ptr();
     credential.CredentialBlobSize = u32::try_from(bytes.len())
-        .map_err(|_| SwitcherError::Windows("Poświadczenie jest zbyt duże".to_owned()))?;
+        .map_err(|_| SwitcherError::Windows("Credential is too large".to_owned()))?;
     credential.CredentialBlob = bytes.as_ptr() as *mut u8;
     credential.Persist = CRED_PERSIST_LOCAL_MACHINE;
     credential.Attributes = ptr::null_mut();
     let ok = unsafe { CredWriteW(&credential, 0) };
     if ok == 0 {
         return Err(SwitcherError::Windows(format!(
-            "CredWriteW zwrócił błąd {}",
+            "CredWriteW returned error {}",
             std::io::Error::last_os_error()
         )));
     }
@@ -160,7 +160,7 @@ fn protect_dpapi(bytes: &[u8]) -> Result<Vec<u8>> {
     };
     if ok == 0 {
         return Err(SwitcherError::Windows(format!(
-            "CryptProtectData zwrócił błąd {}",
+            "CryptProtectData returned error {}",
             std::io::Error::last_os_error()
         )));
     }
@@ -201,7 +201,7 @@ fn unprotect_dpapi(bytes: &[u8]) -> Result<Vec<u8>> {
     };
     if ok == 0 {
         return Err(SwitcherError::Windows(format!(
-            "CryptUnprotectData zwrócił błąd {}",
+            "CryptUnprotectData returned error {}",
             std::io::Error::last_os_error()
         )));
     }

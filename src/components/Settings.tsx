@@ -45,11 +45,11 @@ export function Settings({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (draft.http_port < 1024 || draft.http_port > 65535) {
-      setValidationError("Port musi być liczbą od 1024 do 65535.");
+      setValidationError(t("validation_port"));
       return;
     }
     if (!draft.antigravity_path.trim()) {
-      setValidationError("Podaj ścieżkę do pliku Antigravity.exe.");
+      setValidationError(t("validation_path"));
       return;
     }
     setValidationError(null);
@@ -213,7 +213,7 @@ export function Settings({
             </div>
             <div>
               <h2 id="language-heading">{t("language_label")}</h2>
-              <p>Wybierz język interfejsu. / Choose the UI language.</p>
+              <p>{t("language_desc")}</p>
             </div>
           </div>
           <div className="settings-card__body">

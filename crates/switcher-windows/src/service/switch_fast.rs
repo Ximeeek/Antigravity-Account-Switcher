@@ -204,7 +204,7 @@ impl SwitcherService {
             Ok(SwitchOutcome {
                 operation_id,
                 relaunched_pid,
-                warning: Some("Szybki restart nie powiódł się (usługa nie uruchomiła się ponownie). Wykonano pełny restart aplikacji.".to_owned()),
+                warning: Some("Fast restart failed (service did not restart). A full restart of the application was performed.".to_owned()),
             })
         }
     }

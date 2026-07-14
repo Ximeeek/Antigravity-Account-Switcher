@@ -52,7 +52,7 @@ impl SwitcherService {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .map_err(|e| {
-                let err_msg = format!("Nie udało się uruchomić portu logowania: {}", e);
+                let err_msg = format!("Failed to start login port: {}", e);
                 SwitcherError::Message(err_msg)
             })?;
         let port = listener
@@ -108,11 +108,11 @@ impl SwitcherService {
         };
 
         if let Err(e) = spawn_res {
-            let err_msg = format!("Nie można otworzyć przeglądarki: {}", e);
+            let err_msg = format!("Cannot open browser: {}", e);
             self.logger.error(
                 Some(operation_id),
                 "oauth",
-                format!("Nie udało się otworzyć przeglądarki: {}", e),
+                format!("Failed to open browser: {}", e),
             );
             *self.active_oauth_cancellation.lock() = None;
             return Err(SwitcherError::Message(err_msg));
@@ -127,7 +127,9 @@ impl SwitcherService {
             }
             _ = rx => {
                 self.logger.info(None, "oauth", "OAuth login cancelled by user request");
-                return Err(SwitcherError::Message("Logowanie zostało anulowane przez użytkownika".to_owned()));
+                return Err(SwitcherError::Message(
+                    "Login was cancelled by the user".to_owned(),
+                ));
             }
         };
 
@@ -149,12 +151,12 @@ impl SwitcherService {
                     text
                 } else {
                     return Err(SwitcherError::Message(
-                        "Błąd podczas weryfikacji konfiguracji autoryzacyjnej.".to_owned(),
+                        "Error during authorization configuration verification.".to_owned(),
                     ));
                 }
             }
             Err(e) => {
-                let err_msg = format!("Nie udało się pobrać konfiguracji autoryzacyjnej: {}", e);
+                let err_msg = format!("Failed to fetch authorization configuration: {}", e);
                 self.logger.error(None, "oauth", format!("Configuration load error: {}", err_msg));
                 return Err(SwitcherError::Message(err_msg));
             }
@@ -178,11 +180,11 @@ impl SwitcherService {
         let response = match exchange_res {
             Ok(resp) => resp,
             Err(e) => {
-                let err_msg = format!("Błąd komunikacji z serwerem Google: {}", e);
+                let err_msg = format!("Error communicating with Google server: {}", e);
                 self.logger.error(
                     Some(operation_id),
                     "oauth",
-                    format!("Błąd żądania wymiany tokenu: {}", e),
+                    format!("Token exchange request error: {}", e),
                 );
                 return Err(SwitcherError::Message(err_msg));
             }
@@ -194,23 +196,23 @@ impl SwitcherService {
             self.logger.error(
                 Some(operation_id),
                 "oauth",
-                format!("Google odrzucił wymianę tokenu ({})", response_status),
+                format!("Google rejected token exchange ({})", response_status),
             );
             return Err(SwitcherError::Message(format!(
-                "Błąd autoryzacji Google ({}): {}",
+                "Google authorization error ({}): {}",
                 response_status, body
             )));
         }
 
         let token_val: serde_json::Value = response.json().await.map_err(|e| {
-            let err_msg = format!("Niepoprawna odpowiedź JSON z tokenami: {}", e);
+            let err_msg = format!("Invalid JSON response with tokens: {}", e);
             SwitcherError::Message(err_msg)
         })?;
 
         self.logger.info(
             Some(operation_id),
             "oauth",
-            "Wymiana tokenów zakończona sukcesem",
+            "Token exchange completed successfully",
         );
 
         let access_token = token_val
@@ -222,7 +224,7 @@ impl SwitcherService {
         let refresh_token = token_val.get("refresh_token")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                SwitcherError::Message("Brak refresh_token w odpowiedzi (upewnij się, że to pierwsze logowanie na tym kliencie lub wyczyść uprawnienia)".to_owned())
+                SwitcherError::Message("Missing refresh_token in response (ensure this is the first login on this client or clear permissions)".to_owned())
             })?;
         let id_token = token_val
             .get("id_token")
@@ -236,7 +238,7 @@ impl SwitcherService {
             .unwrap_or(3600);
 
         let email = extract_email_from_id_token(id_token).ok_or_else(|| {
-            SwitcherError::Message("Nie udało się odczytać adresu email z id_token".to_owned())
+            SwitcherError::Message("Failed to read email address from id_token".to_owned())
         })?;
 
         let now = Utc::now();
@@ -448,11 +450,11 @@ where
 {
     loop {
         let (mut stream, _) = listener.accept().await.map_err(|e| {
-            SwitcherError::Message(format!("Błąd accept: {}", e))
+            SwitcherError::Message(format!("Accept error: {}", e))
         })?;
         let mut buffer = [0; 4096];
         let n = stream.read(&mut buffer).await.map_err(|e| {
-            SwitcherError::Message(format!("Błąd odczytu streamu: {}", e))
+            SwitcherError::Message(format!("Stream read error: {}", e))
         })?;
         if n == 0 {
             continue;

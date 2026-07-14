@@ -232,5 +232,14 @@
   "maintenance_confirm_wipe_title": "Are you sure you want to wipe data?",
   "maintenance_confirm_wipe_desc": "This operation will delete all configured profiles and settings. The application will restart empty.",
   "maintenance_confirm_uninstall_title": "Are you sure you want to completely uninstall the app?",
-  "maintenance_confirm_uninstall_desc": "The application will delete all its profiles, cache, Windows registry entries, and the executable itself. The application will immediately close and be deleted."
+  "maintenance_confirm_uninstall_desc": "The application will delete all its profiles, cache, Windows registry entries, and the executable itself. The application will immediately close and be deleted.",
+  "toast_switch_success": "Account switched successfully.",
+  "err_switch_create_failed": "Failed to create account switch operation.",
+  "toast_switch_no_op": "No switch operation to confirm.",
+  "toast_account_saved": "Account \"{name}\" has been saved.",
+  "toast_account_deleted": "Profile \"{name}\" has been deleted.",
+  "language_desc": "Choose the UI language.",
+  "nav_main_aria": "Main navigation",
+  "aria_switching_from_to": "Switching from {from} to {to}",
+  "aria_switch_progress": "Account switching progress"
 }

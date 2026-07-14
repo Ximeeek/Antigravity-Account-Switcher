@@ -29,7 +29,7 @@ impl SwitcherService {
             if elapsed < Duration::from_secs(4) {
                 let remaining = 4 - elapsed.as_secs();
                 return Err(SwitcherError::Message(format!(
-                    "Odczekaj {} s przed kolejną próbą przełączenia konta.",
+                    "Please wait {}s before switching accounts again.",
                     remaining
                 )));
             }
@@ -45,7 +45,7 @@ impl SwitcherService {
                 1
             };
             return Err(SwitcherError::Message(format!(
-                "Przekroczono limit przełączeń w czasie. Spróbuj ponownie za {} s.",
+                "Rate limit exceeded. Please try again in {}s.",
                 wait_secs
             )));
         }
@@ -125,7 +125,7 @@ impl SwitcherService {
             "Switch confirmation received",
         );
         let pending = self.pending.lock().remove(&operation_id).ok_or_else(|| {
-            SwitcherError::Message("Żądanie przełączenia wygasło lub zostało anulowane".to_owned())
+            SwitcherError::Message("Switch request expired or was cancelled".to_owned())
         })?;
         match self.perform_switch(pending.operation_id, pending.target_profile_id) {
             Ok(outcome) => Ok(outcome),
@@ -358,7 +358,7 @@ impl SwitcherService {
         let (relaunched_pid, warning) = match process.launch(Some(operation_id)) {
             Ok(pid) => (Some(pid), None),
             Err(error) => {
-                let warning = "Profil przełączono poprawnie, ale nie udało się uruchomić Antigravity. Uruchom je ręcznie.".to_owned();
+                let warning = "Profile switched successfully, but Antigravity failed to start. Please start it manually.".to_owned();
                 self.logger
                     .warn(Some(operation_id), "process", format!("{warning} {error}"));
                 (None, Some(warning))
@@ -429,14 +429,14 @@ impl SwitcherService {
             if appears_completed {
                 if source.exists() && destination.exists() {
                     return Err(SwitcherError::Consistency(format!(
-                        "Obie strony move istnieją: {} i {}",
+                        "Both sides of move exist: {} and {}",
                         source.display(),
                         destination.display()
                     )));
                 }
                 if !destination.exists() {
                     return Err(SwitcherError::Consistency(format!(
-                        "Brak obu stron move: {} i {}",
+                        "Both sides of move are missing: {} and {}",
                         source.display(),
                         destination.display()
                     )));
@@ -474,7 +474,7 @@ impl SwitcherService {
         let active = self.credentials.read_active()?;
         if crate::CredentialStore::digest(&active) != crate::CredentialStore::digest(credential) {
             return Err(SwitcherError::Consistency(
-                "Aktywne poświadczenie nie przeszło odczytu zwrotnego".to_owned(),
+                "Active credential failed read-back check".to_owned(),
             ));
         }
         Ok(())
