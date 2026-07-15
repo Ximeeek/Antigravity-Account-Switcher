@@ -122,6 +122,7 @@ impl SwitcherService {
                     .join("switcher.log")
                     .to_string_lossy()
                     .into_owned(),
+                minimize_to_tray: config.minimize_to_tray,
             },
             app_version: version.to_owned(),
             antigravity_version,
@@ -189,6 +190,7 @@ impl SwitcherService {
                     .join("switcher.log")
                     .to_string_lossy()
                     .into_owned(),
+                minimize_to_tray: config.minimize_to_tray,
             },
             app_version: version.to_owned(),
             antigravity_version,
@@ -342,6 +344,7 @@ impl SwitcherService {
         smart_switch_enabled: bool,
         switch_level: u8,
         patch_cooldown_ms: Option<u32>,
+        minimize_to_tray: bool,
     ) -> Result<SettingsView> {
         let mut path = installation_path.map(PathBuf::from);
         if let Some(ref p) = path {
@@ -378,6 +381,7 @@ impl SwitcherService {
             if let Some(cooldown) = patch_cooldown_ms {
                 config.patch_cooldown_ms = cooldown;
             }
+            config.minimize_to_tray = minimize_to_tray;
             save_json(&self.paths.config, &*config)?;
         }
         let state = self.app_state(env!("CARGO_PKG_VERSION"))?;

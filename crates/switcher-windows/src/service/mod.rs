@@ -122,6 +122,10 @@ impl SwitcherService {
         self.config.read().http_port
     }
 
+    pub fn minimize_to_tray(&self) -> bool {
+        self.config.read().minimize_to_tray
+    }
+
     pub(crate) fn journal(&self) -> JournalStore {
         JournalStore::new(self.paths.lock.clone())
     }

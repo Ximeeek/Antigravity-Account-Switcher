@@ -178,6 +178,8 @@
   "smart_switch_desc": "Automatically switches to another profile with the highest limits when current limits are low.",
   "smart_switch_label": "Enable Smart Switch",
   "smart_switch_hint": "Automatically switches accounts when the 5h limit falls below 10% or the weekly limit falls below 5%. Switching is blocked if the Antigravity agent is actively working.",
+  "minimize_to_tray_label": "Minimize to system tray",
+  "minimize_to_tray_hint": "Closing the window will keep the application running in the system tray.",
   "add_modal_eyebrow": "Add profile",
   "add_modal_cancel": "Cancel",
   "add_modal_submit": "Sign in with Google",

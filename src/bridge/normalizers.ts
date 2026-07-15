@@ -225,6 +225,11 @@ export const normalizeAppState = (value: unknown): AppState => {
           pick(source, "smart_switch_enabled", "smartSwitchEnabled"),
         false,
       ),
+      minimize_to_tray: asBoolean(
+        pick(settingsSource, "minimize_to_tray", "minimizeToTray") ??
+          pick(source, "minimize_to_tray", "minimizeToTray"),
+        true,
+      ),
       switch_level: asNumber(
         pick(settingsSource, "switch_level", "switchLevel") ??
           pick(source, "switch_level", "switchLevel"),

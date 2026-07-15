@@ -164,7 +164,8 @@ export function Settings({
     () =>
       draft.http_port !== state.settings.http_port ||
       draft.antigravity_path.trim() !== state.settings.antigravity_path.trim() ||
-      draft.smart_switch_enabled !== state.settings.smart_switch_enabled,
+      draft.smart_switch_enabled !== state.settings.smart_switch_enabled ||
+      draft.minimize_to_tray !== state.settings.minimize_to_tray,
     [draft, state.settings],
   );
 
@@ -308,40 +309,88 @@ export function Settings({
               </span>
             </label>
 
-            <div className="field-row field-row--checkbox" style={{ marginTop: "20px", marginBottom: "12px" }}>
-              <label className="checkbox-field" style={{ display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={draft.smart_switch_enabled}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-                    if (checked && state.profiles.length <= 1) {
+            <div className="field-row field-row--toggle" style={{ marginTop: "20px", marginBottom: "16px" }}>
+              <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                <button
+                  type="button"
+                  className={`smart-switch-toggle ${draft.smart_switch_enabled ? "smart-switch-toggle--active" : ""}`}
+                  onClick={() => {
+                    const nextVal = !draft.smart_switch_enabled;
+                    if (nextVal && state.profiles.length <= 1) {
                       setValidationError(t("validation_smart_switch_profiles"));
                       return;
                     }
                     setValidationError(null);
                     setDraft((current) => ({
                       ...current,
-                      smart_switch_enabled: checked,
+                      smart_switch_enabled: nextVal,
                     }));
                   }}
-                  style={{ 
-                    marginTop: "3px",
-                    width: "16px",
-                    height: "16px",
-                    accentColor: "var(--accent-color, #5865f2)",
-                    cursor: "pointer"
-                  }}
-                />
+                  style={{ marginTop: "4px", flexShrink: 0 }}
+                  aria-label={t("smart_switch_label")}
+                >
+                  <div className="smart-switch-toggle__thumb" />
+                </button>
                 <div>
-                  <span className="field__label" style={{ fontWeight: 600, display: "block", fontSize: "14px", color: "var(--text-primary, #fff)" }}>
+                  <span
+                    className="field__label"
+                    onClick={() => {
+                      const nextVal = !draft.smart_switch_enabled;
+                      if (nextVal && state.profiles.length <= 1) {
+                        setValidationError(t("validation_smart_switch_profiles"));
+                        return;
+                      }
+                      setValidationError(null);
+                      setDraft((current) => ({
+                        ...current,
+                        smart_switch_enabled: nextVal,
+                      }));
+                    }}
+                    style={{ fontWeight: 600, display: "block", fontSize: "14px", color: "var(--text-primary, #fff)", cursor: "pointer" }}
+                  >
                     {t("smart_switch_label")}
                   </span>
                   <p className="field-hint" style={{ margin: "4px 0 0 0", fontSize: "12px", color: "var(--text-secondary, #8e9297)", lineHeight: "1.4" }}>
                     {t("smart_switch_hint")}
                   </p>
                 </div>
-              </label>
+              </div>
+            </div>
+
+            <div className="field-row field-row--toggle" style={{ marginTop: "16px", marginBottom: "12px" }}>
+              <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                <button
+                  type="button"
+                  className={`smart-switch-toggle ${draft.minimize_to_tray ? "smart-switch-toggle--active" : ""}`}
+                  onClick={() => {
+                    setDraft((current) => ({
+                      ...current,
+                      minimize_to_tray: !current.minimize_to_tray,
+                    }));
+                  }}
+                  style={{ marginTop: "4px", flexShrink: 0 }}
+                  aria-label={t("minimize_to_tray_label")}
+                >
+                  <div className="smart-switch-toggle__thumb" />
+                </button>
+                <div>
+                  <span
+                    className="field__label"
+                    onClick={() => {
+                      setDraft((current) => ({
+                        ...current,
+                        minimize_to_tray: !current.minimize_to_tray,
+                      }));
+                    }}
+                    style={{ fontWeight: 600, display: "block", fontSize: "14px", color: "var(--text-primary, #fff)", cursor: "pointer" }}
+                  >
+                    {t("minimize_to_tray_label")}
+                  </span>
+                  <p className="field-hint" style={{ margin: "4px 0 0 0", fontSize: "12px", color: "var(--text-secondary, #8e9297)", lineHeight: "1.4" }}>
+                    {t("minimize_to_tray_hint")}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {validationError ? (

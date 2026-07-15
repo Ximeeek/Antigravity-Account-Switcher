@@ -123,6 +123,7 @@ pub struct SettingsView {
     pub sqlite_db_path: String,
     pub data_dir: String,
     pub logs_file: String,
+    pub minimize_to_tray: bool,
 }
 
 fn default_switch_level() -> u8 {
@@ -131,6 +132,10 @@ fn default_switch_level() -> u8 {
 
 fn default_patch_cooldown() -> u32 {
     100
+}
+
+fn default_minimize_to_tray() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -151,6 +156,8 @@ pub struct PersistentConfig {
     pub patched_asar_mtime: Option<u64>,
     #[serde(default)]
     pub patched_asar_cooldown: Option<u32>,
+    #[serde(default = "default_minimize_to_tray")]
+    pub minimize_to_tray: bool,
 }
 
 impl Default for PersistentConfig {
@@ -166,6 +173,7 @@ impl Default for PersistentConfig {
             patch_cooldown_ms: 100,
             patched_asar_mtime: None,
             patched_asar_cooldown: None,
+            minimize_to_tray: true,
         }
     }
 }

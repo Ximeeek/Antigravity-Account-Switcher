@@ -178,6 +178,8 @@
   "smart_switch_desc": "Automatycznie przełącza na inny profil z najwyższym limitem, gdy skończą się limity.",
   "smart_switch_label": "Włącz Smart Switch",
   "smart_switch_hint": "Automatycznie przełączy konto, gdy limit 5h spadnie poniżej 10% lub limit tygodniowy spadnie poniżej 5%. Przełączanie jest blokowane, gdy agent w Antigravity aktywnie pracuje.",
+  "minimize_to_tray_label": "Minimalizuj do zasobnika",
+  "minimize_to_tray_hint": "Zamknięcie głównego okna spowoduje zminimalizowanie aplikacji do zasobnika systemowego zamiast jej wyłączenia.",
   "add_modal_eyebrow": "Dodawanie profilu",
   "add_modal_cancel": "Anuluj",
   "add_modal_submit": "Zaloguj się przez Google",

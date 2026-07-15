@@ -9,8 +9,27 @@ pub mod http;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
+use tauri_plugin_notification::NotificationExt;
 
 use switcher_windows::SwitcherService;
+
+#[cfg(target_os = "windows")]
+extern "system" {
+    fn GetUserDefaultUILanguage() -> u16;
+}
+
+#[cfg(target_os = "windows")]
+fn get_system_lang() -> String {
+    unsafe {
+        let lang_id = GetUserDefaultUILanguage();
+        let primary_lang = lang_id & 0x3ff;
+        if primary_lang == 0x15 { // LANG_POLISH
+            "pl".to_string()
+        } else {
+            "en".to_string()
+        }
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -27,6 +46,7 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -128,8 +148,32 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+                let service = window.state::<std::sync::Arc<SwitcherService>>();
+                let minimize = service.minimize_to_tray();
+                if minimize {
+                    api.prevent_close();
+                    let _ = window.hide();
+
+                    #[cfg(target_os = "windows")]
+                    {
+                        let lang = get_system_lang();
+                        let title = "Antigravity Account Switcher";
+                        let body = if lang == "pl" {
+                            "Aplikacja została zminimalizowana do zasobnika systemowego."
+                        } else {
+                            "The application has been minimized to the system tray."
+                        };
+
+                        let app = window.app_handle();
+                        let _ = app.notification()
+                            .builder()
+                            .title(title)
+                            .body(body)
+                            .show();
+                    }
+                } else {
+                    window.app_handle().exit(0);
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![

@@ -56,6 +56,7 @@ export const makeDemoState = (): AppState => ({
     http_port: 43127,
     antigravity_path: "C:\\Program Files\\Antigravity\\Antigravity.exe",
     smart_switch_enabled: false,
+    minimize_to_tray: true,
     switch_level: 1,
     patch_cooldown_ms: 100,
     sqlite_db_path: "%APPDATA%\\Antigravity\\User\\globalStorage\\state.vscdb",
@@ -206,6 +207,10 @@ export const demoInvoke = async (command: string, args: Record<string, unknown> 
         smart_switch_enabled: asBoolean(
           pick(settings, "smart_switch_enabled", "smartSwitchEnabled"),
           demoState.settings.smart_switch_enabled,
+        ),
+        minimize_to_tray: asBoolean(
+          pick(settings, "minimize_to_tray", "minimizeToTray"),
+          demoState.settings.minimize_to_tray,
         ),
         switch_level: asNumber(
           pick(settings, "switch_level", "switchLevel"),

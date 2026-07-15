@@ -81,6 +81,7 @@ export interface AppSettings {
   sqlite_db_path?: string;
   data_dir?: string;
   logs_file?: string;
+  minimize_to_tray: boolean;
 }
 
 
