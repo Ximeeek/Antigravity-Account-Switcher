@@ -51,6 +51,8 @@ pub struct SwitcherService {
     pub(crate) active_oauth_cancellation: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
     pub(crate) last_switches: Mutex<Vec<std::time::Instant>>,
     pub(crate) master_key: RwLock<Option<[u8; 32]>>,
+    pub(crate) cached_antigravity_version: RwLock<Option<String>>,
+    pub(crate) cached_detected_installations: RwLock<Option<Vec<String>>>,
 }
 
 impl SwitcherService {
@@ -70,6 +72,16 @@ impl SwitcherService {
             config.installation_path = crate::detect_installations().into_iter().next();
         }
         switcher_core::save_json(&paths.config, &config)?;
+
+        let cached_version = config
+            .installation_path
+            .as_ref()
+            .and_then(|path| helpers::read_antigravity_version(path));
+        let detected = crate::detect_installations()
+            .into_iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
         let service = Arc::new(Self {
             logger,
             credentials: CredentialStore,
@@ -81,6 +93,8 @@ impl SwitcherService {
             last_switches: Mutex::new(Vec::new()),
             master_key: RwLock::new(None),
             paths,
+            cached_antigravity_version: RwLock::new(cached_version),
+            cached_detected_installations: RwLock::new(Some(detected)),
         });
 
         service.logger.info(None, "app", "Application initialized");

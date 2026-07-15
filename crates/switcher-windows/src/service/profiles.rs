@@ -49,6 +49,8 @@ impl SwitcherService {
                     format!("Detected and saved Antigravity path: {}", path.display()),
                 );
                 let _ = save_json(&self.paths.config, &*config);
+                let version = read_antigravity_version(path);
+                *self.cached_antigravity_version.write() = version;
             }
         }
         config.installation_path.clone()
@@ -88,14 +90,12 @@ impl SwitcherService {
         } else {
             EngineStatus::Ready
         };
-        let detected_installations = detect_installations()
-            .iter()
-            .map(|path| path.to_string_lossy().into_owned())
-            .collect();
-        let antigravity_version = config
-            .installation_path
-            .as_ref()
-            .and_then(|path| read_antigravity_version(path));
+        let detected_installations = self
+            .cached_detected_installations
+            .read()
+            .clone()
+            .unwrap_or_default();
+        let antigravity_version = self.cached_antigravity_version.read().clone();
         Ok(AppStateView {
             engine_status,
             active_profile,
@@ -156,14 +156,12 @@ impl SwitcherService {
         } else {
             EngineStatus::Ready
         };
-        let detected_installations = detect_installations()
-            .iter()
-            .map(|path| path.to_string_lossy().into_owned())
-            .collect();
-        let antigravity_version = config
-            .installation_path
-            .as_ref()
-            .and_then(|path| read_antigravity_version(path));
+        let detected_installations = self
+            .cached_detected_installations
+            .read()
+            .clone()
+            .unwrap_or_default();
+        let antigravity_version = self.cached_antigravity_version.read().clone();
         Ok(AppStateView {
             engine_status,
             active_profile,
@@ -375,7 +373,7 @@ impl SwitcherService {
         {
             let mut config = self.config.write();
             config.http_port = http_port;
-            config.installation_path = path;
+            config.installation_path = path.clone();
             config.smart_switch_enabled = smart_switch_enabled;
             config.switch_level = switch_level;
             if let Some(cooldown) = patch_cooldown_ms {
@@ -383,6 +381,17 @@ impl SwitcherService {
             }
             config.minimize_to_tray = minimize_to_tray;
             save_json(&self.paths.config, &*config)?;
+        }
+        // Update cached values:
+        {
+            let new_version = path.as_ref().and_then(|p| read_antigravity_version(p));
+            *self.cached_antigravity_version.write() = new_version;
+
+            let detected = detect_installations()
+                .into_iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+            *self.cached_detected_installations.write() = Some(detected);
         }
         let state = self.app_state(env!("CARGO_PKG_VERSION"))?;
         Ok(state.settings)
@@ -764,15 +773,14 @@ impl SwitcherService {
     }
 
     pub fn diagnostic_report(&self, app_version: &str) -> Result<String> {
-        let config = self.config.read().clone();
         let installations: Vec<_> = detect_installations()
             .iter()
             .map(|path| switcher_core::sanitize_path(path))
             .collect();
-        let antigravity_version = config
-            .installation_path
-            .as_ref()
-            .and_then(|path| read_antigravity_version(path))
+        let antigravity_version = self
+            .cached_antigravity_version
+            .read()
+            .clone()
             .unwrap_or_else(|| "nieznana".to_owned());
         let mut report = vec![
             "Antigravity Account Switcher — raport diagnostyczny".to_owned(),

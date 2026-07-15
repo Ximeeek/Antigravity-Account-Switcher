@@ -232,7 +232,7 @@ export default function App() {
     const shouldPoll =
       operation?.status === "in_progress" || state?.engine_status === "busy";
     if (!shouldPoll) return undefined;
-    const interval = window.setInterval(() => void loadState(true), 50);
+    const interval = window.setInterval(() => void loadState(true), 200);
     return () => window.clearInterval(interval);
   }, [loadState, state?.engine_status, state?.operation]);
 
