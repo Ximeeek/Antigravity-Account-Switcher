@@ -423,6 +423,58 @@ fn get_oauth_response_html(lang: &str, status: &str, detail: Option<&str>) -> St
         ),
     };
 
+    let (extra_html, extra_js) = if status == "success" {
+        (
+            if is_pl {
+                r#"
+        <div class="timer-container">
+            <p class="timer-text">Ta karta zamknie się automatycznie za <span id="countdown">10</span> sek.</p>
+            <div class="timer-bar-bg">
+                <div id="timer-bar" class="timer-bar"></div>
+            </div>
+        </div>
+"#
+            } else {
+                r#"
+        <div class="timer-container">
+            <p class="timer-text">This tab will close automatically in <span id="countdown">10</span>s.</p>
+            <div class="timer-bar-bg">
+                <div id="timer-bar" class="timer-bar"></div>
+            </div>
+        </div>
+"#
+            },
+            r#"<script>
+        (function() {
+            var timeLeft = 10;
+            var countdownEl = document.getElementById('countdown');
+            var barEl = document.getElementById('timer-bar');
+            
+            // Start the bar transition after load
+            setTimeout(function() {
+                if (barEl) {
+                    barEl.style.width = '0%';
+                }
+            }, 50);
+
+            var interval = setInterval(function() {
+                timeLeft -= 1;
+                if (countdownEl) {
+                    countdownEl.textContent = timeLeft;
+                }
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    window.open('', '_self', '');
+                    window.close();
+                }
+            }, 1000);
+        })();
+    </script>"#,
+        )
+    } else {
+        ("", "")
+    };
+
     format!(
         r#"<!DOCTYPE html>
 <html lang="{}">
@@ -482,6 +534,32 @@ fn get_oauth_response_html(lang: &str, status: &str, detail: Option<&str>) -> St
             line-height: 1.5;
             margin: 0;
         }}
+        .timer-container {{
+            margin-top: 24px;
+            padding: 12px;
+            background-color: rgba(53, 211, 154, 0.03);
+            border: 1px dashed rgba(53, 211, 154, 0.15);
+            border-radius: 8px;
+        }}
+        .timer-bar-bg {{
+            height: 4px;
+            background-color: rgba(53, 211, 154, 0.1);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }}
+        .timer-bar {{
+            height: 100%;
+            width: 100%;
+            background-color: #35d39a;
+            border-radius: 2px;
+            transition: width 10s linear;
+        }}
+        .timer-text {{
+            font-size: 0.8rem !important;
+            color: #7e9dd3 !important;
+            margin: 0 !important;
+        }}
     </style>
 </head>
 <body>
@@ -491,10 +569,12 @@ fn get_oauth_response_html(lang: &str, status: &str, detail: Option<&str>) -> St
         </div>
         <h1>{}</h1>
         <p>{}</p>
+        {}
     </div>
+    {}
 </body>
 </html>"#,
-        lang, heading, icon_class, icon_svg, heading, description
+        lang, heading, icon_class, icon_svg, heading, description, extra_html, extra_js
     )
 }
 

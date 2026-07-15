@@ -23,7 +23,8 @@ fn get_system_lang() -> String {
     unsafe {
         let lang_id = GetUserDefaultUILanguage();
         let primary_lang = lang_id & 0x3ff;
-        if primary_lang == 0x15 { // LANG_POLISH
+        if primary_lang == 0x15 {
+            // LANG_POLISH
             "pl".to_string()
         } else {
             "en".to_string()
@@ -165,11 +166,7 @@ pub fn run() {
                         };
 
                         let app = window.app_handle();
-                        let _ = app.notification()
-                            .builder()
-                            .title(title)
-                            .body(body)
-                            .show();
+                        let _ = app.notification().builder().title(title).body(body).show();
                     }
                 } else {
                     window.app_handle().exit(0);
