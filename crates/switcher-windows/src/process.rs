@@ -359,7 +359,14 @@ fn enumerate_windows_processes(installation_path: &Path) -> Result<Vec<Antigravi
     let mut ok = unsafe { Process32FirstW(snapshot, &mut entry) };
     while ok != 0 {
         let name = utf16z(&entry.szExeFile);
-        let path = query_process_path(entry.th32ProcessID);
+        let name_lower = name.to_ascii_lowercase();
+        // Optimize: Only query executable path for candidate process names to avoid
+        // expensive Win32 API queries on every process running on the system.
+        let path = if name_lower == "antigravity.exe" || name_lower == "language_server.exe" {
+            query_process_path(entry.th32ProcessID)
+        } else {
+            None
+        };
         raw.push(AntigravityProcess {
             pid: entry.th32ProcessID,
             parent_pid: entry.th32ParentProcessID,
