@@ -2,7 +2,6 @@
  * ASAR patching service for language server restart cooldown.
  * Implements backup, extraction, modification, packing, and validation of app.asar.
  */
-
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -27,7 +26,8 @@ impl SwitcherService {
         }
 
         let metadata = fs::metadata(&asar_path).map_err(|e| SwitcherError::io(&asar_path, e))?;
-        let current_mtime = metadata.modified()
+        let current_mtime = metadata
+            .modified()
             .ok()
             .and_then(|t| t.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_secs())
@@ -62,14 +62,25 @@ impl SwitcherService {
         let install_path = match &config.installation_path {
             Some(path) => path,
             None => {
-                self.logger.warn(Some(op_id), "patch", "No installation path configured; skipping asar patch check.");
+                self.logger.warn(
+                    Some(op_id),
+                    "patch",
+                    "No installation path configured; skipping asar patch check.",
+                );
                 return Ok(false);
             }
         };
-        
+
         let asar_path = install_path.join("resources").join("app.asar");
         if !asar_path.is_file() {
-            self.logger.warn(Some(op_id), "patch", format!("app.asar not found at {}; skipping patch.", asar_path.display()));
+            self.logger.warn(
+                Some(op_id),
+                "patch",
+                format!(
+                    "app.asar not found at {}; skipping patch.",
+                    asar_path.display()
+                ),
+            );
             return Ok(false);
         }
 
@@ -78,7 +89,11 @@ impl SwitcherService {
             return Ok(false);
         }
 
-        self.logger.info(Some(op_id), "patch", "app.asar is not patched or needs update; initiating patch routine.");
+        self.logger.info(
+            Some(op_id),
+            "patch",
+            "app.asar is not patched or needs update; initiating patch routine.",
+        );
 
         // Check if Antigravity is running, and if so, handle it
         let process_mgr = self.process_manager()?;
@@ -88,7 +103,11 @@ impl SwitcherService {
                 self.logger.info(Some(op_id), "patch", "Antigravity is running; skipping startup patch check to avoid closing the application.");
                 return Ok(false);
             }
-            self.logger.info(Some(op_id), "patch", "Antigravity is running. Closing processes to unlock app.asar.");
+            self.logger.info(
+                Some(op_id),
+                "patch",
+                "Antigravity is running. Closing processes to unlock app.asar.",
+            );
             process_mgr.close_all(op_id)?;
             // Sleep slightly to let files unlock
             std::thread::sleep(std::time::Duration::from_millis(500));
@@ -99,9 +118,16 @@ impl SwitcherService {
         let content_str = String::from_utf8_lossy(&bytes);
         let backup_path = self.paths.root.join("app.asar.backup");
         let is_original = self.verify_cooldown_in_str(&content_str, 2000);
-        
+
         if is_original {
-            self.logger.info(Some(op_id), "patch", format!("Backing up untouched original app.asar to {}", backup_path.display()));
+            self.logger.info(
+                Some(op_id),
+                "patch",
+                format!(
+                    "Backing up untouched original app.asar to {}",
+                    backup_path.display()
+                ),
+            );
             fs::copy(&asar_path, &backup_path).map_err(|e| SwitcherError::io(&backup_path, e))?;
         } else if !backup_path.is_file() {
             self.logger.warn(Some(op_id), "patch", "Backup not found and live app.asar is already modified. Backing up live file as fallback.");
@@ -118,16 +144,35 @@ impl SwitcherService {
         let _ = fs::remove_file(&temp_patched_asar);
         let _ = fs::remove_dir_all(&temp_val_dir);
 
-        let patch_result = self.run_patch_sequence(&asar_path, &temp_dir, &temp_patched_asar, &temp_val_dir, config.patch_cooldown_ms, op_id);
+        let patch_result = self.run_patch_sequence(
+            &asar_path,
+            &temp_dir,
+            &temp_patched_asar,
+            &temp_val_dir,
+            config.patch_cooldown_ms,
+            op_id,
+        );
 
         if let Err(err) = patch_result {
-            self.logger.error(Some(op_id), "patch", format!("Patch sequence failed: {}. Restoring backup.", err));
+            self.logger.error(
+                Some(op_id),
+                "patch",
+                format!("Patch sequence failed: {}. Restoring backup.", err),
+            );
             // Attempt to restore backup
             if backup_path.is_file() {
                 if let Err(restore_err) = fs::copy(&backup_path, &asar_path) {
-                    self.logger.error(Some(op_id), "patch", format!("FATAL: Failed to restore backup app.asar: {}", restore_err));
+                    self.logger.error(
+                        Some(op_id),
+                        "patch",
+                        format!("FATAL: Failed to restore backup app.asar: {}", restore_err),
+                    );
                 } else {
-                    self.logger.info(Some(op_id), "patch", "Successfully restored original app.asar from backup.");
+                    self.logger.info(
+                        Some(op_id),
+                        "patch",
+                        "Successfully restored original app.asar from backup.",
+                    );
                 }
             }
             // Clean up
@@ -138,11 +183,16 @@ impl SwitcherService {
         }
 
         // 3. Move the verified patched asar to live location
-        self.logger.info(Some(op_id), "patch", "Patch successfully verified. Overwriting live app.asar.");
+        self.logger.info(
+            Some(op_id),
+            "patch",
+            "Patch successfully verified. Overwriting live app.asar.",
+        );
         fs::copy(&temp_patched_asar, &asar_path).map_err(|e| SwitcherError::io(&asar_path, e))?;
 
         if let Ok(metadata) = fs::metadata(&asar_path) {
-            if let Some(mtime) = metadata.modified()
+            if let Some(mtime) = metadata
+                .modified()
                 .ok()
                 .and_then(|t| t.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs())
@@ -163,79 +213,120 @@ impl SwitcherService {
     }
 
     fn run_patch_sequence(
-        &self, 
-        asar_path: &Path, 
-        temp_dir: &Path, 
-        temp_patched_asar: &Path, 
-        temp_val_dir: &Path, 
-        target_cooldown: u32, 
-        op_id: Uuid
+        &self,
+        asar_path: &Path,
+        temp_dir: &Path,
+        temp_patched_asar: &Path,
+        temp_val_dir: &Path,
+        target_cooldown: u32,
+        op_id: Uuid,
     ) -> Result<()> {
         use std::os::windows::process::CommandExt;
         // Extract
-        self.logger.info(Some(op_id), "patch", "Extracting app.asar archive...");
+        self.logger
+            .info(Some(op_id), "patch", "Extracting app.asar archive...");
         let status = Command::new("cmd")
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .args(&["/C", "npx", "asar", "extract"])
             .arg(asar_path)
             .arg(temp_dir)
             .status()
-            .map_err(|e| SwitcherError::ProcessShutdown(format!("Failed to start npx asar extract: {}", e)))?;
-        
+            .map_err(|e| {
+                SwitcherError::ProcessShutdown(format!("Failed to start npx asar extract: {}", e))
+            })?;
+
         if !status.success() {
-            return Err(SwitcherError::ProcessShutdown("npx asar extract failed".to_owned()));
+            return Err(SwitcherError::ProcessShutdown(
+                "npx asar extract failed".to_owned(),
+            ));
         }
 
         // Edit dist/languageServer.js
         let js_path = temp_dir.join("dist").join("languageServer.js");
         if !js_path.is_file() {
-            return Err(SwitcherError::ProcessShutdown("Extracted languageServer.js not found".to_owned()));
+            return Err(SwitcherError::ProcessShutdown(
+                "Extracted languageServer.js not found".to_owned(),
+            ));
         }
 
-        let js_content = fs::read_to_string(&js_path).map_err(|e| SwitcherError::io(&js_path, e))?;
-        
-        let patched_content = self.patch_js_content(&js_content, target_cooldown)
-            .ok_or_else(|| SwitcherError::ProcessShutdown("Constant RESTART_COOLDOWN_MS not found in languageServer.js".to_owned()))?;
+        let js_content =
+            fs::read_to_string(&js_path).map_err(|e| SwitcherError::io(&js_path, e))?;
+
+        let patched_content = self
+            .patch_js_content(&js_content, target_cooldown)
+            .ok_or_else(|| {
+                SwitcherError::ProcessShutdown(
+                    "Constant RESTART_COOLDOWN_MS not found in languageServer.js".to_owned(),
+                )
+            })?;
 
         fs::write(&js_path, patched_content).map_err(|e| SwitcherError::io(&js_path, e))?;
-        self.logger.info(Some(op_id), "patch", format!("Modified RESTART_COOLDOWN_MS to {} in languageServer.js", target_cooldown));
+        self.logger.info(
+            Some(op_id),
+            "patch",
+            format!(
+                "Modified RESTART_COOLDOWN_MS to {} in languageServer.js",
+                target_cooldown
+            ),
+        );
 
         // Pack
-        self.logger.info(Some(op_id), "patch", "Packing patched app.asar archive...");
+        self.logger
+            .info(Some(op_id), "patch", "Packing patched app.asar archive...");
         let status = Command::new("cmd")
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .args(&["/C", "npx", "asar", "pack"])
             .arg(temp_dir)
             .arg(temp_patched_asar)
             .status()
-            .map_err(|e| SwitcherError::ProcessShutdown(format!("Failed to start npx asar pack: {}", e)))?;
+            .map_err(|e| {
+                SwitcherError::ProcessShutdown(format!("Failed to start npx asar pack: {}", e))
+            })?;
 
         if !status.success() {
-            return Err(SwitcherError::ProcessShutdown("npx asar pack failed".to_owned()));
+            return Err(SwitcherError::ProcessShutdown(
+                "npx asar pack failed".to_owned(),
+            ));
         }
 
         // Verify structural validity by extracting to temp_val_dir
-        self.logger.info(Some(op_id), "patch", "Validating patched app.asar structure...");
+        self.logger.info(
+            Some(op_id),
+            "patch",
+            "Validating patched app.asar structure...",
+        );
         let status = Command::new("cmd")
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .args(&["/C", "npx", "asar", "extract"])
             .arg(temp_patched_asar)
             .arg(temp_val_dir)
             .status()
-            .map_err(|e| SwitcherError::ProcessShutdown(format!("Failed to start npx asar extract for validation: {}", e)))?;
+            .map_err(|e| {
+                SwitcherError::ProcessShutdown(format!(
+                    "Failed to start npx asar extract for validation: {}",
+                    e
+                ))
+            })?;
 
         if !status.success() {
-            return Err(SwitcherError::ProcessShutdown("Validation extract failed (asar archive structurally invalid)".to_owned()));
+            return Err(SwitcherError::ProcessShutdown(
+                "Validation extract failed (asar archive structurally invalid)".to_owned(),
+            ));
         }
 
         let val_js_path = temp_val_dir.join("dist").join("languageServer.js");
         if !val_js_path.is_file() {
-            return Err(SwitcherError::ProcessShutdown("Validation failed: languageServer.js not found in unpacked archive".to_owned()));
+            return Err(SwitcherError::ProcessShutdown(
+                "Validation failed: languageServer.js not found in unpacked archive".to_owned(),
+            ));
         }
 
-        let val_js_content = fs::read_to_string(&val_js_path).map_err(|e| SwitcherError::io(&val_js_path, e))?;
+        let val_js_content =
+            fs::read_to_string(&val_js_path).map_err(|e| SwitcherError::io(&val_js_path, e))?;
         if !self.verify_cooldown_in_str(&val_js_content, target_cooldown) {
-            return Err(SwitcherError::ProcessShutdown("Validation failed: constant not updated correctly in repacked archive".to_owned()));
+            return Err(SwitcherError::ProcessShutdown(
+                "Validation failed: constant not updated correctly in repacked archive".to_owned(),
+            ));
         }
 
         Ok(())

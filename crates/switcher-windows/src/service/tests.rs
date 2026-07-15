@@ -5,11 +5,12 @@
 
 #[cfg(test)]
 mod tests {
+    use super::super::database::{rebuild_state_database_from_json, validate_state_database};
     use super::super::helpers::{
-        parse_token_expiry, check_has_refresh_token, base64_url_encode, base64_url_decode, url_decode,
+        base64_url_decode, base64_url_encode, check_has_refresh_token, parse_token_expiry,
+        url_decode,
     };
     use super::super::manifest::{hash_directory, merge_missing_files};
-    use super::super::database::{validate_state_database, rebuild_state_database_from_json};
     use rusqlite::Connection;
 
     #[test]
@@ -132,36 +133,34 @@ mod tests {
 
     #[test]
     fn test_get_bucket_remaining_fraction() {
-        use switcher_core::{QuotaGroupView, QuotaBucketView, ProfileQuotaView};
-        
+        use switcher_core::{ProfileQuotaView, QuotaBucketView, QuotaGroupView};
+
         let quota = ProfileQuotaView {
             subscription_tier: "tier".to_owned(),
-            quota_groups: vec![
-                QuotaGroupView {
-                    display_name: "group1".to_owned(),
-                    description: "desc".to_owned(),
-                    buckets: vec![
-                        QuotaBucketView {
-                            bucket_id: "gemini-5h".to_owned(),
-                            window: "5h".to_owned(),
-                            remaining_fraction: 0.75,
-                            reset_time: None,
-                            display_name: "5h limit".to_owned(),
-                            description: None,
-                        },
-                        QuotaBucketView {
-                            bucket_id: "gemini-weekly".to_owned(),
-                            window: "168h".to_owned(),
-                            remaining_fraction: 0.12,
-                            reset_time: None,
-                            display_name: "weekly limit".to_owned(),
-                            description: None,
-                        },
-                    ],
-                }
-            ],
+            quota_groups: vec![QuotaGroupView {
+                display_name: "group1".to_owned(),
+                description: "desc".to_owned(),
+                buckets: vec![
+                    QuotaBucketView {
+                        bucket_id: "gemini-5h".to_owned(),
+                        window: "5h".to_owned(),
+                        remaining_fraction: 0.75,
+                        reset_time: None,
+                        display_name: "5h limit".to_owned(),
+                        description: None,
+                    },
+                    QuotaBucketView {
+                        bucket_id: "gemini-weekly".to_owned(),
+                        window: "168h".to_owned(),
+                        remaining_fraction: 0.12,
+                        reset_time: None,
+                        display_name: "weekly limit".to_owned(),
+                        description: None,
+                    },
+                ],
+            }],
         };
-        
+
         // Use custom local logic to test
         let get_fraction = |q: &ProfileQuotaView, bid: &str| {
             for group in &q.quota_groups {
@@ -171,7 +170,7 @@ mod tests {
             }
             None
         };
-        
+
         assert_eq!(get_fraction(&quota, "gemini-5h"), Some(0.75));
         assert_eq!(get_fraction(&quota, "gemini-weekly"), Some(0.12));
         assert_eq!(get_fraction(&quota, "gemini-nonexistent"), None);
@@ -212,4 +211,3 @@ mod tests {
         assert!(service.preflight_target_identity(profile_id).is_err());
     }
 }
-

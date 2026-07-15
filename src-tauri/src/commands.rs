@@ -3,7 +3,6 @@
  * IPC interfaces exposed to the React frontend.
  * Main exports: get_app_state, request_switch, confirm_switch, cancel_switch, add_current_profile, delete_profile, update_settings, copy_diagnostics, recovery_resume, recovery_rollback, start_oauth_login, cancel_oauth_login, show_mini_window, hide_mini_window, resize_mini_window
  */
-
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
@@ -12,7 +11,9 @@ use switcher_core::{AppStateView, ProfileView, SettingsView, SwitchRequestResult
 use switcher_windows::{SwitchOutcome, SwitcherService};
 
 #[tauri::command]
-pub async fn get_app_state(service: State<'_, Arc<SwitcherService>>) -> Result<AppStateView, String> {
+pub async fn get_app_state(
+    service: State<'_, Arc<SwitcherService>>,
+) -> Result<AppStateView, String> {
     service
         .app_state_live(env!("CARGO_PKG_VERSION"))
         .await
@@ -31,7 +32,6 @@ pub fn request_switch(
         .map_err(|e| e.to_string())
 }
 
-
 #[tauri::command]
 pub async fn confirm_switch(
     service: State<'_, Arc<SwitcherService>>,
@@ -39,11 +39,9 @@ pub async fn confirm_switch(
 ) -> Result<SwitchOutcome, String> {
     let op_uuid = Uuid::parse_str(&operation_id).map_err(|e| e.to_string())?;
     let service = service.inner().clone();
-    tokio::task::spawn_blocking(move || {
-        service.confirm_switch(op_uuid).map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tokio::task::spawn_blocking(move || service.confirm_switch(op_uuid).map_err(|e| e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -116,13 +114,13 @@ pub fn copy_diagnostics(service: State<'_, Arc<SwitcherService>>) -> Result<Stri
 }
 
 #[tauri::command]
-pub async fn recovery_resume(service: State<'_, Arc<SwitcherService>>) -> Result<SwitchOutcome, String> {
+pub async fn recovery_resume(
+    service: State<'_, Arc<SwitcherService>>,
+) -> Result<SwitchOutcome, String> {
     let service = service.inner().clone();
-    tokio::task::spawn_blocking(move || {
-        service.recovery_resume().map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tokio::task::spawn_blocking(move || service.recovery_resume().map_err(|e| e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -147,7 +145,12 @@ pub async fn start_oauth_login(
         }
     };
     service
-        .start_oauth_login(display_name, lang, auto_activate.unwrap_or(true), on_callback)
+        .start_oauth_login(
+            display_name,
+            lang,
+            auto_activate.unwrap_or(true),
+            on_callback,
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -193,12 +196,13 @@ pub fn uninstall_app() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn force_smart_switch(
-    service: State<'_, Arc<SwitcherService>>,
-) -> Result<(), String> {
+pub async fn force_smart_switch(service: State<'_, Arc<SwitcherService>>) -> Result<(), String> {
     #[cfg(debug_assertions)]
     {
-        service.force_smart_switch_bypass_quota().await.map_err(|e| e.to_string())
+        service
+            .force_smart_switch_bypass_quota()
+            .await
+            .map_err(|e| e.to_string())
     }
     #[cfg(not(debug_assertions))]
     {
@@ -228,13 +232,13 @@ pub fn remove_profile_lock(
     service: State<'_, Arc<SwitcherService>>,
     password: String,
 ) -> Result<(), String> {
-    service.remove_app_lock(&password).map_err(|e| e.to_string())
+    service
+        .remove_app_lock(&password)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn close_app_lock(
-    service: State<'_, Arc<SwitcherService>>,
-) -> Result<(), String> {
+pub fn close_app_lock(service: State<'_, Arc<SwitcherService>>) -> Result<(), String> {
     service.close_app_lock().map_err(|e| e.to_string())
 }
 
@@ -243,7 +247,7 @@ pub fn open_browser_url(url: String) -> Result<(), String> {
     if !url.starts_with("http://") && !url.starts_with("https://") {
         return Err("Invalid protocol".to_string());
     }
-    
+
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("rundll32")
@@ -254,7 +258,11 @@ pub fn open_browser_url(url: String) -> Result<(), String> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let cmd = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        let cmd = if cfg!(target_os = "macos") {
+            "open"
+        } else {
+            "xdg-open"
+        };
         std::process::Command::new(cmd)
             .arg(&url)
             .spawn()
@@ -272,7 +280,7 @@ pub async fn send_email_report(
     custom_desc_id: Option<String>,
 ) -> Result<(), String> {
     use std::sync::{Mutex, OnceLock};
-    use std::time::{Instant, Duration};
+    use std::time::{Duration, Instant};
 
     // Helper to get static rate limiter timestamp.
     // Limits feedback requests to 1 per 60 seconds per running app instance.
@@ -288,18 +296,28 @@ pub async fn send_email_report(
             let elapsed = last_time.elapsed();
             if elapsed < Duration::from_secs(60) {
                 let remaining = 60 - elapsed.as_secs();
-                return Err(format!("Please wait {} seconds before sending another report.", remaining));
+                return Err(format!(
+                    "Please wait {} seconds before sending another report.",
+                    remaining
+                ));
             }
         }
         *guard = Some(Instant::now());
     }
 
-    let form_id = custom_form_id.unwrap_or_else(|| "1FAIpQLSd3we3q3-D5yAPV6EoPOlW0wq3ELpkt4clDirPdUg4P4TNtgw".to_string());
+    let form_id = custom_form_id
+        .unwrap_or_else(|| "1FAIpQLSd3we3q3-D5yAPV6EoPOlW0wq3ELpkt4clDirPdUg4P4TNtgw".to_string());
     let subject_entry = custom_subject_id.unwrap_or_else(|| "entry.314165948".to_string());
     let desc_entry = custom_desc_id.unwrap_or_else(|| "entry.1832756536".to_string());
 
-    log::info!("[feedback] Initiating bug report submission to Google Forms. Subject: {}", subject);
-    println!("[feedback] Initiating bug report submission to Google Forms. Subject: {}", subject);
+    log::info!(
+        "[feedback] Initiating bug report submission to Google Forms. Subject: {}",
+        subject
+    );
+    println!(
+        "[feedback] Initiating bug report submission to Google Forms. Subject: {}",
+        subject
+    );
 
     let client = reqwest::Client::new();
     let params = [
@@ -332,10 +350,18 @@ pub async fn send_email_report(
         Ok(())
     } else {
         let body_text = res.text().await.unwrap_or_default();
-        log::error!("[feedback] Google Forms server error: {} - {}", status, body_text);
-        println!("[feedback] Google Forms server error: {} - {}", status, body_text);
-        Err(format!("Server returned error status {}: {}", status, body_text))
+        log::error!(
+            "[feedback] Google Forms server error: {} - {}",
+            status,
+            body_text
+        );
+        println!(
+            "[feedback] Google Forms server error: {} - {}",
+            status, body_text
+        );
+        Err(format!(
+            "Server returned error status {}: {}",
+            status, body_text
+        ))
     }
 }
-
-

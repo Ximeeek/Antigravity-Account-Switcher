@@ -1,12 +1,11 @@
+use std::os::windows::process::CommandExt;
 /**
  * Uninstall and Wipe utilities.
  * Handles system clean-up by spawning a detached PowerShell script that waits for the
  * app to exit, removes cache directories, deletes registry keys, clears active credentials,
  * and either relaunches the app (wipe) or deletes the executable (uninstall).
  */
-
 use std::process::Command;
-use std::os::windows::process::CommandExt;
 
 // CREATE_NO_WINDOW flag for Windows process creation (0x08000000)
 const CREATE_NO_WINDOW: u32 = 0x08000000;

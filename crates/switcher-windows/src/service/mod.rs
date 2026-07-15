@@ -1,9 +1,9 @@
+pub mod asar_patch;
 /**
  * Switcher service core module.
  * Declares the SwitcherService struct, constructor logic, and re-exports sub-modules.
  * Main exports: SwitcherService, PendingSwitch, SwitchOutcome
  */
-
 pub mod database;
 pub mod helpers;
 pub mod manifest;
@@ -12,7 +12,6 @@ pub mod profiles;
 pub mod smart_switch;
 pub mod switch;
 pub mod switch_fast;
-pub mod asar_patch;
 #[cfg(test)]
 pub mod tests;
 
@@ -22,9 +21,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{AuditLogger, CredentialStore, SwitcherPaths};
-use switcher_core::{
-    JournalStore, OperationProgress, PersistentConfig, Result,
-};
+use switcher_core::{JournalStore, OperationProgress, PersistentConfig, Result};
 
 #[derive(Debug, Clone)]
 pub struct PendingSwitch {
@@ -34,7 +31,6 @@ pub struct PendingSwitch {
     pub password: Option<String>,
 }
 
-
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SwitchOutcome {
@@ -42,10 +38,6 @@ pub struct SwitchOutcome {
     pub relaunched_pid: Option<u32>,
     pub warning: Option<String>,
 }
-
-
-
-
 
 #[derive(Debug)]
 pub struct SwitcherService {
@@ -60,7 +52,6 @@ pub struct SwitcherService {
     pub(crate) last_switches: Mutex<Vec<std::time::Instant>>,
     pub(crate) master_key: RwLock<Option<[u8; 32]>>,
 }
-
 
 impl SwitcherService {
     pub fn initialize() -> Result<Arc<Self>> {
@@ -92,7 +83,6 @@ impl SwitcherService {
             paths,
         });
 
-
         service.logger.info(None, "app", "Application initialized");
         service.log_artifact_inventory(None, "startup-active", None);
         if let Some(lock) = service.journal().read()? {
@@ -105,11 +95,15 @@ impl SwitcherService {
                 ),
             );
         }
-        
+
         // Attempt to apply the app.asar patch at startup if switch level is Level 2+ (3) and Antigravity is not running
         if service.config.read().switch_level == 3 {
             if let Err(e) = service.ensure_asar_patched(None) {
-                service.logger.warn(None, "patch", format!("Failed to apply app.asar patch at startup: {}", e));
+                service.logger.warn(
+                    None,
+                    "patch",
+                    format!("Failed to apply app.asar patch at startup: {}", e),
+                );
             }
         }
 
@@ -139,9 +133,8 @@ impl SwitcherService {
         };
         let label = if is_fast {
             match lock.current_step {
-                switcher_core::SwitchStep::CloseProcesses | switcher_core::SwitchStep::VerifyUnlocked => {
-                    "Restarting background services"
-                }
+                switcher_core::SwitchStep::CloseProcesses
+                | switcher_core::SwitchStep::VerifyUnlocked => "Restarting background services",
                 switcher_core::SwitchStep::RemoveLock | switcher_core::SwitchStep::Relaunch => {
                     "Completing switch"
                 }

@@ -3,7 +3,6 @@
  * Initializes background workers, local TCP server, system tray, and maps command handlers.
  * Main exports: run
  */
-
 pub mod commands;
 pub mod http;
 
@@ -57,7 +56,27 @@ pub fn run() {
                 loop {
                     interval.tick().await;
                     if let Err(e) = service_smart.check_and_perform_smart_switch().await {
-                        service_smart.logger().error(None, "smart_switch", format!("Smart Switch error: {}", e));
+                        service_smart.logger().error(
+                            None,
+                            "smart_switch",
+                            format!("Smart Switch error: {}", e),
+                        );
+                    }
+                }
+            });
+
+            // Monitor WebView2 subprocesses to exit cleanly if they are terminated or crashed
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_millis(1500));
+                let mut has_seen_webview = false;
+                loop {
+                    interval.tick().await;
+                    let active = switcher_windows::has_active_webview_processes();
+                    if active {
+                        has_seen_webview = true;
+                    } else if has_seen_webview {
+                        eprintln!("WebView2 child processes terminated. Exiting application.");
+                        std::process::exit(0);
                     }
                 }
             });
@@ -139,8 +158,6 @@ pub fn run() {
             commands::open_browser_url,
             commands::send_email_report
         ])
-
-
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

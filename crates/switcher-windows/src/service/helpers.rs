@@ -3,7 +3,6 @@
  * Includes base64 URL coding, URL encoding/decoding, token parsers, and display name validators.
  * Main exports: base64_url_encode, base64_url_decode, url_encode, url_decode, extract_email_from_id_token, try_parse_email_from_credential, parse_token_expiry, check_has_refresh_token, parse_refresh_token, windows_version, read_antigravity_version, validate_display_name
  */
-
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use chrono::{DateTime, Utc};
@@ -79,26 +78,40 @@ pub(crate) fn extract_email_from_id_token(id_token: &str) -> Option<String> {
 
 pub(crate) fn try_parse_email_from_credential(bytes: &[u8]) -> Option<String> {
     let value: Value = serde_json::from_slice(bytes).ok()?;
-    
+
     // Try root fields
-    for field in &["email", "account_email", "account", "accountName", "username", "user_email"] {
+    for field in &[
+        "email",
+        "account_email",
+        "account",
+        "accountName",
+        "username",
+        "user_email",
+    ] {
         if let Some(email) = value.get(field).and_then(|v| v.as_str()) {
             if email.contains('@') {
                 return Some(email.to_owned());
             }
         }
     }
-    
+
     // Try nested fields under "token"
     if let Some(token_val) = value.get("token") {
-        for field in &["email", "account_email", "account", "accountName", "username", "user_email"] {
+        for field in &[
+            "email",
+            "account_email",
+            "account",
+            "accountName",
+            "username",
+            "user_email",
+        ] {
             if let Some(email) = token_val.get(field).and_then(|v| v.as_str()) {
                 if email.contains('@') {
                     return Some(email.to_owned());
                 }
             }
         }
-        
+
         // Try id_token inside token object
         if let Some(id_token) = token_val.get("id_token").and_then(|v| v.as_str()) {
             if let Some(email) = extract_email_from_id_token(id_token) {
@@ -106,14 +119,14 @@ pub(crate) fn try_parse_email_from_credential(bytes: &[u8]) -> Option<String> {
             }
         }
     }
-    
+
     // Try id_token in root object
     if let Some(id_token) = value.get("id_token").and_then(|v| v.as_str()) {
         if let Some(email) = extract_email_from_id_token(id_token) {
             return Some(email);
         }
     }
-    
+
     None
 }
 
@@ -160,7 +173,10 @@ pub(crate) fn parse_refresh_token(bytes: &[u8]) -> Option<String> {
     } else {
         &value
     };
-    target.get("refresh_token").and_then(|v| v.as_str()).map(|s| s.to_owned())
+    target
+        .get("refresh_token")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_owned())
 }
 
 pub(crate) fn timestamp_to_datetime(value: i64) -> Option<DateTime<Utc>> {

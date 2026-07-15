@@ -163,7 +163,10 @@ fn env_path(name: &str) -> Result<PathBuf> {
 #[cfg(windows)]
 fn encode_wide(s: &str) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-    std::ffi::OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
+    std::ffi::OsStr::new(s)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
 }
 
 #[cfg(windows)]
@@ -174,9 +177,7 @@ fn decode_wide(bytes: &[u16]) -> String {
 
 #[cfg(windows)]
 fn detect_from_registry() -> Vec<PathBuf> {
-    use windows_sys::Win32::System::Registry::{
-        HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE,
-    };
+    use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
     let mut paths = Vec::new();
 
     // 1. Check Uninstall keys
@@ -189,7 +190,8 @@ fn detect_from_registry() -> Vec<PathBuf> {
         if let Some(path) = query_registry_value(HKEY_CURRENT_USER, key, "InstallLocation") {
             paths.push(path);
         }
-        if let Some(uninstall_cmd) = query_registry_value(HKEY_CURRENT_USER, key, "UninstallString") {
+        if let Some(uninstall_cmd) = query_registry_value(HKEY_CURRENT_USER, key, "UninstallString")
+        {
             if let Some(parent) = uninstall_cmd.parent() {
                 paths.push(parent.to_path_buf());
             }
@@ -197,7 +199,9 @@ fn detect_from_registry() -> Vec<PathBuf> {
         if let Some(path) = query_registry_value(HKEY_LOCAL_MACHINE, key, "InstallLocation") {
             paths.push(path);
         }
-        if let Some(uninstall_cmd) = query_registry_value(HKEY_LOCAL_MACHINE, key, "UninstallString") {
+        if let Some(uninstall_cmd) =
+            query_registry_value(HKEY_LOCAL_MACHINE, key, "UninstallString")
+        {
             if let Some(parent) = uninstall_cmd.parent() {
                 paths.push(parent.to_path_buf());
             }
@@ -205,9 +209,7 @@ fn detect_from_registry() -> Vec<PathBuf> {
     }
 
     // 2. Check App Paths
-    let app_paths = [
-        "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Antigravity.exe",
-    ];
+    let app_paths = ["Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Antigravity.exe"];
 
     for &key in &app_paths {
         if let Some(exe_path) = query_registry_value(HKEY_CURRENT_USER, key, "") {
@@ -226,23 +228,19 @@ fn detect_from_registry() -> Vec<PathBuf> {
 }
 
 #[cfg(windows)]
-fn query_registry_value(hkey_root: windows_sys::Win32::System::Registry::HKEY, subkey: &str, value_name: &str) -> Option<PathBuf> {
-    use windows_sys::Win32::System::Registry::{
-        RegOpenKeyExW, RegQueryValueExW, RegCloseKey, KEY_READ, REG_SZ, REG_EXPAND_SZ, HKEY
-    };
+fn query_registry_value(
+    hkey_root: windows_sys::Win32::System::Registry::HKEY,
+    subkey: &str,
+    value_name: &str,
+) -> Option<PathBuf> {
     use std::ptr;
+    use windows_sys::Win32::System::Registry::{
+        HKEY, KEY_READ, REG_EXPAND_SZ, REG_SZ, RegCloseKey, RegOpenKeyExW, RegQueryValueExW,
+    };
 
     let subkey_wide = encode_wide(subkey);
     let mut hkey: HKEY = ptr::null_mut();
-    let status = unsafe {
-        RegOpenKeyExW(
-            hkey_root,
-            subkey_wide.as_ptr(),
-            0,
-            KEY_READ,
-            &mut hkey,
-        )
-    };
+    let status = unsafe { RegOpenKeyExW(hkey_root, subkey_wide.as_ptr(), 0, KEY_READ, &mut hkey) };
     if status != 0 {
         return None;
     }
@@ -252,7 +250,10 @@ fn query_registry_value(hkey_root: windows_sys::Win32::System::Registry::HKEY, s
     } else {
         Some(encode_wide(value_name))
     };
-    let value_ptr = value_name_wide.as_ref().map(|v| v.as_ptr()).unwrap_or(ptr::null());
+    let value_ptr = value_name_wide
+        .as_ref()
+        .map(|v| v.as_ptr())
+        .unwrap_or(ptr::null());
 
     let mut value_type = 0;
     let mut buf_size = 0;
@@ -334,7 +335,9 @@ fn detect_from_processes() -> Vec<PathBuf> {
             if !handle.is_null() {
                 let mut buffer = vec![0_u16; 32_768];
                 let mut size = buffer.len() as u32;
-                let ok_path = unsafe { QueryFullProcessImageNameW(handle, 0, buffer.as_mut_ptr(), &mut size) };
+                let ok_path = unsafe {
+                    QueryFullProcessImageNameW(handle, 0, buffer.as_mut_ptr(), &mut size)
+                };
                 unsafe { CloseHandle(handle) };
                 if ok_path != 0 {
                     let full_path = PathBuf::from(decode_wide(&buffer[..size as usize]));
@@ -377,7 +380,6 @@ pub fn detect_installations() -> Vec<PathBuf> {
         .filter(|path| path.join("Antigravity.exe").is_file())
         .collect()
 }
-
 
 fn same_volume(left: &Path, right: &Path) -> bool {
     #[cfg(windows)]

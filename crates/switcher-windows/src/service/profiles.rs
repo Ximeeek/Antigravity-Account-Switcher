@@ -1,33 +1,34 @@
+use chrono::Utc;
+use std::collections::HashMap;
 /**
  * Profile management and metadata.
  * Implements listing profiles, live state loading, CRUD operations, and settings updates.
  * Main exports: impl SwitcherService profile methods
  */
-
 use std::fs;
 use std::path::PathBuf;
-use std::collections::HashMap;
-use chrono::Utc;
 use uuid::Uuid;
 
-use crate::{SwitcherService, ProtectedCredential, detect_installations};
-use crate::quota::QuotaDecryptor;
-use switcher_core::{
-    AppStateView, EngineStatus, HttpStatusView, ProfileMetadata, ProfileView, RecoveryView, Result,
-    SettingsView, SwitcherError, TokenStatus, load_json, save_json, atomic_write,
-};
 use super::helpers::{
-    check_has_refresh_token, parse_token_expiry, validate_display_name, parse_refresh_token,
-    read_antigravity_version, windows_version, try_parse_email_from_credential,
+    check_has_refresh_token, parse_refresh_token, parse_token_expiry, read_antigravity_version,
+    try_parse_email_from_credential, validate_display_name, windows_version,
 };
 use super::manifest::path_summary;
-use std::sync::OnceLock;
-use std::sync::Mutex as StdMutex;
+use crate::quota::QuotaDecryptor;
+use crate::{ProtectedCredential, SwitcherService, detect_installations};
 use std::collections::HashSet;
+use std::sync::Mutex as StdMutex;
+use std::sync::OnceLock;
 use switcher_core::ProfileQuotaView;
+use switcher_core::{
+    AppStateView, EngineStatus, HttpStatusView, ProfileMetadata, ProfileView, RecoveryView, Result,
+    SettingsView, SwitcherError, TokenStatus, atomic_write, load_json, save_json,
+};
 
-fn global_quota_cache() -> &'static StdMutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>> {
-    static CACHE: OnceLock<StdMutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>>> = OnceLock::new();
+fn global_quota_cache() -> &'static StdMutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>>
+{
+    static CACHE: OnceLock<StdMutex<HashMap<String, (ProfileQuotaView, std::time::Instant)>>> =
+        OnceLock::new();
     CACHE.get_or_init(|| StdMutex::new(HashMap::new()))
 }
 
@@ -54,9 +55,11 @@ impl SwitcherService {
     }
 
     pub(crate) fn process_manager(&self) -> Result<crate::ProcessManager> {
-        let path = self
-            .ensure_installation_path_resolved()
-            .ok_or_else(|| SwitcherError::InvalidConfiguration("Antigravity installation path is not configured".to_owned()))?;
+        let path = self.ensure_installation_path_resolved().ok_or_else(|| {
+            SwitcherError::InvalidConfiguration(
+                "Antigravity installation path is not configured".to_owned(),
+            )
+        })?;
         Ok(crate::ProcessManager::new(path, self.logger.clone()))
     }
 
@@ -113,7 +116,12 @@ impl SwitcherService {
                 patch_cooldown_ms: config.patch_cooldown_ms,
                 sqlite_db_path: self.paths.state_db.to_string_lossy().into_owned(),
                 data_dir: self.paths.root.to_string_lossy().into_owned(),
-                logs_file: self.paths.logs.join("switcher.log").to_string_lossy().into_owned(),
+                logs_file: self
+                    .paths
+                    .logs
+                    .join("switcher.log")
+                    .to_string_lossy()
+                    .into_owned(),
             },
             app_version: version.to_owned(),
             antigravity_version,
@@ -121,7 +129,6 @@ impl SwitcherService {
             has_master_password,
         })
     }
-
 
     pub async fn app_state_live(&self, version: &str) -> Result<AppStateView> {
         let _ = self.ensure_installation_path_resolved();
@@ -176,7 +183,12 @@ impl SwitcherService {
                 patch_cooldown_ms: config.patch_cooldown_ms,
                 sqlite_db_path: self.paths.state_db.to_string_lossy().into_owned(),
                 data_dir: self.paths.root.to_string_lossy().into_owned(),
-                logs_file: self.paths.logs.join("switcher.log").to_string_lossy().into_owned(),
+                logs_file: self
+                    .paths
+                    .logs
+                    .join("switcher.log")
+                    .to_string_lossy()
+                    .into_owned(),
             },
             app_version: version.to_owned(),
             antigravity_version,
@@ -184,7 +196,6 @@ impl SwitcherService {
             has_master_password,
         })
     }
-
 
     pub fn http_status(&self) -> Result<HttpStatusView> {
         let state = self.app_state(env!("CARGO_PKG_VERSION"))?;
@@ -220,7 +231,10 @@ impl SwitcherService {
 
         if let Some(ref email) = account_email {
             let existing = self.list_profiles(None)?;
-            if existing.iter().any(|p| p.metadata.account_email.as_ref().map(|e| e.to_lowercase()) == Some(email.to_lowercase())) {
+            if existing.iter().any(|p| {
+                p.metadata.account_email.as_ref().map(|e| e.to_lowercase())
+                    == Some(email.to_lowercase())
+            }) {
                 return Err(SwitcherError::Message(format!(
                     "Account {} is already registered. Please delete the existing profile first.",
                     email
@@ -272,7 +286,9 @@ impl SwitcherService {
             TokenStatus::from_expiry(metadata.token_expiry, Utc::now())
         };
         let quota = if let Some(ref email) = metadata.account_email {
-            QuotaDecryptor::decrypt_all_quotas().ok().and_then(|mut m| m.remove(email))
+            QuotaDecryptor::decrypt_all_quotas()
+                .ok()
+                .and_then(|mut m| m.remove(email))
         } else {
             None
         };
@@ -283,7 +299,6 @@ impl SwitcherService {
             has_refresh_token,
             quota,
         })
-
     }
 
     pub fn delete_profile(&self, profile_id: Uuid) -> Result<()> {
@@ -373,26 +388,33 @@ impl SwitcherService {
         self.load_profile_metadata(profile_id)
     }
 
-    pub(crate) fn load_profile_credential(&self, profile_id: Uuid, password: Option<&str>) -> Result<Vec<u8>> {
+    pub(crate) fn load_profile_credential(
+        &self,
+        profile_id: Uuid,
+        password: Option<&str>,
+    ) -> Result<Vec<u8>> {
         let profile_dir = self.paths.profile_dir(profile_id);
         let cred_path = profile_dir.join("credentials.enc");
         if !cred_path.is_file() {
             return Err(SwitcherError::ProfileNotFound(profile_id.to_string()));
         }
 
-        let bytes = fs::read(&cred_path)
-            .map_err(|source| SwitcherError::io(&cred_path, source))?;
+        let bytes = fs::read(&cred_path).map_err(|source| SwitcherError::io(&cred_path, source))?;
 
         if self.paths.root.join("master_lock.json").is_file() {
             let key = if let Some(k) = *self.master_key.read() {
                 k
             } else if let Some(pwd) = password {
-                let config = load_json::<switcher_core::MasterLockConfig>(&self.paths.root.join("master_lock.json"))?;
+                let config = load_json::<switcher_core::MasterLockConfig>(
+                    &self.paths.root.join("master_lock.json"),
+                )?;
                 let salt_bytes = hex::decode(&config.salt)
                     .map_err(|e| SwitcherError::Message(format!("Invalid salt format: {e}")))?;
                 switcher_core::crypto::derive_key(pwd, &salt_bytes)
             } else {
-                return Err(SwitcherError::Message("Application is locked. Enter master password.".to_owned()));
+                return Err(SwitcherError::Message(
+                    "Application is locked. Enter master password.".to_owned(),
+                ));
             };
 
             let decrypted = switcher_core::crypto::decrypt_with_key(&bytes, &key)?;
@@ -403,7 +425,10 @@ impl SwitcherService {
         }
     }
 
-    pub(crate) fn load_protected_credential(&self, profile_id: Uuid) -> Result<ProtectedCredential> {
+    pub(crate) fn load_protected_credential(
+        &self,
+        profile_id: Uuid,
+    ) -> Result<ProtectedCredential> {
         let path = self.paths.profile_dir(profile_id).join("credentials.enc");
         let bytes = fs::read(&path).map_err(|source| SwitcherError::io(&path, source))?;
         Ok(ProtectedCredential(bytes))
@@ -414,7 +439,6 @@ impl SwitcherService {
         metadata.last_activated_at = Utc::now();
         self.save_profile_metadata(profile_id, &metadata)
     }
-
 
     pub(crate) fn sync_active_profile_on_read(&self) -> Result<Option<Uuid>> {
         let _guard = match self.operation_lock.try_lock() {
@@ -449,19 +473,24 @@ impl SwitcherService {
         // If profiles list is empty, auto-import the current session!
         if profiles_in_dir.is_empty() {
             let email = try_parse_email_from_credential(&active_credential);
-            let display_name = email.clone().unwrap_or_else(|| "Active Session (Imported)".to_owned());
-            
+            let display_name = email
+                .clone()
+                .unwrap_or_else(|| "Active Session (Imported)".to_owned());
+
             self.logger.info(
                 None,
                 "profile",
-                format!("Profiles list is empty. Auto-importing active session as display_name='{}'", display_name),
+                format!(
+                    "Profiles list is empty. Auto-importing active session as display_name='{}'",
+                    display_name
+                ),
             );
 
             let profile_id = Uuid::new_v4();
             let profile_dir = self.paths.profile_dir(profile_id);
             fs::create_dir_all(&profile_dir)
                 .map_err(|source| SwitcherError::io(&profile_dir, source))?;
-            
+
             let now = Utc::now();
             let metadata = ProfileMetadata {
                 profile_id,
@@ -546,18 +575,24 @@ impl SwitcherService {
         Ok(None)
     }
 
-    pub(crate) fn list_profiles(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
+    pub(crate) fn list_profiles(
+        &self,
+        active_profile_id: Option<Uuid>,
+    ) -> Result<Vec<ProfileView>> {
         let has_master_password = self.paths.root.join("master_lock.json").is_file();
         let is_app_locked = has_master_password && self.master_key.read().is_none();
         if is_app_locked {
             return Ok(Vec::new());
         }
 
-        let synced_active_id = self.sync_active_profile_on_read().unwrap_or(active_profile_id);
+        let synced_active_id = self
+            .sync_active_profile_on_read()
+            .unwrap_or(active_profile_id);
         let mut profiles = Vec::new();
         let active_credential = self.credentials.read_active().ok();
         let mut quotas = QuotaDecryptor::decrypt_all_quotas().unwrap_or_else(|e| {
-            self.logger.warn(None, "quota", format!("Failed to decrypt quotas: {e}"));
+            self.logger
+                .warn(None, "quota", format!("Failed to decrypt quotas: {e}"));
             HashMap::new()
         });
 
@@ -600,7 +635,9 @@ impl SwitcherService {
                         TokenStatus::from_expiry(token_expiry, Utc::now())
                     };
 
-                    let quota = account_email.as_ref().and_then(|email| quotas.remove(email));
+                    let quota = account_email
+                        .as_ref()
+                        .and_then(|email| quotas.remove(email));
 
                     profiles.push(ProfileView {
                         token_status,
@@ -618,7 +655,11 @@ impl SwitcherService {
                 Err(error) => self.logger.warn(
                     None,
                     "profile",
-                    format!("Failed to load metadata for folder {}: {}", entry.file_name().to_string_lossy(), error),
+                    format!(
+                        "Failed to load metadata for folder {}: {}",
+                        entry.file_name().to_string_lossy(),
+                        error
+                    ),
                 ),
             }
         }
@@ -634,8 +675,10 @@ impl SwitcherService {
         Ok(profiles)
     }
 
-
-    pub async fn list_profiles_live(&self, active_profile_id: Option<Uuid>) -> Result<Vec<ProfileView>> {
+    pub async fn list_profiles_live(
+        &self,
+        active_profile_id: Option<Uuid>,
+    ) -> Result<Vec<ProfileView>> {
         let mut profiles = self.list_profiles(active_profile_id)?;
 
         for profile in &mut profiles {
@@ -643,9 +686,9 @@ impl SwitcherService {
                 let credential_bytes = if profile.is_active {
                     self.credentials.read_active().ok()
                 } else {
-                    self.load_profile_credential(profile.metadata.profile_id, None).ok()
+                    self.load_profile_credential(profile.metadata.profile_id, None)
+                        .ok()
                 };
-
 
                 if let Some(ref bytes) = credential_bytes {
                     if let Some(ref refresh_token) = parse_refresh_token(bytes) {
@@ -683,10 +726,15 @@ impl SwitcherService {
                                 let logger_clone = self.logger.clone();
 
                                 tokio::spawn(async move {
-                                    match QuotaDecryptor::fetch_live_quota(&refresh_token_clone).await {
+                                    match QuotaDecryptor::fetch_live_quota(&refresh_token_clone)
+                                        .await
+                                    {
                                         Ok(live_quota) => {
                                             let mut cache = global_quota_cache().lock().unwrap();
-                                            cache.insert(email_clone.clone(), (live_quota, std::time::Instant::now()));
+                                            cache.insert(
+                                                email_clone.clone(),
+                                                (live_quota, std::time::Instant::now()),
+                                            );
                                         }
                                         Err(err) => {
                                             logger_clone.warn(
@@ -747,7 +795,11 @@ impl SwitcherService {
     }
 
     pub async fn fetch_all_quotas_on_startup(&self) -> Result<()> {
-        self.logger.info(None, "quota", "Startup background quota prefetching started...");
+        self.logger.info(
+            None,
+            "quota",
+            "Startup background quota prefetching started...",
+        );
         let active_profile_id = self.config.read().active_profile_id;
         let active_credential = self.credentials.read_active().ok();
 
@@ -767,7 +819,6 @@ impl SwitcherService {
                     } else {
                         self.load_profile_credential(metadata.profile_id, None).ok()
                     };
-
 
                     if let Some(bytes) = credential_bytes {
                         if let Some(refresh_token) = parse_refresh_token(&bytes) {
@@ -813,26 +864,38 @@ impl SwitcherService {
             }
         }
 
-        self.logger.info(None, "quota", "Startup background quota prefetching completed.");
+        self.logger.info(
+            None,
+            "quota",
+            "Startup background quota prefetching completed.",
+        );
         Ok(())
     }
 
-    pub(crate) fn save_profile_metadata(&self, profile_id: Uuid, metadata: &ProfileMetadata) -> Result<()> {
+    pub(crate) fn save_profile_metadata(
+        &self,
+        profile_id: Uuid,
+        metadata: &ProfileMetadata,
+    ) -> Result<()> {
         let profile_dir = self.paths.profile_dir(profile_id);
         let metadata_json_path = profile_dir.join("metadata.json");
         let metadata_enc_path = profile_dir.join("metadata.enc");
 
         if let Some(key) = *self.master_key.read() {
-            let bytes = serde_json::to_vec(metadata)
-                .map_err(|source| SwitcherError::Json { path: metadata_enc_path.clone(), source })?;
+            let bytes = serde_json::to_vec(metadata).map_err(|source| SwitcherError::Json {
+                path: metadata_enc_path.clone(),
+                source,
+            })?;
             let encrypted = switcher_core::crypto::encrypt_with_key(&bytes, &key)?;
             atomic_write(&metadata_enc_path, &encrypted)?;
             if metadata_json_path.is_file() {
                 let _ = fs::remove_file(&metadata_json_path);
             }
         } else {
-            let bytes = serde_json::to_vec(metadata)
-                .map_err(|source| SwitcherError::Json { path: metadata_json_path.clone(), source })?;
+            let bytes = serde_json::to_vec(metadata).map_err(|source| SwitcherError::Json {
+                path: metadata_json_path.clone(),
+                source,
+            })?;
             atomic_write(&metadata_json_path, &bytes)?;
             if metadata_enc_path.is_file() {
                 let _ = fs::remove_file(&metadata_enc_path);
@@ -850,11 +913,18 @@ impl SwitcherService {
             if let Some(key) = *self.master_key.read() {
                 let encrypted_bytes = fs::read(&metadata_enc_path)
                     .map_err(|source| SwitcherError::io(&metadata_enc_path, source))?;
-                let decrypted_bytes = switcher_core::crypto::decrypt_with_key(&encrypted_bytes, &key)?;
-                serde_json::from_slice::<ProfileMetadata>(&decrypted_bytes)
-                    .map_err(|source| SwitcherError::Json { path: metadata_enc_path, source })
+                let decrypted_bytes =
+                    switcher_core::crypto::decrypt_with_key(&encrypted_bytes, &key)?;
+                serde_json::from_slice::<ProfileMetadata>(&decrypted_bytes).map_err(|source| {
+                    SwitcherError::Json {
+                        path: metadata_enc_path,
+                        source,
+                    }
+                })
             } else {
-                Err(SwitcherError::Message("Application is locked. Unblock to access profile metadata.".to_owned()))
+                Err(SwitcherError::Message(
+                    "Application is locked. Unblock to access profile metadata.".to_owned(),
+                ))
             }
         } else if metadata_json_path.is_file() {
             load_json::<ProfileMetadata>(&metadata_json_path)
@@ -863,7 +933,11 @@ impl SwitcherService {
         }
     }
 
-    pub(crate) fn save_profile_credentials(&self, profile_id: Uuid, raw_credential: &[u8]) -> Result<()> {
+    pub(crate) fn save_profile_credentials(
+        &self,
+        profile_id: Uuid,
+        raw_credential: &[u8],
+    ) -> Result<()> {
         let profile_dir = self.paths.profile_dir(profile_id);
         let cred_path = profile_dir.join("credentials.enc");
 
@@ -881,7 +955,9 @@ impl SwitcherService {
         let _guard = self.operation_lock.lock();
         let master_lock_path = self.paths.root.join("master_lock.json");
         if master_lock_path.is_file() {
-            return Err(SwitcherError::Message("Application is already password-protected".to_owned()));
+            return Err(SwitcherError::Message(
+                "Application is already password-protected".to_owned(),
+            ));
         }
 
         let salt_bytes = switcher_core::crypto::generate_salt();
@@ -909,14 +985,15 @@ impl SwitcherService {
                             let legacy_cred = {
                                 let cred_path = entry.path().join("credentials.enc");
                                 if cred_path.is_file() {
-                                    let bytes = fs::read(&cred_path).map_err(|source| SwitcherError::io(&cred_path, source))?;
+                                    let bytes = fs::read(&cred_path)
+                                        .map_err(|source| SwitcherError::io(&cred_path, source))?;
                                     let protected = ProtectedCredential(bytes);
                                     self.credentials.unprotect(&protected).ok()
                                 } else {
                                     None
                                 }
                             };
-                            
+
                             let _ = self.save_profile_metadata(profile_id, &metadata);
                             if let Some(ref raw_cred) = legacy_cred {
                                 let _ = self.save_profile_credentials(profile_id, raw_cred);
@@ -933,7 +1010,9 @@ impl SwitcherService {
     pub fn unlock_app(&self, password: &str) -> Result<()> {
         let master_lock_path = self.paths.root.join("master_lock.json");
         if !master_lock_path.is_file() {
-            return Err(SwitcherError::Message("No master password is set".to_owned()));
+            return Err(SwitcherError::Message(
+                "No master password is set".to_owned(),
+            ));
         }
 
         let config = load_json::<switcher_core::MasterLockConfig>(&master_lock_path)?;
@@ -956,7 +1035,9 @@ impl SwitcherService {
         let _guard = self.operation_lock.lock();
         let master_lock_path = self.paths.root.join("master_lock.json");
         if !master_lock_path.is_file() {
-            return Err(SwitcherError::Message("No master password is set".to_owned()));
+            return Err(SwitcherError::Message(
+                "No master password is set".to_owned(),
+            ));
         }
 
         self.unlock_app(password)?;
@@ -991,10 +1072,11 @@ impl SwitcherService {
         let email_clone = email.to_owned();
         let refresh_token_clone = refresh_token.to_owned();
         let logger_clone = self.logger.clone();
-        
+
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
             handle.spawn(async move {
-                let result = crate::quota::QuotaDecryptor::fetch_live_quota(&refresh_token_clone).await;
+                let result =
+                    crate::quota::QuotaDecryptor::fetch_live_quota(&refresh_token_clone).await;
                 match result {
                     Ok(live_quota) => {
                         let mut cache = global_quota_cache().lock().unwrap();
@@ -1028,5 +1110,3 @@ impl SwitcherService {
         Ok(())
     }
 }
-
-

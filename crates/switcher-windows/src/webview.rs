@@ -10,7 +10,10 @@ use std::ptr;
 #[cfg(windows)]
 fn encode_wide(s: &str) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-    std::ffi::OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
+    std::ffi::OsStr::new(s)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
 }
 
 #[cfg(windows)]
@@ -26,8 +29,10 @@ fn get_translation(key: &str, is_polish: bool) -> String {
     } else {
         include_str!("../../../src/locales/en.json")
     };
-    let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap_or(serde_json::Value::Null);
-    parsed.get(key)
+    let parsed: serde_json::Value =
+        serde_json::from_str(json_str).unwrap_or(serde_json::Value::Null);
+    parsed
+        .get(key)
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
         .unwrap_or_else(|| key.to_string())
@@ -40,20 +45,12 @@ fn query_registry_value(
     value_name: &str,
 ) -> Option<String> {
     use windows_sys::Win32::System::Registry::{
-        RegOpenKeyExW, RegQueryValueExW, RegCloseKey, KEY_READ, REG_SZ, REG_EXPAND_SZ, HKEY
+        HKEY, KEY_READ, REG_EXPAND_SZ, REG_SZ, RegCloseKey, RegOpenKeyExW, RegQueryValueExW,
     };
 
     let subkey_wide = encode_wide(subkey);
     let mut hkey: HKEY = ptr::null_mut();
-    let status = unsafe {
-        RegOpenKeyExW(
-            hkey_root,
-            subkey_wide.as_ptr(),
-            0,
-            KEY_READ,
-            &mut hkey,
-        )
-    };
+    let status = unsafe { RegOpenKeyExW(hkey_root, subkey_wide.as_ptr(), 0, KEY_READ, &mut hkey) };
     if status != 0 {
         return None;
     }
@@ -63,7 +60,10 @@ fn query_registry_value(
     } else {
         Some(encode_wide(value_name))
     };
-    let value_ptr = value_name_wide.as_ref().map(|v| v.as_ptr()).unwrap_or(ptr::null());
+    let value_ptr = value_name_wide
+        .as_ref()
+        .map(|v| v.as_ptr())
+        .unwrap_or(ptr::null());
 
     let mut value_type = 0;
     let mut buf_size = 0;
@@ -117,9 +117,18 @@ fn query_registry_value(
 #[cfg(windows)]
 fn is_webview2_installed() -> bool {
     let keys = [
-        (windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"),
-        (windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"),
-        (windows_sys::Win32::System::Registry::HKEY_CURRENT_USER, r"Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"),
+        (
+            windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        ),
+        (
+            windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        ),
+        (
+            windows_sys::Win32::System::Registry::HKEY_CURRENT_USER,
+            r"Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        ),
     ];
     for (root, subkey) in keys {
         if query_registry_value(root, subkey, "pv").is_some() {
@@ -148,16 +157,15 @@ pub async fn check_and_install_webview2() -> Result<(), String> {
     }
 
     // Determine system language
-    let is_polish = unsafe {
-        windows_sys::Win32::Globalization::GetUserDefaultUILanguage() == 0x0415
-    };
+    let is_polish =
+        unsafe { windows_sys::Win32::Globalization::GetUserDefaultUILanguage() == 0x0415 };
 
     // MessageBox Title & Text
     let title = get_translation("err_webview2_title", is_polish);
     let prompt = get_translation("err_webview2_prompt", is_polish);
 
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        MessageBoxW, MB_ICONQUESTION, MB_YESNO, IDYES, MB_ICONERROR, MB_OK, MB_ICONINFORMATION
+        IDYES, MB_ICONERROR, MB_ICONINFORMATION, MB_ICONQUESTION, MB_OK, MB_YESNO, MessageBoxW,
     };
 
     let title_wide = encode_wide(&title);
@@ -198,17 +206,25 @@ pub async fn check_and_install_webview2() -> Result<(), String> {
     let client = reqwest::Client::new();
     let url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
 
-    let response = client.get(url)
+    let response = client
+        .get(url)
         .send()
         .await
         .map_err(|e| format!("Failed to send download request: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("Download request failed with status: {}", response.status()));
+        return Err(format!(
+            "Download request failed with status: {}",
+            response.status()
+        ));
     }
 
-    let bytes = response.bytes().await.map_err(|e| format!("Failed to read response bytes: {}", e))?;
-    std::fs::write(&installer_path, bytes).map_err(|e| format!("Failed to save installer file: {}", e))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response bytes: {}", e))?;
+    std::fs::write(&installer_path, bytes)
+        .map_err(|e| format!("Failed to save installer file: {}", e))?;
 
     // Execute the installer
     let status = std::process::Command::new(&installer_path)
@@ -261,18 +277,21 @@ pub async fn check_and_install_webview2() -> Result<(), String> {
 
 #[cfg(windows)]
 pub fn check_single_instance() {
-    use windows_sys::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS, HANDLE};
+    use windows_sys::Win32::Foundation::{ERROR_ALREADY_EXISTS, GetLastError, HANDLE};
     use windows_sys::Win32::System::Threading::CreateMutexW;
-    use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_OK, MB_ICONERROR};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
 
-    let mutex_name: Vec<u16> = "Local\\AntigravityAccountSwitcherUniqueMutexLockName\0".encode_utf16().collect();
+    let mutex_name: Vec<u16> = "Local\\AntigravityAccountSwitcherUniqueMutexLockName\0"
+        .encode_utf16()
+        .collect();
 
     unsafe {
         let handle: HANDLE = CreateMutexW(ptr::null(), 0, mutex_name.as_ptr());
         if handle != ptr::null_mut() {
             let err = GetLastError();
             if err == ERROR_ALREADY_EXISTS {
-                let is_polish = windows_sys::Win32::Globalization::GetUserDefaultUILanguage() == 0x0415;
+                let is_polish =
+                    windows_sys::Win32::Globalization::GetUserDefaultUILanguage() == 0x0415;
                 let title = get_translation("err_single_instance_title", is_polish);
                 let msg = get_translation("err_single_instance_msg", is_polish);
 
@@ -294,3 +313,50 @@ pub fn check_single_instance() {
 
 #[cfg(not(windows))]
 pub fn check_single_instance() {}
+
+#[cfg(windows)]
+pub fn has_active_webview_processes() -> bool {
+    use std::mem::{size_of, zeroed};
+    use windows_sys::Win32::{
+        Foundation::{CloseHandle, INVALID_HANDLE_VALUE},
+        System::Diagnostics::ToolHelp::{
+            CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
+            TH32CS_SNAPPROCESS,
+        },
+    };
+
+    let my_pid = std::process::id();
+    let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+    if snapshot == INVALID_HANDLE_VALUE {
+        return false;
+    }
+
+    let mut entry: PROCESSENTRY32W = unsafe { zeroed() };
+    entry.dwSize = size_of::<PROCESSENTRY32W>() as u32;
+    let mut ok = unsafe { Process32FirstW(snapshot, &mut entry) };
+    let mut found = false;
+
+    while ok != 0 {
+        if entry.th32ParentProcessID == my_pid {
+            let length = entry
+                .szExeFile
+                .iter()
+                .position(|&x| x == 0)
+                .unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..length]);
+            if name.to_lowercase() == "msedgewebview2.exe" {
+                found = true;
+                break;
+            }
+        }
+        ok = unsafe { Process32NextW(snapshot, &mut entry) };
+    }
+
+    unsafe { CloseHandle(snapshot) };
+    found
+}
+
+#[cfg(not(windows))]
+pub fn has_active_webview_processes() -> bool {
+    true
+}

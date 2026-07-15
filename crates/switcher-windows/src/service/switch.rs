@@ -3,15 +3,13 @@
  * Implements locking, closing processes, backing up metadata, database repairs, launching target processes, and full rollbacks on failure.
  * Main exports: impl SwitcherService switch methods
  */
-
 use std::fs;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-use crate::{SwitcherService, SwitchOutcome, PendingSwitch};
+use crate::{PendingSwitch, SwitchOutcome, SwitcherService};
 use switcher_core::{
-    Result, SwitcherError, SwitchLock, SwitchStep, LockStatus, SwitchRequestResult,
-    save_json,
+    LockStatus, Result, SwitchLock, SwitchRequestResult, SwitchStep, SwitcherError, save_json,
 };
 
 use super::database::validate_state_database;
@@ -20,10 +18,10 @@ impl SwitcherService {
     pub fn check_cooldown(&self) -> Result<()> {
         let mut history = self.last_switches.lock();
         let now = Instant::now();
-        
+
         // Clean up entries older than 60 seconds
         history.retain(|&t| now.duration_since(t) < Duration::from_secs(60));
-        
+
         // Enforce minimum gap of 4 seconds between any two switches
         if let Some(&last) = history.last() {
             let elapsed = now.duration_since(last);
@@ -35,7 +33,7 @@ impl SwitcherService {
                 )));
             }
         }
-        
+
         // Enforce max 2 switches in 60 seconds
         if history.len() >= 2 {
             let oldest = history[0];
@@ -50,11 +48,15 @@ impl SwitcherService {
                 wait_secs
             )));
         }
-        
+
         Ok(())
     }
 
-    pub fn request_switch(&self, target_profile_id: Uuid, password: Option<String>) -> Result<SwitchRequestResult> {
+    pub fn request_switch(
+        &self,
+        target_profile_id: Uuid,
+        password: Option<String>,
+    ) -> Result<SwitchRequestResult> {
         if self.journal().exists() {
             return Err(SwitcherError::RecoveryRequired);
         }
@@ -69,15 +71,16 @@ impl SwitcherService {
         let has_master_password = self.paths.root.join("master_lock.json").is_file();
         let is_app_locked = has_master_password && self.master_key.read().is_none();
         if is_app_locked {
-            return Err(SwitcherError::Message("Application is locked. Unlock to perform switch.".to_owned()));
+            return Err(SwitcherError::Message(
+                "Application is locked. Unlock to perform switch.".to_owned(),
+            ));
         }
         let _metadata = self.load_profile_metadata(target_profile_id)?;
         self.preflight_target_identity(target_profile_id)?;
 
-        
         // Cooldown check
         self.check_cooldown()?;
-        
+
         let operation_id = Uuid::new_v4();
         let requires_confirmation = if config.switch_level == 2 || config.switch_level == 3 {
             false
@@ -107,7 +110,6 @@ impl SwitcherService {
         })
     }
 
-
     pub fn cancel_switch(&self, operation_id: Option<Uuid>) -> Result<()> {
         let mut pending = self.pending.lock();
         if let Some(operation_id) = operation_id {
@@ -127,7 +129,11 @@ impl SwitcherService {
         let pending = self.pending.lock().remove(&operation_id).ok_or_else(|| {
             SwitcherError::Message("Switch request expired or was cancelled".to_owned())
         })?;
-        match self.perform_switch(pending.operation_id, pending.target_profile_id, pending.password.as_deref()) {
+        match self.perform_switch(
+            pending.operation_id,
+            pending.target_profile_id,
+            pending.password.as_deref(),
+        ) {
             Ok(outcome) => Ok(outcome),
 
             Err(error) => {
@@ -203,18 +209,22 @@ impl SwitcherService {
         self.perform_switch(operation_id, target_profile_id, None)
     }
 
-    pub(crate) fn perform_switch(&self, operation_id: Uuid, target_profile_id: Uuid, password: Option<&str>) -> Result<SwitchOutcome> {
+    pub(crate) fn perform_switch(
+        &self,
+        operation_id: Uuid,
+        target_profile_id: Uuid,
+        password: Option<&str>,
+    ) -> Result<SwitchOutcome> {
         let _guard = self.operation_lock.lock();
         if self.journal().exists() {
             return Err(SwitcherError::RecoveryRequired);
         }
-        
+
         let config = self.config.read().clone();
         if config.switch_level == 2 || config.switch_level == 3 {
             return self.perform_fast_switch(operation_id, target_profile_id, password);
         }
 
-        
         self.paths.validate_same_volume()?;
         let from_profile_id = self
             .config
@@ -355,7 +365,8 @@ impl SwitcherService {
                 .error(Some(operation_id), "profile", error.to_string());
             return Err(error);
         }
-        self.logger.info(Some(operation_id), "profile", "Consistency check passed");
+        self.logger
+            .info(Some(operation_id), "profile", "Consistency check passed");
 
         {
             let mut config = self.config.write();
@@ -379,10 +390,11 @@ impl SwitcherService {
         lock.current_step = SwitchStep::Relaunch;
         self.set_progress(&lock, None);
         self.log_artifact_inventory(Some(operation_id), "active-before-relaunch", None);
-        
+
         if let Ok(metadata) = self.load_profile_metadata(target_profile_id) {
             if let Some(ref email) = metadata.account_email {
-                if let Some(refresh_token) = super::helpers::parse_refresh_token(&target_credential) {
+                if let Some(refresh_token) = super::helpers::parse_refresh_token(&target_credential)
+                {
                     self.fetch_and_cache_quota_sync(email, &refresh_token);
                 }
             }
@@ -397,7 +409,7 @@ impl SwitcherService {
                 (None, Some(warning))
             }
         };
-        
+
         std::thread::sleep(std::time::Duration::from_millis(1500));
 
         self.progress.write().take();
@@ -584,8 +596,7 @@ impl SwitcherService {
                 .map_err(|source| SwitcherError::io(&self.paths.state_db, source))?;
         }
         if let Some(parent) = self.paths.state_db.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|source| SwitcherError::io(parent, source))?;
+            fs::create_dir_all(parent).map_err(|source| SwitcherError::io(parent, source))?;
         }
         fs::rename(&rebuilt, &self.paths.state_db)
             .map_err(|source| SwitcherError::io(&rebuilt, source))?;
@@ -622,7 +633,8 @@ impl SwitcherService {
                 continue;
             }
             for (relative, active) in &shared_directories {
-                copied_files += super::manifest::merge_missing_files(&entry.path().join(relative), active)?;
+                copied_files +=
+                    super::manifest::merge_missing_files(&entry.path().join(relative), active)?;
             }
 
             let stored_summaries = entry.path().join("agyhub_summaries_proto.pb");
@@ -668,5 +680,4 @@ impl SwitcherService {
         }
         Ok(())
     }
-
 }

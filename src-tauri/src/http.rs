@@ -3,7 +3,6 @@
  * Sets up a lightweight TcpListener routing plugin commands to switcher operations.
  * Main exports: start_http_server
  */
-
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
@@ -83,7 +82,6 @@ fn handle_client(
             match Uuid::parse_str(profile_id_str) {
                 Ok(target_profile_id) => match service.request_switch(target_profile_id, None) {
                     Ok(res) => {
-
                         let service_clone = service.clone();
                         let operation_id = res.operation_id;
                         std::thread::spawn(move || {

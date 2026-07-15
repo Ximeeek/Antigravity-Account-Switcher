@@ -3,12 +3,11 @@
  * Periodically checks Gemini usage levels and automatically swaps active accounts when limits are exhausted.
  * Main exports: impl SwitcherService smart switch methods
  */
-
 use rusqlite::Connection;
 use uuid::Uuid;
 
 use crate::SwitcherService;
-use switcher_core::{Result, ProfileQuotaView, TokenStatus};
+use switcher_core::{ProfileQuotaView, Result, TokenStatus};
 
 fn get_bucket_remaining_fraction(quota: &ProfileQuotaView, bucket_id: &str) -> Option<f64> {
     for group in &quota.quota_groups {
@@ -39,7 +38,11 @@ impl SwitcherService {
             return Ok(());
         }
         if self.is_agent_working() {
-            self.logger.info(None, "smart_switch", "Automated switch skipped: Agent is actively working");
+            self.logger.info(
+                None,
+                "smart_switch",
+                "Automated switch skipped: Agent is actively working",
+            );
             return Ok(());
         }
         if self.journal().exists() {
@@ -66,7 +69,8 @@ impl SwitcherService {
         };
 
         let rem_5h = get_bucket_remaining_fraction(active_quota, "gemini-5h").unwrap_or(1.0);
-        let rem_weekly = get_bucket_remaining_fraction(active_quota, "gemini-weekly").unwrap_or(1.0);
+        let rem_weekly =
+            get_bucket_remaining_fraction(active_quota, "gemini-weekly").unwrap_or(1.0);
 
         if rem_5h >= 0.10 && rem_weekly >= 0.05 {
             return Ok(());
@@ -115,17 +119,28 @@ impl SwitcherService {
             );
             match self.request_switch(target_id, None) {
                 Ok(req) => {
-
                     if let Err(e) = self.confirm_switch(req.operation_id) {
-                        self.logger.error(None, "smart_switch", format!("Smart switch confirm failed: {}", e));
+                        self.logger.error(
+                            None,
+                            "smart_switch",
+                            format!("Smart switch confirm failed: {}", e),
+                        );
                     }
                 }
                 Err(e) => {
-                    self.logger.error(None, "smart_switch", format!("Smart switch request failed: {}", e));
+                    self.logger.error(
+                        None,
+                        "smart_switch",
+                        format!("Smart switch request failed: {}", e),
+                    );
                 }
             }
         } else {
-            self.logger.warn(None, "smart_switch", "No alternative profiles with sufficient quotas found.");
+            self.logger.warn(
+                None,
+                "smart_switch",
+                "No alternative profiles with sufficient quotas found.",
+            );
         }
 
         Ok(())
@@ -139,7 +154,7 @@ impl SwitcherService {
         };
 
         let profiles = self.list_profiles_live(Some(active_profile_id)).await?;
-        
+
         let mut candidate: Option<(Uuid, f64, f64)> = None;
         let mut fallback_candidate: Option<Uuid> = None;
 
@@ -170,26 +185,38 @@ impl SwitcherService {
         } else if let Some(id) = fallback_candidate {
             id
         } else {
-            return Err(switcher_core::SwitcherError::Message("No alternative valid profiles found to switch to".to_string()));
+            return Err(switcher_core::SwitcherError::Message(
+                "No alternative valid profiles found to switch to".to_string(),
+            ));
         };
 
         self.logger.warn(
             None,
             "smart_switch",
-            format!("Forcing smart switch to profile {} (bypassing quota checks)", target_id),
+            format!(
+                "Forcing smart switch to profile {} (bypassing quota checks)",
+                target_id
+            ),
         );
 
         match self.request_switch(target_id, None) {
             Ok(req) => {
-
                 let op_id = req.operation_id;
                 if let Err(e) = self.confirm_switch(op_id) {
-                    self.logger.error(None, "smart_switch", format!("Smart switch confirm failed: {}", e));
+                    self.logger.error(
+                        None,
+                        "smart_switch",
+                        format!("Smart switch confirm failed: {}", e),
+                    );
                     return Err(e);
                 }
             }
             Err(e) => {
-                self.logger.error(None, "smart_switch", format!("Smart switch request failed: {}", e));
+                self.logger.error(
+                    None,
+                    "smart_switch",
+                    format!("Smart switch request failed: {}", e),
+                );
                 return Err(e);
             }
         }

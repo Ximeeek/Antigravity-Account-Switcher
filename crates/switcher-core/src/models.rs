@@ -18,8 +18,6 @@ pub struct ProfileMetadata {
     pub snapshot_initialized: bool,
 }
 
-
-
 fn existing_profile_has_snapshot() -> bool {
     true
 }
@@ -104,10 +102,6 @@ pub struct ProfileView {
     pub quota: Option<ProfileQuotaView>,
 }
 
-
-
-
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum EngineStatus {
@@ -175,7 +169,6 @@ impl Default for PersistentConfig {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
@@ -322,7 +315,6 @@ pub struct AppStateView {
     pub has_master_password: bool,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SwitchRequestResult {
@@ -360,7 +352,6 @@ mod tests {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasterLockConfig {
-    pub salt: String, // hex encoded salt
+    pub salt: String,            // hex encoded salt
     pub test_encryption: String, // hex encoded ciphertext of "antigravity"
 }
-

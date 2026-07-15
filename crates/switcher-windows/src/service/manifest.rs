@@ -1,18 +1,17 @@
+use chrono::Utc;
+use sha2::{Digest, Sha256};
 /**
  * Manifest, hashing and file merging utilities.
  * Handles directory state hashing, checking directory volume scopes, and copy/merging of profile files.
  * Main exports: hash_file, hash_directory, merge_missing_files, remove_path, path_summary
  */
-
 use std::fs;
 use std::path::Path;
-use sha2::{Digest, Sha256};
-use walkdir::WalkDir;
 use uuid::Uuid;
-use chrono::Utc;
+use walkdir::WalkDir;
 
-use crate::{SwitcherService, CredentialStore};
-use switcher_core::{Result, SwitcherError, ProfileManifest, sanitize_path};
+use crate::{CredentialStore, SwitcherService};
+use switcher_core::{ProfileManifest, Result, SwitcherError, sanitize_path};
 
 pub(crate) fn hash_file(path: &Path) -> Result<String> {
     let bytes = fs::read(path).map_err(|source| SwitcherError::io(path, source))?;

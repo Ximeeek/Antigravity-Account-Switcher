@@ -52,7 +52,6 @@ pub enum SwitcherError {
     Message(String),
 }
 
-
 pub type Result<T> = std::result::Result<T, SwitcherError>;
 
 impl SwitcherError {

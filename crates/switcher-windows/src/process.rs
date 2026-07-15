@@ -145,7 +145,10 @@ impl ProcessManager {
             self.logger.info(
                 Some(operation_id),
                 "process",
-                format!("Killing background process immediately pid={} name={}", proc.pid, proc.name),
+                format!(
+                    "Killing background process immediately pid={} name={}",
+                    proc.pid, proc.name
+                ),
             );
             #[cfg(windows)]
             if let Err(e) = terminate_process(proc.pid) {
@@ -163,7 +166,10 @@ impl ProcessManager {
                 self.logger.info(
                     Some(operation_id),
                     "process",
-                    format!("Closing GUI process gracefully pid={} name={}", proc.pid, proc.name),
+                    format!(
+                        "Closing GUI process gracefully pid={} name={}",
+                        proc.pid, proc.name
+                    ),
                 );
             }
             #[cfg(windows)]
@@ -173,7 +179,9 @@ impl ProcessManager {
             let deadline = Instant::now() + Duration::from_millis(1500);
             while Instant::now() < deadline {
                 let remaining = self.enumerate()?;
-                let gui_remaining = remaining.iter().any(|p| p.name.to_lowercase() == "antigravity.exe");
+                let gui_remaining = remaining
+                    .iter()
+                    .any(|p| p.name.to_lowercase() == "antigravity.exe");
                 if !gui_remaining {
                     break;
                 }
@@ -188,7 +196,10 @@ impl ProcessManager {
                 self.logger.warn(
                     Some(operation_id),
                     "process",
-                    format!("Process pid={} name={} failed to exit gracefully, force-killing", proc.pid, proc.name),
+                    format!(
+                        "Process pid={} name={} failed to exit gracefully, force-killing",
+                        proc.pid, proc.name
+                    ),
                 );
                 #[cfg(windows)]
                 let _ = terminate_process(proc.pid);
@@ -287,7 +298,8 @@ impl ProcessManager {
                     Err(e)
                 }
             }
-        }.map_err(|source| SwitcherError::io(&executable, source))?;
+        }
+        .map_err(|source| SwitcherError::io(&executable, source))?;
         let pid = child.id();
         self.logger.info(
             operation_id,
@@ -310,9 +322,13 @@ impl ProcessManager {
     }
 
     pub fn get_language_server_processes(&self) -> Result<Vec<AntigravityProcess>> {
-        let target_exe = self.installation_path.join("resources").join("bin").join("language_server.exe");
+        let target_exe = self
+            .installation_path
+            .join("resources")
+            .join("bin")
+            .join("language_server.exe");
         let target_canonical = target_exe.canonicalize().unwrap_or(target_exe);
-        
+
         let mut results = Vec::new();
         let processes = self.enumerate()?;
         for proc in processes {
@@ -320,8 +336,14 @@ impl ProcessManager {
                 let proc_canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
                 let match_canonical = proc_canonical == target_canonical;
                 let match_plain = {
-                    let s1 = proc_canonical.to_string_lossy().replace("\\\\?\\", "").to_lowercase();
-                    let s2 = target_canonical.to_string_lossy().replace("\\\\?\\", "").to_lowercase();
+                    let s1 = proc_canonical
+                        .to_string_lossy()
+                        .replace("\\\\?\\", "")
+                        .to_lowercase();
+                    let s2 = target_canonical
+                        .to_string_lossy()
+                        .replace("\\\\?\\", "")
+                        .to_lowercase();
                     s1 == s2
                 };
                 if match_canonical || match_plain {

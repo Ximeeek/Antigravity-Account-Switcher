@@ -1,11 +1,10 @@
+use rusqlite::Connection;
 /**
  * Database management and migrations.
  * Handles validation of the global state.vscdb SQLite database, and migration/recovery from legacy storage.json.
  * Main exports: rebuild_state_database_from_json, validate_state_database
  */
-
 use std::path::Path;
-use rusqlite::Connection;
 use switcher_core::{Result, SwitcherError};
 
 pub(crate) fn rebuild_state_database_from_json(source: &Path, destination: &Path) -> Result<usize> {
