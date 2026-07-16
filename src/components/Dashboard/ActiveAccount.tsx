@@ -64,28 +64,53 @@ export default function ActiveAccount({
     let wasNear = false;
     let lastTime = 0;
     let theta = 0;
+    let lastInteractionTime = Date.now();
+
+    let rect = card.getBoundingClientRect();
+    const updateRect = () => {
+      rect = card.getBoundingClientRect();
+    };
+
+    let lastMouseX = -9999;
+    let lastMouseY = -9999;
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (e.clientX === lastMouseX && e.clientY === lastMouseY) {
+        return;
+      }
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
       mouseX = e.clientX;
       mouseY = e.clientY;
+      lastInteractionTime = Date.now();
+      startAnimation();
     };
 
     const handleMouseLeave = () => {
       mouseX = -9999;
       mouseY = -9999;
+      lastInteractionTime = Date.now();
     };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseleave", handleMouseLeave);
+    window.addEventListener("resize", updateRect);
 
     let animationFrameId: number;
+    let isAnimating = false;
 
     const tick = (timestamp: number) => {
+      if (!isAnimating) return;
+
+      // Sleep loop after 10s of inactivity to achieve 0% idle CPU
+      if (Date.now() - lastInteractionTime > 10000) {
+        stopAnimation();
+        return;
+      }
+
       if (!lastTime) lastTime = timestamp;
       const dt = (timestamp - lastTime) / 1000;
       lastTime = timestamp;
-
-      const rect = card.getBoundingClientRect();
 
       if (mouseX !== -9999 && mouseY !== -9999) {
         const dx = Math.max(rect.left - mouseX, 0, mouseX - rect.right);
@@ -140,21 +165,77 @@ export default function ActiveAccount({
       glow.style.transform = `translate3d(${currentX.toFixed(1)}px, ${currentY.toFixed(1)}px, 0) scale(${currentScale.toFixed(2)})`;
       glow.style.opacity = currentOpacity.toFixed(3);
 
-      // Sync border gradient with the current position of the glow
-      card.style.setProperty(
-        "--active-border-bg",
-        `radial-gradient(150px circle at ${currentX.toFixed(1)}px ${currentY.toFixed(1)}px, rgba(125, 231, 246, 0.72) 0%, rgba(111, 92, 246, 0.35) 45%, transparent 100%), linear-gradient(105deg, rgba(72, 137, 244, 0.15), rgba(111, 92, 246, 0.1) 48%, rgba(111, 229, 241, 0.08))`
-      );
+      // Only update x and y coordinates on card style to avoid parsing whole gradient strings
+      card.style.setProperty("--glow-x", `${currentX.toFixed(1)}px`);
+      card.style.setProperty("--glow-y", `${currentY.toFixed(1)}px`);
 
       animationFrameId = requestAnimationFrame(tick);
     };
 
-    animationFrameId = requestAnimationFrame(tick);
+    const startAnimation = () => {
+      if (!isAnimating && !prefersReducedMotion && document.hasFocus() && document.visibilityState === "visible") {
+        isAnimating = true;
+        lastTime = 0;
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    };
+
+    const stopAnimation = () => {
+      if (isAnimating) {
+        isAnimating = false;
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+
+    const handleFocus = () => {
+      updateRect();
+      lastInteractionTime = Date.now();
+      startAnimation();
+    };
+
+    const handleBlur = () => {
+      stopAnimation();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        updateRect();
+        lastInteractionTime = Date.now();
+        startAnimation();
+      } else {
+        stopAnimation();
+      }
+    };
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let prefersReducedMotion = mediaQuery.matches;
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      prefersReducedMotion = e.matches;
+      if (prefersReducedMotion) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    mediaQuery.addEventListener("change", handleMotionChange);
+
+    if (!prefersReducedMotion) {
+      startAnimation();
+    }
 
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseleave", handleMouseLeave);
-      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      mediaQuery.removeEventListener("change", handleMotionChange);
+      stopAnimation();
     };
   }, []);
 
