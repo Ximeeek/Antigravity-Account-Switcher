@@ -79,6 +79,13 @@
   gap: 19px;
 }
 
+.field-row--port {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: end;
+  gap: 16px;
+}
+
 .field {
   min-width: 0;
   display: grid;
@@ -372,6 +379,10 @@
 }
 
 @media (max-width: 560px) {
+  .field-row--port {
+    grid-template-columns: 1fr;
+  }
+
   .settings-form__actions,
   .extension-state {
     align-items: stretch;
