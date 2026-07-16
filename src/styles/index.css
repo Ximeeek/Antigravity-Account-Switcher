@@ -1,0 +1,42 @@
+/* =========================================================================
+   Global stylesheet entry point.
+   Cascade layer order is declared once, here, and controls specificity
+   regardless of import order below. Do not add styles directly to this
+   file — only @layer declarations and @imports.
+   ========================================================================= */
+
+@layer settings, generic, layout, components, utilities;
+
+@import "./00-settings/tokens.css" layer(settings);
+@import "./00-settings/breakpoints.css" layer(settings);
+
+@import "./01-generic/reset.css" layer(generic);
+@import "./01-generic/base.css" layer(generic);
+
+@import "./02-layout/app-shell.css" layer(layout);
+@import "./02-layout/dashboard-layout.css" layer(layout);
+
+/* Components Layer */
+@import "./03-components/account-card.css" layer(components);
+@import "./03-components/dashboard/active-account.css" layer(components);
+@import "./03-components/dashboard/empty-state.css" layer(components);
+@import "./03-components/dashboard/global-quota-summary.css" layer(components);
+@import "./03-components/dashboard/quota-section.css" layer(components);
+@import "./03-components/dashboard/switch-level-selector.css" layer(components);
+@import "./03-components/dev-tools.css" layer(components);
+@import "./03-components/header.css" layer(components);
+@import "./03-components/icons.css" layer(components);
+@import "./03-components/load-error.css" layer(components);
+@import "./03-components/loading-screen.css" layer(components);
+@import "./03-components/mini-app.css" layer(components);
+@import "./03-components/modal.css" layer(components);
+@import "./03-components/profile-modals.css" layer(components);
+@import "./03-components/settings.css" layer(components);
+@import "./03-components/status-pill.css" layer(components);
+@import "./03-components/switch-flow.css" layer(components);
+@import "./03-components/title-bar.css" layer(components);
+@import "./03-components/toast.css" layer(components);
+
+/* Utilities Layer */
+@import "./04-utilities/animations.css" layer(utilities);
+@import "./04-utilities/helpers.css" layer(utilities);
