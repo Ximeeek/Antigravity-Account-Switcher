@@ -167,6 +167,24 @@ pub fn show_mini_window(app_handle: AppHandle) -> Result<(), String> {
     if let Some(window) = app_handle.get_webview_window("mini") {
         let _ = window.show();
         let _ = window.set_focus();
+    } else {
+        let window = tauri::WebviewWindowBuilder::new(
+            &app_handle,
+            "mini",
+            tauri::WebviewUrl::App("index.html".into()),
+        )
+        .title("Antigravity Mini")
+        .inner_size(320.0, 140.0)
+        .resizable(false)
+        .fullscreen(false)
+        .decorations(false)
+        .always_on_top(true)
+        .transparent(true)
+        .visible(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+        let _ = window.set_focus();
     }
     Ok(())
 }

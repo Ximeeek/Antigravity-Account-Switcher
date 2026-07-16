@@ -19,18 +19,6 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": false
-      },
-      {
-        "label": "mini",
-        "title": "Antigravity Mini",
-        "width": 320,
-        "height": 140,
-        "resizable": false,
-        "fullscreen": false,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "visible": false,
-        "transparent": true
       }
     ],
     "security": {
