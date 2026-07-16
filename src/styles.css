@@ -572,9 +572,8 @@ button.brand:focus-visible {
   padding: 1px;
   border-radius: 16px;
   background: 
-    var(--active-border-bg, 
-      linear-gradient(105deg, rgba(72, 137, 244, 0.42), rgba(111, 92, 246, 0.3) 48%, rgba(111, 229, 241, 0.22))
-    ) border-box;
+    radial-gradient(150px circle at var(--glow-x, -9999px) var(--glow-y, -9999px), rgba(125, 231, 246, 0.72) 0%, rgba(111, 92, 246, 0.35) 45%, transparent 100%),
+    linear-gradient(105deg, rgba(72, 137, 244, 0.15), rgba(111, 92, 246, 0.1) 48%, rgba(111, 229, 241, 0.08)) border-box;
   box-shadow: 0 22px 55px rgba(0, 4, 19, 0.28);
 }
 
@@ -3366,35 +3365,25 @@ body.mini-window-body {
 
 @keyframes trigger-text-pulse {
   0% {
-    color: var(--text-secondary, #8e9297);
+    opacity: 0.6;
   }
   50% {
-    color: var(--text-primary, #fff);
-    text-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+    opacity: 1;
   }
   100% {
-    color: var(--text-secondary, #8e9297);
+    opacity: 0.6;
   }
 }
 
 @keyframes trigger-badge-pulse {
   0% {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 0 0 rgba(74, 140, 247, 0);
-    color: var(--text-secondary, #8e9297);
+    opacity: 0.6;
   }
   50% {
-    background: rgba(74, 140, 247, 0.12);
-    border-color: rgba(74, 140, 247, 0.35);
-    box-shadow: 0 0 8px 1px rgba(74, 140, 247, 0.25);
-    color: var(--text-primary, #fff);
+    opacity: 1;
   }
   100% {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 0 0 rgba(74, 140, 247, 0);
-    color: var(--text-secondary, #8e9297);
+    opacity: 0.6;
   }
 }
 
@@ -3902,33 +3891,56 @@ body.mini-window-body {
 
 @keyframes pulseGlowSuccess {
   0% {
-    box-shadow: 0 0 0 0 rgba(35, 165, 90, 0.4);
+    transform: scale(1);
+    opacity: 0.8;
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(35, 165, 90, 0);
+    transform: scale(1.4);
+    opacity: 0;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(35, 165, 90, 0);
+    transform: scale(1);
+    opacity: 0;
   }
 }
 
 @keyframes pulseGlowWarning {
   0% {
-    box-shadow: 0 0 0 0 rgba(240, 178, 50, 0.4);
+    transform: scale(1);
+    opacity: 0.8;
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(240, 178, 50, 0);
+    transform: scale(1.4);
+    opacity: 0;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(240, 178, 50, 0);
+    transform: scale(1);
+    opacity: 0;
   }
 }
 
-.shield-glow-success {
+.shield-glow-success,
+.shield-glow-warning {
+  position: relative;
+}
+
+.shield-glow-success::before,
+.shield-glow-warning::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.shield-glow-success::before {
+  background: rgba(35, 165, 90, 0.25);
   animation: pulseGlowSuccess 2.5s infinite;
 }
 
-.shield-glow-warning {
+.shield-glow-warning::before {
+  background: rgba(240, 178, 50, 0.25);
   animation: pulseGlowWarning 2.5s infinite;
 }
 
