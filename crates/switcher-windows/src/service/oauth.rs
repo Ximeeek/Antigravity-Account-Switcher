@@ -466,6 +466,20 @@ fn get_oauth_response_html(lang: &str, status: &str, detail: Option<&str>) -> St
                     clearInterval(interval);
                     window.open('', '_self', '');
                     window.close();
+                    
+                    // Fallback in case window.close() is blocked by browser security
+                    setTimeout(function() {
+                        var timerContainer = document.querySelector('.timer-container');
+                        if (timerContainer) {
+                            var isPl = document.documentElement.lang === 'pl';
+                            timerContainer.style.backgroundColor = 'rgba(255, 107, 122, 0.05)';
+                            timerContainer.style.borderColor = 'rgba(255, 107, 122, 0.25)';
+                            timerContainer.style.borderStyle = 'solid';
+                            timerContainer.innerHTML = isPl ? 
+                                '<p class="timer-text" style="color: #ff6b7a !important; font-weight: 500;">Automatyczne zamknięcie zablokowane. Proszę zamknąć tę kartę ręcznie.</p>' :
+                                '<p class="timer-text" style="color: #ff6b7a !important; font-weight: 500;">Automatic close blocked. Please close this tab manually.</p>';
+                        }
+                    }, 150);
                 }
             }, 1000);
         })();
@@ -540,6 +554,7 @@ fn get_oauth_response_html(lang: &str, status: &str, detail: Option<&str>) -> St
             background-color: rgba(53, 211, 154, 0.03);
             border: 1px dashed rgba(53, 211, 154, 0.15);
             border-radius: 8px;
+            transition: all 0.3s ease;
         }}
         .timer-bar-bg {{
             height: 4px;
