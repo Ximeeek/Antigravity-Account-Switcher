@@ -1,0 +1,17 @@
+/* =========================================================================
+   Component: Icons (src/components/Icons.tsx)
+   Styles for global icons, including spin transitions and pulse glows.
+   ========================================================================= */
+
+.icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.icon--spin {
+  animation: spin 0.9s linear infinite;
+}
+
+.icon-pulse {
+  animation: icon-zap-glow-pulse 2s infinite ease-in-out;
+}

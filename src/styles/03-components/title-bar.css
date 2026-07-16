@@ -1,0 +1,66 @@
+/* =========================================================================
+   Component: TitleBar (src/components/TitleBar.tsx)
+   Styles for the custom desktop window header bar, close/minimize/maximize buttons.
+   Depends on tokens: --bg-top, --border, --text-secondary, --text-muted.
+   ========================================================================= */
+
+.titlebar {
+  height: 36px;
+  background: var(--bg-top);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+}
+
+.titlebar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.titlebar__icon {
+  display: flex;
+  align-items: center;
+}
+
+.titlebar__right {
+  display: flex;
+  height: 100%;
+}
+
+.titlebar__button {
+  width: 44px;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.titlebar__button:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.titlebar__button--close:hover {
+  background: #e81123 !important;
+  color: #ffffff !important;
+}
+
+.titlebar__button:active {
+  background: var(--surface-2);
+}

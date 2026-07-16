@@ -1,0 +1,70 @@
+/* =========================================================================
+   Component: StatusPill (src/components/StatusPill.tsx)
+   Styles for the colored status labels (e.g. Active, Offline, Warning),
+   including the pulsing glow dot indicator.
+   ========================================================================= */
+
+.status-pill {
+  min-height: 24px;
+  width: fit-content;
+  padding: 3px 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 640;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.status-pill--success {
+  color: #65e2b2;
+  border-color: rgba(53, 211, 154, 0.2);
+  background: rgba(53, 211, 154, 0.08);
+}
+
+.status-pill--warning {
+  color: #ffd477;
+  border-color: rgba(246, 198, 91, 0.22);
+  background: rgba(246, 198, 91, 0.08);
+}
+
+.status-pill--danger {
+  color: #ff8b97;
+  border-color: rgba(255, 107, 122, 0.22);
+  background: rgba(255, 107, 122, 0.08);
+}
+
+.status-pill--info {
+  color: #87c1ff;
+  border-color: rgba(102, 168, 255, 0.22);
+  background: rgba(102, 168, 255, 0.08);
+}
+
+.status-pill--neutral {
+  color: #9ba8bf;
+  border-color: rgba(155, 168, 191, 0.17);
+  background: rgba(155, 168, 191, 0.06);
+}
+
+.status-dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  color: inherit;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.status-dot--pulse::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  border-radius: inherit;
+  background: currentColor;
+  animation: pulse-ring 1.65s ease-out infinite;
+}

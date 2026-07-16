@@ -1,0 +1,100 @@
+/* =========================================================================
+   Component: QuotaSection (src/components/Dashboard/QuotaSection.tsx)
+   Styles for API quota sections, detailing individual bucket names, percentage
+   usage badges, progress bar fills, and reset durations. Depends on tokens:
+   --text-primary, --text-muted, --surface-2.
+   ========================================================================= */
+
+.quota-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quota-group-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.quota-buckets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.quota-bucket {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quota-bucket__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.quota-bucket__name {
+  color: var(--text-muted);
+}
+
+.quota-bucket__pct {
+  font-weight: 600;
+}
+
+.quota-bucket__pct--success {
+  color: #65e2b2;
+}
+
+.quota-bucket__pct--warning {
+  color: #f7ca72;
+}
+
+.quota-bucket__pct--danger {
+  color: #f88a8a;
+}
+
+.quota-progress-bar {
+  height: 6px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.05));
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.quota-progress-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quota-progress-bar__fill--success {
+  background: linear-gradient(90deg, #35d39a, #65e2b2);
+  box-shadow: 0 0 8px rgba(101, 226, 178, 0.3);
+}
+
+.quota-progress-bar__fill--warning {
+  background: linear-gradient(90deg, #f3b137, #f7ca72);
+  box-shadow: 0 0 8px rgba(247, 202, 114, 0.3);
+}
+
+.quota-progress-bar__fill--danger {
+  background: linear-gradient(90deg, #f55353, #f88a8a);
+  box-shadow: 0 0 8px rgba(248, 138, 138, 0.3);
+}
+
+.quota-bucket__reset {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* Responsive Overrides */
+@media (max-width: 768px) {
+  .quota-buckets-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

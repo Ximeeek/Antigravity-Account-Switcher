@@ -1,0 +1,385 @@
+/* =========================================================================
+   Component: Settings (src/components/Settings.tsx)
+   Styles for settings input forms, card sections, directory path fields,
+   lock-profile icons, hover glows, and checkmark lists. Depends on tokens:
+   --border, --radius-card, --radius-control, --text-primary, --text-secondary,
+   --text-muted, --accent-blue, --accent-cyan, --success, --danger.
+   ========================================================================= */
+
+.settings-card {
+  position: relative;
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: linear-gradient(150deg, rgba(17, 24, 41, 0.97), rgba(9, 13, 24, 0.97));
+  box-shadow: 0 15px 40px rgba(0, 3, 15, 0.16), inset 0 1px rgba(255, 255, 255, 0.022);
+}
+
+.settings-card__header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.settings-card__header--stackable {
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+
+.settings-card__icon {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(102, 168, 255, 0.17);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #87c1ff;
+  background: rgba(102, 168, 255, 0.07);
+}
+
+.settings-card__icon--violet {
+  color: #a697ff;
+  border-color: rgba(112, 92, 246, 0.18);
+  background: rgba(112, 92, 246, 0.08);
+}
+
+.settings-card__icon--cyan {
+  color: #89e4ef;
+  border-color: rgba(125, 231, 242, 0.17);
+  background: rgba(125, 231, 242, 0.065);
+}
+
+.settings-card__icon--green {
+  color: #65e2b2;
+  border-color: rgba(53, 211, 154, 0.17);
+  background: rgba(53, 211, 154, 0.065);
+}
+
+.settings-card__header h2 {
+  margin: 1px 0 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 630;
+  letter-spacing: -0.015em;
+}
+
+.settings-card__header p,
+.settings-card__note {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.settings-form {
+  margin-top: 25px;
+  display: grid;
+  gap: 19px;
+}
+
+.field {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.field__label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 630;
+}
+
+.field__optional {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-weight: 480;
+}
+
+.field input {
+  width: 100%;
+  height: 41px;
+  padding: 0 12px;
+  border: 1px solid rgba(126, 157, 211, 0.17);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: rgba(5, 9, 18, 0.76);
+  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.16);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background 150ms ease-out;
+}
+
+.field input::placeholder {
+  color: #56647a;
+}
+
+.field input:hover {
+  border-color: rgba(126, 183, 255, 0.25);
+}
+
+.field input:focus {
+  border-color: rgba(125, 231, 244, 0.72);
+  background: rgba(7, 12, 23, 0.9);
+  box-shadow: 0 0 0 3px rgba(125, 231, 244, 0.16), inset 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.field-error {
+  margin: -4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #ff8b97;
+  font-size: 11px;
+}
+
+.path-input-wrap {
+  position: relative;
+  display: block;
+}
+
+.path-input-wrap .icon {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 12px;
+  color: var(--text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.path-input-wrap input {
+  padding-left: 38px;
+}
+
+.settings-form__actions {
+  padding-top: 17px;
+  border-top: 1px solid rgba(126, 157, 211, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.unsaved-status {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.settings-card__body {
+  margin-top: 22px;
+}
+
+.extension-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.extension-state > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.extension-version {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.settings-card__body--actions {
+  display: grid;
+  gap: 20px;
+}
+
+.plain-check-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.plain-check-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plain-check-list .icon {
+  color: #65e2b2;
+}
+
+.privacy-visual {
+  display: flex;
+  align-items: center;
+}
+
+.privacy-node {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(126, 157, 211, 0.17);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  background: rgba(13, 20, 34, 0.9);
+}
+
+.privacy-node--shield {
+  width: 41px;
+  height: 41px;
+  color: #65e2b2;
+  border-color: rgba(53, 211, 154, 0.2);
+  background: rgba(53, 211, 154, 0.07);
+}
+
+.privacy-line {
+  width: 34px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(126, 157, 211, 0.1), rgba(53, 211, 154, 0.3), rgba(126, 157, 211, 0.1));
+}
+
+.settings-card--privacy .settings-card__note {
+  margin: 0;
+  padding-left: 26px;
+  border-left: 1px solid rgba(126, 157, 211, 0.1);
+}
+
+/* Quick Lock Security Status Widget */
+.shield-glow-success,
+.shield-glow-warning {
+  position: relative;
+}
+
+.shield-glow-success::before,
+.shield-glow-warning::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.shield-glow-success::before {
+  background: rgba(35, 165, 90, 0.25);
+  animation: pulseGlowSuccess 2.5s infinite;
+}
+
+.shield-glow-warning::before {
+  background: rgba(240, 178, 50, 0.25);
+  animation: pulseGlowWarning 2.5s infinite;
+}
+
+.quick-lock-button {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-lock-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 67, 53, 0.25);
+  background: rgba(234, 67, 53, 0.16) !important;
+}
+
+.quick-lock-button.setup:hover {
+  box-shadow: 0 4px 12px rgba(72, 137, 244, 0.25);
+  background: rgba(72, 137, 244, 0.16) !important;
+}
+
+.quick-lock-button:active, .quick-lock-button.clicking {
+  transform: translateY(1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.quick-lock-button svg {
+  transition: transform 0.3s ease;
+}
+
+.quick-lock-button:hover svg {
+  transform: scale(1.15) rotate(-8deg);
+}
+
+/* Settings Cards Glow Effects */
+.settings-card__glow-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--radius-card, 16px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.settings-card__glow {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  width: 380px;
+  height: 220px;
+  margin-left: -190px;
+  margin-top: -110px;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  filter: blur(18px);
+}
+
+.settings-card__glow--1 {
+  background: radial-gradient(circle, rgba(125, 231, 246, 0.25) 0%, rgba(111, 92, 246, 0.12) 50%, transparent 80%);
+  opacity: 0.24;
+}
+
+.settings-card__glow--2 {
+  background: radial-gradient(circle, rgba(111, 229, 241, 0.22) 0%, rgba(72, 137, 244, 0.1) 60%, transparent 80%);
+  opacity: 0.22;
+}
+
+.settings-card__glow--3 {
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.25) 0%, rgba(111, 92, 246, 0.12) 50%, transparent 80%);
+  opacity: 0.25;
+}
+
+/* Responsive Overrides */
+@media (max-width: 900px) {
+  .settings-card--privacy .settings-card__note {
+    padding: 17px 0 0;
+    border-top: 1px solid rgba(126, 157, 211, 0.1);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .privacy-visual {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .settings-form__actions,
+  .extension-state {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-form__actions .button,
+  .extension-state .button {
+    width: 100%;
+  }
+}

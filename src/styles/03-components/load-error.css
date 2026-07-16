@@ -1,0 +1,11 @@
+/* =========================================================================
+   Component: LoadError (src/components/LoadError.tsx)
+   Styles specific to the boot loading error state view.
+   Depends on loading-screen base styles and tokens: --danger.
+   ========================================================================= */
+
+.boot-screen--error .boot-screen__mark {
+  color: #ff8b97;
+  border-color: rgba(255, 107, 122, 0.2);
+  background: rgba(255, 107, 122, 0.07);
+}

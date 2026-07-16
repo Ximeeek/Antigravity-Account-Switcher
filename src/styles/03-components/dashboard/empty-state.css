@@ -1,0 +1,102 @@
+/* =========================================================================
+   Component: EmptyState (src/components/Dashboard/EmptyState.tsx)
+   Styles for the dashboard empty state panel displayed when no profiles are imported yet.
+   Includes orbit illustration and action links. Depends on tokens:
+   --border, --accent-cyan, --text-secondary, --text-muted.
+   ========================================================================= */
+
+.empty-state {
+  width: min(100%, 720px);
+  min-height: 500px;
+  margin: 26px auto;
+  padding: 58px 32px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+  background:
+    radial-gradient(420px 210px at 50% 0, rgba(31, 144, 196, 0.105), transparent 72%),
+    linear-gradient(155deg, rgba(16, 23, 39, 0.95), rgba(9, 13, 24, 0.97));
+  box-shadow: 0 25px 70px rgba(0, 3, 16, 0.26);
+}
+
+.empty-state__illustration {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  margin-bottom: 22px;
+  display: grid;
+  place-items: center;
+}
+
+.empty-orbit {
+  position: absolute;
+  border: 1px solid rgba(117, 194, 242, 0.12);
+  border-radius: 50%;
+}
+
+.empty-orbit--outer {
+  inset: 0;
+  border-style: dashed;
+}
+
+.empty-orbit--inner {
+  inset: 22px;
+  border-color: rgba(112, 92, 246, 0.16);
+}
+
+.empty-state__icon {
+  position: relative;
+  z-index: 1;
+  width: 62px;
+  height: 62px;
+  border: 1px solid rgba(122, 216, 247, 0.25);
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: #b8e9ff;
+  background: linear-gradient(145deg, rgba(72, 139, 245, 0.27), rgba(99, 81, 227, 0.18));
+  box-shadow: 0 16px 34px rgba(15, 58, 110, 0.2), inset 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.empty-state__plus {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #101827;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #06111d;
+  background: var(--accent-cyan);
+}
+
+.empty-state h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 630;
+  letter-spacing: -0.03em;
+}
+
+.empty-state > p:not(.eyebrow) {
+  max-width: 510px;
+  margin: 12px 0 24px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.empty-state__hint {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 11px;
+}

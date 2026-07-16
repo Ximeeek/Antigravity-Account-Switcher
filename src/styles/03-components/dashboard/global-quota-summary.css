@@ -1,0 +1,99 @@
+/* =========================================================================
+   Component: GlobalQuotaSummary (src/components/Dashboard/GlobalQuotaSummary.tsx)
+   Styles for the global API limits/usage quotas dashboard overview section.
+   Includes colored bar charts. Depends on tokens:
+   --surface-1, --surface-2, --border, --radius-card, --text-muted, --text-secondary.
+   ========================================================================= */
+
+.global-quota-summary {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.global-quota-summary__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.global-quota-summary__grids {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.global-quota-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.global-quota-item__label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.global-quota-item__value-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.global-quota-item__value-bar strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  min-width: 38px;
+  text-align: right;
+}
+
+.global-quota-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.global-quota-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.global-quota-bar__fill--success {
+  background: linear-gradient(90deg, #35d39a, #65e2b2);
+  box-shadow: 0 0 8px rgba(101, 226, 178, 0.3);
+}
+
+.global-quota-bar__fill--warning {
+  background: linear-gradient(90deg, #f3b137, #f7ca72);
+  box-shadow: 0 0 8px rgba(247, 202, 114, 0.3);
+}
+
+.global-quota-bar__fill--danger {
+  background: linear-gradient(90deg, #f55353, #f88a8a);
+  box-shadow: 0 0 8px rgba(248, 138, 138, 0.3);
+}
+
+/* Responsive Overrides */
+@media (max-width: 768px) {
+  .global-quota-summary__grids {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

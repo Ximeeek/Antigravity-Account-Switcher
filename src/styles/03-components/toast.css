@@ -1,0 +1,85 @@
+/* =========================================================================
+   Component: Toast (src/components/Toast.tsx)
+   Styles for bottom-right overlay toast alert messages, success/error tones,
+   and close buttons. Depends on tokens: --border, --text-secondary, --text-muted.
+   ========================================================================= */
+
+.toast {
+  position: fixed;
+  z-index: 150;
+  right: 22px;
+  bottom: 22px;
+  max-width: min(390px, calc(100vw - 32px));
+  min-height: 48px;
+  padding: 9px 9px 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  background: rgba(13, 19, 32, 0.97);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.34), inset 0 1px rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  font-size: 11.5px;
+  animation: toast-in 180ms ease-out;
+}
+
+.toast__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+
+.toast--success {
+  border-color: rgba(53, 211, 154, 0.22);
+}
+
+.toast--success .toast__icon {
+  color: #65e2b2;
+  background: rgba(53, 211, 154, 0.08);
+}
+
+.toast--danger {
+  border-color: rgba(255, 107, 122, 0.23);
+}
+
+.toast--danger .toast__icon {
+  color: #ff8b97;
+  background: rgba(255, 107, 122, 0.08);
+}
+
+.toast--info .toast__icon {
+  color: #87c1ff;
+  background: rgba(102, 168, 255, 0.08);
+}
+
+.toast button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.toast button:hover {
+  color: var(--text-primary);
+  background: rgba(126, 157, 211, 0.08);
+}
+
+/* Responsive Overrides */
+@media (max-width: 560px) {
+  .toast {
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    max-width: none;
+  }
+}

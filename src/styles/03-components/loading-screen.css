@@ -1,0 +1,44 @@
+/* =========================================================================
+   Component: LoadingScreen (src/components/LoadingScreen.tsx)
+   Styles for the startup boot screen and full-screen loading spinner state.
+   Depends on tokens: --bg-canvas, --text-secondary.
+   ========================================================================= */
+
+.boot-screen {
+  min-height: calc(100vh - 36px);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background:
+    radial-gradient(460px 300px at 50% 38%, rgba(55, 147, 210, 0.095), transparent 72%),
+    var(--bg-canvas);
+}
+
+.boot-screen__mark {
+  width: 58px;
+  height: 58px;
+  margin-bottom: 19px;
+  border: 1px solid rgba(102, 168, 255, 0.18);
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  color: #89c8ff;
+  background: rgba(102, 168, 255, 0.07);
+}
+
+.boot-screen h1 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 630;
+  letter-spacing: -0.025em;
+}
+
+.boot-screen p {
+  max-width: 450px;
+  margin: 9px 0 21px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
