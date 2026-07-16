@@ -1,0 +1,35 @@
+/* =========================================================================
+   Settings: Tokens
+   Global design tokens, CSS custom properties, spacing scales, border radii,
+   color palette, and width boundaries.
+   ========================================================================= */
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --bg-canvas: #070812;
+  --bg-top: #0a0e1a;
+  --surface-1: #0d111e;
+  --surface-2: #111827;
+  --surface-hover: #141d2e;
+  --surface-inset: #090d18;
+  --border: rgba(126, 157, 211, 0.15);
+  --border-hover: rgba(126, 183, 255, 0.29);
+  --border-active: rgba(93, 174, 255, 0.58);
+  --text-primary: #f5f7ff;
+  --text-secondary: #aab3c5;
+  --text-muted: #728097;
+  --accent-blue: #4a8cf7;
+  --accent-cyan: #7de7f2;
+  --accent-violet: #705cf6;
+  --success: #35d39a;
+  --warning: #f6c65b;
+  --danger: #ff6b7a;
+  --info: #66a8ff;
+  --focus-ring: #7dddf4;
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --content-width: 1160px;
+}
