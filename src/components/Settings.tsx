@@ -94,30 +94,71 @@ export function Settings({
       });
     });
 
-    let animationFrameId: number;
-    let lastTime = 0;
+    let gridWidth = 0;
+    let gridHeight = 0;
 
-    const tick = (timestamp: number) => {
-      if (!lastTime) lastTime = timestamp;
-      const t = timestamp / 1000; // time in seconds
-
-      // Measure grid and cards offsets relative to the grid
+    const updateOffsets = () => {
       const gridRect = grid.getBoundingClientRect();
-      if (gridRect.width === 0 || gridRect.height === 0) {
-        animationFrameId = requestAnimationFrame(tick);
-        return;
-      }
+      gridWidth = gridRect.width;
+      gridHeight = gridRect.height;
+      if (gridWidth === 0 || gridHeight === 0) return;
 
-      // Update offsets (handles window resizing)
       glowContainers.forEach((item) => {
         const cardRect = item.card.getBoundingClientRect();
         item.left = cardRect.left - gridRect.left;
         item.top = cardRect.top - gridRect.top;
       });
+    };
+
+    // Run initially
+    updateOffsets();
+
+    // Listen to resize to update cached dimensions
+    window.addEventListener("resize", updateOffsets);
+
+    let animationFrameId: number;
+    let lastTime = 0;
+    let isAnimating = false;
+    let lastInteractionTime = Date.now();
+
+    let lastMouseX = -9999;
+    let lastMouseY = -9999;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (e.clientX === lastMouseX && e.clientY === lastMouseY) {
+        return;
+      }
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      lastInteractionTime = Date.now();
+      startAnimation();
+    };
+
+    grid.addEventListener("mousemove", handleMouseMove);
+
+    const tick = (timestamp: number) => {
+      if (!isAnimating) return;
+
+      // Sleep loop after 10s of inactivity to achieve 0% idle CPU
+      if (Date.now() - lastInteractionTime > 10000) {
+        stopAnimation();
+        return;
+      }
+
+      if (!lastTime) lastTime = timestamp;
+      const t = timestamp / 1000; // time in seconds
+
+      if (gridWidth === 0 || gridHeight === 0) {
+        updateOffsets();
+        if (gridWidth === 0 || gridHeight === 0) {
+          animationFrameId = requestAnimationFrame(tick);
+          return;
+        }
+      }
 
       // Calculate global coordinates of the 3 glows in the grid
-      const w = gridRect.width;
-      const h = gridRect.height;
+      const w = gridWidth;
+      const h = gridHeight;
 
       // Glow 1: organic curved path
       const g1x = w * (0.5 + 0.44 * Math.sin(t * 0.45));
@@ -153,10 +194,69 @@ export function Settings({
       animationFrameId = requestAnimationFrame(tick);
     };
 
-    animationFrameId = requestAnimationFrame(tick);
+    const startAnimation = () => {
+      if (!isAnimating && !prefersReducedMotion && document.hasFocus() && document.visibilityState === "visible") {
+        isAnimating = true;
+        lastTime = 0;
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    };
+
+    const stopAnimation = () => {
+      if (isAnimating) {
+        isAnimating = false;
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+
+    const handleFocus = () => {
+      updateOffsets();
+      lastInteractionTime = Date.now();
+      startAnimation();
+    };
+
+    const handleBlur = () => {
+      stopAnimation();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        updateOffsets();
+        lastInteractionTime = Date.now();
+        startAnimation();
+      } else {
+        stopAnimation();
+      }
+    };
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let prefersReducedMotion = mediaQuery.matches;
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      prefersReducedMotion = e.matches;
+      if (prefersReducedMotion) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    mediaQuery.addEventListener("change", handleMotionChange);
+
+    if (!prefersReducedMotion) {
+      startAnimation();
+    }
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      grid.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", updateOffsets);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      mediaQuery.removeEventListener("change", handleMotionChange);
+      stopAnimation();
     };
   }, []);
 
