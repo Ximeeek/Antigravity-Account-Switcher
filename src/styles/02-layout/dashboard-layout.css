@@ -1,0 +1,61 @@
+/* =========================================================================
+   Layout: Dashboard Layout
+   Grids and structural flex containers for the Dashboard and Settings views,
+   including column spans and responsive alignment shifts.
+   ========================================================================= */
+
+.dashboard,
+.settings-page {
+  display: grid;
+  gap: 30px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 17px;
+}
+
+.settings-card--server {
+  grid-column: span 7;
+  grid-row: span 2;
+}
+
+.settings-card:not(.settings-card--server):not(.settings-card--privacy) {
+  grid-column: span 5;
+}
+
+.settings-card--privacy {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto minmax(250px, 0.85fr);
+  align-items: center;
+  gap: 28px;
+}
+
+@media (max-width: 900px) {
+  .settings-card,
+  .settings-card--server,
+  .settings-card:not(.settings-card--server):not(.settings-card--privacy),
+  .settings-card--privacy {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .settings-card--privacy {
+    grid-template-columns: minmax(240px, 1fr) auto minmax(220px, 0.8fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard,
+  .settings-page {
+    gap: 24px;
+  }
+
+  .settings-card--privacy {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

@@ -1,0 +1,59 @@
+/* =========================================================================
+   Layout: App Shell
+   Overall application frame, sticky positioning grids, backgrounds, grids
+   and structure for the main content view wrapper. Depends on tokens:
+   --bg-canvas, --content-width.
+   ========================================================================= */
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  background:
+    radial-gradient(820px 460px at 18% -10%, rgba(0, 194, 222, 0.105), transparent 62%),
+    radial-gradient(720px 500px at 102% 27%, rgba(105, 82, 246, 0.08), transparent 60%),
+    linear-gradient(180deg, rgba(11, 14, 27, 0.62), transparent 38%),
+    var(--bg-canvas);
+}
+
+.app-shell::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0.22;
+  background-image:
+    radial-gradient(circle at 15% 18%, rgba(168, 224, 255, 0.36) 0 0.7px, transparent 0.85px),
+    radial-gradient(circle at 79% 27%, rgba(150, 135, 255, 0.28) 0 0.65px, transparent 0.8px);
+  background-position: 0 0, 17px 13px;
+  background-size: 29px 29px, 37px 37px;
+  mask-image: linear-gradient(to bottom, #000 0, transparent 48%);
+}
+
+.app-main {
+  width: min(100%, calc(var(--content-width) + 64px));
+  margin: 0 auto;
+  padding: 32px 32px 52px;
+}
+
+@media (max-width: 900px) {
+  .app-main {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-main {
+    padding-top: 24px;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-main {
+    padding-right: 16px;
+    padding-left: 16px;
+    padding-bottom: 34px;
+  }
+}
