@@ -1,0 +1,33 @@
+/* =========================================================================
+   Generic: Reset
+   Universal box-sizing resets, browser selection overrides, and custom webkit
+   scrollbar styling. Depends on tokens: --accent-cyan.
+   ========================================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  color: #06111d;
+  background: var(--accent-cyan);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080b14;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid #080b14;
+  border-radius: 999px;
+  background: #273149;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #35415f;
+}
