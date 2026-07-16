@@ -1,0 +1,191 @@
+/* =========================================================================
+   Utility: Animations
+   Global reusable CSS keyframe definitions for transitions, spinner, pulsing,
+   toast slide-in, modal scale-in, popovers, and glows.
+   ========================================================================= */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.28; transform: scale(1); }
+  50% { opacity: 0; transform: scale(2.15); }
+}
+
+@keyframes progress-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPanelScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes pulse-faster {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes trigger-text-pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes trigger-badge-pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes popover-bounce {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes text-pulse-glow {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.35);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+    text-shadow: 0 0 14px rgba(0, 240, 255, 0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.35);
+  }
+}
+
+@keyframes icon-zap-glow-pulse {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0px rgba(0, 240, 255, 0));
+  }
+  50% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 4px rgba(0, 240, 255, 0.6));
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0px rgba(0, 240, 255, 0));
+  }
+}
+
+@keyframes gold-glow-pulse {
+  0% {
+    text-shadow: 0 0 3px rgba(255, 215, 0, 0.6), 0 0 6px rgba(255, 165, 0, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.95), 0 0 22px rgba(255, 140, 0, 0.7);
+  }
+  100% {
+    text-shadow: 0 0 3px rgba(255, 215, 0, 0.6), 0 0 6px rgba(255, 165, 0, 0.4);
+  }
+}
+
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlowSuccess {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseGlowWarning {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
