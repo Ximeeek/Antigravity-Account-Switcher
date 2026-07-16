@@ -316,14 +316,47 @@ pub fn check_single_instance() {}
 
 #[cfg(windows)]
 pub fn has_active_webview_processes() -> bool {
+    use std::sync::Mutex;
     use std::mem::{size_of, zeroed};
     use windows_sys::Win32::{
-        Foundation::{CloseHandle, INVALID_HANDLE_VALUE},
+        Foundation::{CloseHandle, INVALID_HANDLE_VALUE, HANDLE},
         System::Diagnostics::ToolHelp::{
             CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
             TH32CS_SNAPPROCESS,
         },
+        System::Threading::{
+            GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+        },
     };
+
+    const STILL_ACTIVE: u32 = 259;
+
+    struct SafeHandle(HANDLE);
+    unsafe impl Send for SafeHandle {}
+    unsafe impl Sync for SafeHandle {}
+
+    static CACHED_HANDLES: Mutex<Vec<SafeHandle>> = Mutex::new(Vec::new());
+
+    let mut handles = CACHED_HANDLES.lock().unwrap();
+
+    if !handles.is_empty() {
+        let mut active_found = false;
+        let mut i = 0;
+        while i < handles.len() {
+            let mut exit_code = 0;
+            let ok = unsafe { GetExitCodeProcess(handles[i].0, &mut exit_code) };
+            if ok != 0 && exit_code == STILL_ACTIVE {
+                active_found = true;
+                i += 1;
+            } else {
+                unsafe { CloseHandle(handles[i].0) };
+                handles.swap_remove(i);
+            }
+        }
+        if active_found {
+            return true;
+        }
+    }
 
     let my_pid = std::process::id();
     let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
@@ -334,7 +367,7 @@ pub fn has_active_webview_processes() -> bool {
     let mut entry: PROCESSENTRY32W = unsafe { zeroed() };
     entry.dwSize = size_of::<PROCESSENTRY32W>() as u32;
     let mut ok = unsafe { Process32FirstW(snapshot, &mut entry) };
-    let mut found = false;
+    let mut found_pids = Vec::new();
 
     while ok != 0 {
         if entry.th32ParentProcessID == my_pid {
@@ -345,15 +378,26 @@ pub fn has_active_webview_processes() -> bool {
                 .unwrap_or(entry.szExeFile.len());
             let name = String::from_utf16_lossy(&entry.szExeFile[..length]);
             if name.to_lowercase() == "msedgewebview2.exe" {
-                found = true;
-                break;
+                found_pids.push(entry.th32ProcessID);
             }
         }
         ok = unsafe { Process32NextW(snapshot, &mut entry) };
     }
 
     unsafe { CloseHandle(snapshot) };
-    found
+
+    if found_pids.is_empty() {
+        return false;
+    }
+
+    for pid in found_pids {
+        let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+        if handle != 0 as HANDLE {
+            handles.push(SafeHandle(handle));
+        }
+    }
+
+    !handles.is_empty()
 }
 
 #[cfg(not(windows))]

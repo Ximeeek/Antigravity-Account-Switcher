@@ -88,7 +88,7 @@ pub fn run() {
 
             // Monitor WebView2 subprocesses to exit cleanly if they are terminated or crashed
             tauri::async_runtime::spawn(async move {
-                let mut interval = tokio::time::interval(std::time::Duration::from_millis(1500));
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
                 let mut has_seen_webview = false;
                 loop {
                     interval.tick().await;
